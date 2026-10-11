@@ -426,6 +426,78 @@ export function assertBentoContract(doc: unknown): void {
 export function assertProjectDocument(doc: unknown): void {
   assertBentoContract(doc);
   const value = doc as RecordValue;
+  // A valid upstream reference can still depend on a browser session or the
+  // network. Project saves must not report success for resources that disappear
+  // on reopen. Outgoing hyperlinks are deliberately not resource references.
+  const assets = isObject(value.assets) ? value.assets : {};
+  const asset = (key: string, path: string): string => {
+    if (!Object.hasOwn(assets, key) || typeof assets[key] !== "string") {
+      reject(
+        path,
+        `Missing embedded asset ${
+          JSON.stringify(key)
+        }; embed the resource before saving this offline project`,
+      );
+    }
+    return assets[key] as string;
+  };
+  const embedded = (ref: string, path: string) => {
+    if (!ref) return; // An explicit empty native placeholder has no resource.
+    const resolved = ref.startsWith("asset:") ? asset(ref.slice(6), path) : ref;
+    if (!/^data:/i.test(resolved)) {
+      reject(
+        path,
+        "Project image, media and font resources must be embedded data, not remote URLs, relative paths or temporary blob URLs; import the local file before saving",
+      );
+    }
+  };
+  for (const collection of ["slides", "layouts"]) {
+    if (!Array.isArray(value[collection])) continue;
+    (value[collection] as RecordValue[]).forEach((slide, i) => {
+      (slide.elements as RecordValue[]).forEach((element, j) => {
+        const at = `/${collection}/${i}/elements/${j}`;
+        if (element.type === "image" || element.type === "media") {
+          if (typeof element.src === "string") {
+            embedded(element.src, at + "/src");
+          }
+          if (typeof element.poster === "string") {
+            embedded(element.poster, at + "/poster");
+          }
+        }
+        if (element.type === "svg" && element.asset) {
+          asset(element.asset as string, at + "/asset");
+        }
+        if (element.type === "code") {
+          for (const key of ["grammarAssetId", "themeAssetId"]) {
+            if (element[key]) asset(element[key] as string, at + "/" + key);
+          }
+        }
+        if (element.type === "embed") {
+          for (const key of ["view", "doc"]) {
+            const ref = element[key];
+            if (typeof ref === "string" && ref.startsWith("asset:")) {
+              asset(ref.slice(6), at + "/" + key);
+            }
+          }
+        }
+      });
+    });
+  }
+  if (Array.isArray(value.fonts)) {
+    (value.fonts as RecordValue[]).forEach((font, i) => {
+      const at = `/fonts/${i}/asset`;
+      // Exact keys from fonts.ts at BENTO_CONTRACT_REVISION. The shell ships
+      // these bytes, and native serialization adopts the built-in references.
+      // An explicit asset table entry takes precedence in the upstream resolver.
+      if (
+        !Object.hasOwn(assets, font.asset as string) &&
+        ["builtin:fraunces-900", "builtin:instrument-sans"].includes(
+          font.asset as string,
+        )
+      ) return;
+      embedded("asset:" + font.asset, at);
+    });
+  }
   if (value.template === true) {
     reject(
       "/template",
