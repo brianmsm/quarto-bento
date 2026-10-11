@@ -16,8 +16,21 @@ export interface ProducerManifest {
     code: string;
   }[];
 }
+function assertProducerStartup() {
+  const args = (Deno.env.get("QUARTO_KNITR_RSCRIPT_ARGS") ?? "").split(",").map(
+    (arg) => arg.trim(),
+  );
+  if (args.includes("--vanilla") || args.includes("--no-init-file")) {
+    throw new Error(
+      "UNSUPPORTED_PRODUCER_STARTUP: QUARTO_KNITR_RSCRIPT_ARGS disables the original-producer adapter with --vanilla/--no-init-file; use an R startup that loads the adapter or a separately verified execution transport (flags remain unchanged)",
+    );
+  }
+}
 export async function prepareProducerCapture(source: string) {
   const text = await Deno.readTextFile(source), document = scanSource(text);
+  if (document.blocks.some((block) => block.kind === "chunk")) {
+    assertProducerStartup();
+  }
   if (
     /(?:\bqbento-producer-proof\s*[=:]|\.qbento-execution\b)/m.test(text)
   ) {
@@ -185,6 +198,7 @@ export async function assertCompatibleProducerFilters(
       b.kind === "chunk"
     )
   ) return;
+  assertProducerStartup();
   const inspected = await new Deno.Command("quarto", {
     cwd: dirname(source),
     args: ["inspect", source],

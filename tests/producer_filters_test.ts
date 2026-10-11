@@ -139,3 +139,38 @@ Deno.test("internal filter allowance binds the reviewed bytes and rejects a chan
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("R startup flags that disable original producer capture refuse before computation", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-startup-proof-" }),
+    original = Deno.env.get("QUARTO_KNITR_RSCRIPT_ARGS");
+  try {
+    const source = dir + "/deck.qmd";
+    await Deno.writeTextFile(
+      source,
+      '## One {#one}\n\n```{r}\n#| label: actual\n#| echo: false\ncat("run\\n",file="counter.txt",append=TRUE)\nprint(555)\n```\n',
+    );
+    for (
+      const flag of ["--vanilla", "--no-init-file", "--quiet,--no-init-file"]
+    ) {
+      Deno.env.set("QUARTO_KNITR_RSCRIPT_ARGS", flag);
+      try {
+        await renderProject(source);
+      } catch (e) {
+        assert(String(e).includes("UNSUPPORTED_PRODUCER_STARTUP"));
+        assert(Deno.env.get("QUARTO_KNITR_RSCRIPT_ARGS") === flag);
+        try {
+          await Deno.stat(dir + "/counter.txt");
+        } catch (missing) {
+          assert(missing instanceof Deno.errors.NotFound);
+          continue;
+        }
+        throw new Error("Refused adapter startup executed code");
+      }
+      throw new Error("Startup without adapter was accepted");
+    }
+  } finally {
+    if (original === undefined) Deno.env.delete("QUARTO_KNITR_RSCRIPT_ARGS");
+    else Deno.env.set("QUARTO_KNITR_RSCRIPT_ARGS", original);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
