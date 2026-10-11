@@ -5,6 +5,7 @@ import {
 import { MAX_DESIGN_REGISTRY_BYTES } from "../render/registry.ts";
 import {
   readProject,
+  readProjectDiagnostics,
   readProjectPresenter,
   renderProject,
   saveProject,
@@ -171,6 +172,9 @@ export async function startStudio(source: string, port = 0) {
             403,
           );
         }
+        if (req.method === "GET" && url.pathname === "/api/diagnostics") {
+          return respond(JSON.stringify(await readProjectDiagnostics(source)));
+        }
         if (req.method === "GET" && url.pathname === "/api/design-registry") {
           return respond(JSON.stringify(await readProjectRegistry(source)));
         }
@@ -289,6 +293,7 @@ export async function startStudio(source: string, port = 0) {
             JSON.stringify({
               revision: r.state.revision,
               pending: r.state.pending.length,
+              diagnostics: r.diagnostics,
             }),
           );
         }

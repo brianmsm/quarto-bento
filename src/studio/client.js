@@ -2,6 +2,8 @@ import { attachRegistryEditor } from "/registry.js";
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
 let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
+let diagnosticGeneration = 0, projectDiagnostics = [];
+let connectedApi, connectedSnapshot;
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
     method: body === undefined ? "GET" : "POST",
@@ -13,7 +15,53 @@ async function api(path, body) {
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || result.error);
+  if (
+    body !== undefined &&
+    [
+      "save",
+      "design-registry",
+      "sync/apply",
+      "reconcile/apply",
+      "slides/action",
+    ].includes(path)
+  ) {
+    void refreshDiagnostics();
+  }
   return result;
+}
+function showDiagnostics(diagnostics) {
+  projectDiagnostics = diagnostics;
+  $("diagnostic-list").replaceChildren();
+  for (const diagnostic of diagnostics) {
+    const item = document.createElement("li");
+    item.textContent = `${diagnostic.code}${
+      diagnostic.slideId ? ` · ${diagnostic.slideId}` : ""
+    }${
+      diagnostic.reference ? ` · ${diagnostic.reference}` : ""
+    }: ${diagnostic.message}`;
+    $("diagnostic-list").append(item);
+  }
+  $("project-diagnostics").hidden = diagnostics.length === 0;
+}
+async function refreshDiagnostics() {
+  const generation = ++diagnosticGeneration;
+  try {
+    const diagnostics = await api("diagnostics");
+    if (generation === diagnosticGeneration) showDiagnostics(diagnostics);
+  } catch (error) {
+    if (generation === diagnosticGeneration) {
+      showDiagnostics([
+        ...projectDiagnostics.filter((d) =>
+          d.code !== "DIAGNOSTICS_UNAVAILABLE"
+        ),
+        {
+          code: "DIAGNOSTICS_UNAVAILABLE",
+          message:
+            `No se pudo comprobar el diseño del proyecto: ${error.message}`,
+        },
+      ]);
+    }
+  }
 }
 function status(text) {
   $("status").textContent = text;
@@ -58,6 +106,9 @@ function connect() {
         "El editor no tiene una revisión verificable. Recarga el proyecto.",
       );
     }
+    // The initial iframe load may finish before this module's imports load.
+    // Poll/load duplicates must not reset a revision already advanced by Save.
+    if (connectedApi === editor.bento && connectedSnapshot === snapshot) return;
     state = {
       docId: snapshot.docId,
       revision: snapshot.revision,
@@ -86,6 +137,9 @@ function connect() {
       },
     });
     oldBridge?.dispose();
+    connectedApi = editor.bento;
+    connectedSnapshot = snapshot;
+    void refreshDiagnostics();
     setBusy(false);
     status(
       state.pending
@@ -515,6 +569,8 @@ $("render").onclick = async () => {
     await bridge.save();
     status("Recalculando…");
     const receipt = await api("render", {});
+    ++diagnosticGeneration;
+    showDiagnostics(receipt.diagnostics ?? []);
     state.revision = receipt.revision;
     if (bridge.dirty) {
       throw new Error(
@@ -565,3 +621,7 @@ $("presenter-dialog").onclose = () => {
 };
 
 attachRegistryEditor({ api, getState: () => state, showError });
+
+void refreshDiagnostics();
+
+connect();

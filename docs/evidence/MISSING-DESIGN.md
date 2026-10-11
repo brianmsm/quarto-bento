@@ -58,10 +58,15 @@ explicitly resolved. Save/render do not add, remove or normalize QMD traces.
 `qbento-html` post-render publication. `readProjectDiagnostics(source)` provides
 the same evaluation without Quarto execution, source changes or state writes,
 including before a baseline exists. CLI JSON already retains render diagnostics;
-the ordinary hook prints their code/message. Studio integration consumes this
-separate read-only diagnostic result and render responses; it must display the
-warning on opening and after Recalc, without representing it as a pending edit.
-UI delivery/runtime evidence belongs to the coordinating integration.
+the ordinary hook prints their code/message. Studio consumes a protected
+`GET /api/diagnostics` result and diagnostics in the Recalc response. Its
+visible banner includes the code, slide, reference and actionable message on
+opening and after Recalc, without representing the warning as a pending edit.
+Read responses use a generation guard: older responses cannot overwrite newer
+warnings, and a failed inspection preserves existing warnings with an
+availability error. Text is inserted with `textContent`. The initial native
+iframe connection also handles a load that completed before client imports,
+without resetting the revision on a duplicate connection.
 
 Corrupt state, invalid/unsafe registries and an unresolved
 `.qbento/design-save.json` transaction remain failures. The annotation registry
@@ -86,9 +91,25 @@ rebuild, and refusal of diagnostics/preview/apply while a registry-save marker
 exists with the registry either present or absent. The latter preserves exact
 QMD and state bytes, including an already reviewed sync plan.
 
+```bash
+QBENTO_STUDIO_BROWSER_TEST=1 deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/studio_diagnostics_test.ts tests/studio_test.ts
+# 3 passed on Linux: protected/read-only API, native headless banner/Recalc,
+# and existing stale-save protection; /tmp/qbento-missing-design-studio-final.log
+```
+
+The optional native test blocks requests outside the local Studio origin, waits
+for the editor bridge and disappearance of Bento's splash, then verifies the
+banner initially and after Recalc with zero pending edits and unchanged QMD. The
+captured Linux headless screenshot at `/tmp/qbento-missing-design-studio.png`
+shows the banner and native editor. This is a bounded fixture check, not broad
+visual acceptance or foreground desktop validation. Independent review also
+verified out-of-order client responses, warning preservation on read failure,
+duplicate connections retaining a saved revision, and a real semantic pending
+edit surviving Recalc with its identity and content intact. Hostile Origin and
+unresolved-registry reads/renders refuse without changing QMD/state.
+
 Type checks, lint, formatting and diff checks cover changed modules/tests. No
-full suite, hosted CI, native macOS/Windows or browser/desktop visual claim is
-made by this slice. The peer registry implementation is a prerequisite; its
-reviewed file SHA-256 is
+full suite, hosted CI or native macOS/Windows claim is made by this slice. The
+peer registry implementation is a prerequisite; its reviewed file SHA-256 is
 `7ecaf8f8b6a4f2364b2dde1f64643b9ee5f4bd6f98fe80d80add6ad1a0ad3f7e`. It is
 deliberately excluded from this diagnostic commit.
