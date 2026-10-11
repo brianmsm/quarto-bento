@@ -288,3 +288,52 @@ Deno.test("pinning nested div and child preserves meaningful content and rejects
     "duplicate-id",
   );
 });
+Deno.test("created slide preserves explicitly supplied native title and paragraph IDs", () => {
+  const source = "## Existing {#existing}\n\nText.\n";
+  const result = applyStructure(
+    source,
+    previewStructure(scanSource(source), [{
+      type: "insert-slide",
+      id: "native-slide",
+      title: "Native title",
+      titleElementId: "native-title",
+      body: "First.\n\nSecond.",
+      bodyIds: ["native-first", "native-second"],
+    }]),
+  );
+  eq(
+    result.includes(
+      '## Native title {#native-slide bento-title-id="native-title"}',
+    ),
+    true,
+  );
+  eq(
+    scanSource(result).blocks.filter((b) => b.kind === "paragraph").map((b) =>
+      b.id
+    ).slice(-2),
+    ["native-first", "native-second"],
+  );
+  fails(
+    () =>
+      previewStructure(scanSource(source), [{
+        type: "insert-slide",
+        id: "new",
+        title: "T",
+        body: "Body",
+        titleElementId: 'bad" injected="yes',
+        bodyIds: ["body"],
+      }]),
+    "invalid-id",
+  );
+  fails(
+    () =>
+      previewStructure(scanSource(source), [{
+        type: "insert-slide",
+        id: "new",
+        title: "T",
+        body: "Body",
+        bodyIds: ["one", "two"],
+      }]),
+    "invalid-slide",
+  );
+});

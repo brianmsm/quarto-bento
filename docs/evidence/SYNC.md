@@ -5,7 +5,7 @@ Implementation evidence recorded 2026-10-11, Linux, Deno 2.9.6.
 `src/core/sync.ts` exports:
 
 ```ts
-previewSync(source: string, selectedChangeIds?: string[]): Promise<SyncPlan>
+previewSync(source: string, selectedChangeIds?: string[], options?: SyncOptions): Promise<SyncPlan>
 applySync(source: string, plan: SyncPlan): Promise<SyncReceipt>
 inlineHtmlToMarkdown(html: string): string
 ```
@@ -88,7 +88,7 @@ deno test --allow-read --allow-write tests/sync_test.ts
 deno lint src/core/sync.ts tests/sync_test.ts
 ```
 
-**10 tests pass**, using actual temporary QMD files and StateStore persistence:
+**11 tests pass**, using actual temporary QMD files and StateStore persistence:
 read-only preview; exact Unicode/CRLF updates and backups; independent source
 edits; same-fragment conflicts; stale source/state; modified plan; computed and
 unsupported selections; singleton/anonymous mappings; HTML conversion refusal;
@@ -99,8 +99,12 @@ This evidence verifies the core text-sync and recovery-artifact behavior. UI
 approval, CLI orchestration, automatic pending reconciliation after real render,
 and the separate recovery commands require integration evidence.
 
-Current integration caveat: the state merge compares raw HTML strings.
-Equivalent markup such as `<strong>` versus renderer `<b>`, or redundant
-paragraph wrappers, may still require explicit reconciliation after rendering.
-The converter never silently clears the original pending HTML edit based on an
-unverified assumption of equivalence.
+Supported equivalent HTML is now handled only through explicit approved sync
+normalization metadata; see [SYNC-STRUCTURE.md](SYNC-STRUCTURE.md). Unrecognized
+or ambiguous markup still refuses conversion. The baseline and original pending
+records remain unchanged until fresh execution validates the approval.
+
+Original source containing Markdown links, inline code, reference-like brackets
+or autolinks now refuses reverse text sync (`SOURCE_FORMAT_UNSUPPORTED`) while
+the forward projector lacks a faithful rich-inline representation. This prevents
+a bounded replacement from silently discarding original URL/code semantics.

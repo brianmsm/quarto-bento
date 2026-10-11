@@ -8,6 +8,8 @@ export type StructureOperation =
     id: string;
     title: string;
     body: string;
+    bodyIds?: string[];
+    titleElementId?: string;
     afterId?: string | null;
   }
   | { type: "reorder-slides"; ids: string[] }
@@ -179,10 +181,29 @@ function generatedSlide(
   if (sliceBytes(body, { start: cursor, end: bodyDoc.byteLength }).trim()) {
     fail("invalid-slide", "Body contains unmapped source syntax.");
   }
-  const pieces = [`## ${operation.title} {#${operation.id}}`];
+  if (operation.titleElementId !== undefined) {
+    assertIdentity(operation.titleElementId);
+  }
+  const bodyIds = operation.bodyIds ??
+    bodyDoc.blocks.map((_block, index) => `${operation.id}-text-${index + 1}`);
+  if (bodyIds.length !== bodyDoc.blocks.length) {
+    fail(
+      "invalid-slide",
+      "Each body paragraph requires exactly one native text identity.",
+    );
+  }
+  bodyIds.forEach(assertIdentity);
+  if (
+    new Set([operation.id, ...bodyIds]).size !== bodyIds.length + 1 ||
+    (operation.titleElementId && bodyIds.includes(operation.titleElementId))
+  ) fail("duplicate-id", "Created slide identities collide.");
+  const titleAttribute = operation.titleElementId
+    ? ` bento-title-id="${operation.titleElementId}"`
+    : "";
+  const pieces = [`## ${operation.title} {#${operation.id}${titleAttribute}}`];
   bodyDoc.blocks.forEach((block, index) =>
     pieces.push(
-      `<!-- qb:${operation.id}-text-${index + 1} -->\n${block.content}`,
+      `<!-- qb:${bodyIds[index]} -->\n${block.content}`,
     )
   );
   const result = (pieces.join("\n\n") + "\n\n").replace(/\n/g, doc.newline);

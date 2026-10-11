@@ -197,15 +197,31 @@ export async function projectAst(
   }
   async function walk(nodes: Node[], computed = false, parentId?: string) {
     let paragraphIndex = 0;
+    let sourceMarker: string | undefined;
     for (const node of nodes) {
+      if (!["Para", "Plain", "RawBlock"].includes(node.t)) {
+        sourceMarker = undefined;
+      }
       if (node.t === "Header") {
         const [level, attr, content] = node.c as [number, Attr, Node[]];
         if (level <= 2) {
           const id = attr[0] || `qb-slide-${document.slides.length + 1}`;
           startSlide(id);
-          text(`${id}-title`, inline(content), true, {
-            origin: "authored",
+          const nativeTitleId = attr[2].find(([name]) =>
+            name === "bento-title-id"
+          )?.[1];
+          if (
+            nativeTitleId !== undefined &&
+            !/^[A-Za-z][\w:.-]*$/.test(nativeTitleId)
+          ) {
+            throw new Error(
+              "INVALID_ID: bento-title-id must be a safe explicit identity",
+            );
+          }
+          text(nativeTitleId ?? `${id}-title`, inline(content), true, {
+            origin: computed ? "computed" : "authored",
             sourceId: id,
+            ...(computed && parentId ? { producer: parentId } : {}),
           });
         } else {text(
             attr[0] || `${parentId || slide?.id}-heading-${++counter}`,
@@ -221,10 +237,21 @@ export async function projectAst(
         const isComputed = computed ||
           attr[1].some((c) => c === "cell" || c.startsWith("cell-output"));
         if (attr[1].includes("notes")) {
+          if (isComputed) {
+            throw new Error(
+              "COMPUTED_NOTES_UNSUPPORTED: generated speaker notes need explicit computed slide-property provenance; refusing authored classification",
+            );
+          }
+          if (children.some((node) => node.t !== "Para")) {
+            throw new Error(
+              "UNSUPPORTED_NOTES: speaker notes currently support paragraphs only; refusing to drop other source blocks",
+            );
+          }
           if (!slide) startSlide("qb-introduction");
-          slide!.notes = children.filter((n) => n.t === "Para").map((n) =>
-            inline(n.c as Node[])
-          ).join("\n");
+          slide!.notes = [
+            slide!.notes,
+            ...children.map((n) => inline(n.c as Node[])),
+          ].filter(Boolean).join("\n");
         } else if (
           attr[1].includes("quarto-float") && images(children).length
         ) {
@@ -241,16 +268,23 @@ export async function projectAst(
           }
           for (const img of imgs) await figure(img, computed, parentId);
         } else {
-          const id = parentId
-            ? `${parentId}/paragraph:${++paragraphIndex}`
-            : `qb-paragraph-${++counter}`;
+          const id = sourceMarker ??
+            (parentId
+              ? `${parentId}/paragraph:${++paragraphIndex}`
+              : `qb-paragraph-${++counter}`);
+          const explicitMarker = sourceMarker;
+          sourceMarker = undefined;
           text(id, inline(content), false, {
             origin: computed ? "computed" : "authored",
-            sourceId: parentId ? id : undefined,
+            sourceId: explicitMarker ?? (parentId ? id : undefined),
           });
         }
       } else if (node.t === "RawBlock") {
         const [format, raw] = node.c as [string, string];
+        const marker = format === "html"
+          ? raw.match(/^\s*<!--\s*qb:([A-Za-z][\w:.-]*)\s*-->\s*$/)
+          : null;
+        sourceMarker = marker?.[1];
         if (
           format !== "html" ||
           !/^\s*(?:<\/?(?:div|section|figure|figcaption)[^>]*>\s*|<!--[\s\S]*?-->\s*)*$/

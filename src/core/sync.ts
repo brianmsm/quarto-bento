@@ -1,8 +1,21 @@
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { basename, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
-import { canonical, StateError, StateStore, targetKey } from "../state/mod.ts";
-import type { Change, ProjectState } from "../state/mod.ts";
+import {
+  canonical,
+  clone,
+  promoteCreated,
+  StateError,
+  StateStore,
+  targetKey,
+} from "../state/mod.ts";
+import type {
+  BentoDoc,
+  BentoSlide,
+  Change,
+  ProjectState,
+  Value,
+} from "../state/mod.ts";
 import {
   applyPatches,
   hashSource,
@@ -10,6 +23,34 @@ import {
   scanSource,
 } from "../source/mod.ts";
 import type { PatchPreview, SourceBlock } from "../source/mod.ts";
+import { applyStructure, previewStructure } from "../source/structure.ts";
+import type {
+  StructureOperation,
+  StructurePreview,
+} from "../source/structure.ts";
+export interface SyncNormalization {
+  changeId: string;
+  expectedAfter: Value;
+  after: Value;
+}
+export interface SyncApproval {
+  version: 1;
+  docId: string;
+  sourceHash: string;
+  stateRevision: number;
+  planHash: string;
+  expectedPending: Change[];
+  creationChangeIds: string[];
+  normalizations: SyncNormalization[];
+}
+export interface SyncApprovalEnvelope {
+  format: "qbento-sync-approval/1";
+  sha256: string;
+  approval: SyncApproval;
+}
+export interface SyncOptions {
+  confirmedDeleteIds?: string[];
+}
 export interface SyncItem {
   changeId: string;
   target: Change["target"];
@@ -29,6 +70,12 @@ export interface SyncPlan {
   excludedChangeIds: string[];
   changes: SyncItem[];
   patch: PatchPreview;
+  structure?: StructurePreview;
+  result: string;
+  resultHash: string;
+  confirmedDeleteIds: string[];
+  creationChangeIds: string[];
+  normalizations: SyncNormalization[];
   planHash: string;
 }
 export interface SyncReceipt {
@@ -203,6 +250,124 @@ export function inlineHtmlToMarkdown(html: string): string {
   }
   return result;
 }
+/** Canonical rendering of the same explicitly supported HTML subset. */
+export function canonicalInlineHtml(html: string): string {
+  inlineHtmlToMarkdown(html);
+  let input = html.trim();
+  const wrapper = input.match(/^<(p|div)>([\s\S]*)<\/\1>$/i);
+  if (wrapper && !new RegExp(`<\\/?${wrapper[1]}\\b`, "i").test(wrapper[2])) {
+    input = wrapper[2];
+  }
+  return (input.match(/<[^>]*>|[^<]+/g) ?? []).map((token) => {
+    if (!token.startsWith("<")) {
+      return decodeEntities(token).replace(/[\r\n\t ]+/g, " ").replace(
+        /&/g,
+        "&amp;",
+      ).replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    if (/^<br/i.test(token)) return "<br>";
+    if (/^<span/i.test(token)) {
+      return '<span style="text-decoration:line-through">';
+    }
+    return token.toLowerCase().replace(/strong/g, "b").replace(/em/g, "i")
+      .replace(/\s+>/g, ">");
+  }).join("").trim();
+}
+export function validateSyncApproval(
+  value: unknown,
+): asserts value is SyncApprovalEnvelope {
+  const e = value as SyncApprovalEnvelope;
+  if (
+    !e || e.format !== "qbento-sync-approval/1" || !e.approval ||
+    e.sha256 !== hashSource(canonical(e.approval))
+  ) fail("INVALID_APPROVAL", "Sync approval checksum or version is invalid.");
+  const a = e.approval;
+  if (
+    a.version !== 1 || typeof a.docId !== "string" ||
+    typeof a.sourceHash !== "string" || typeof a.planHash !== "string" ||
+    !Number.isSafeInteger(a.stateRevision) || a.stateRevision < 1 ||
+    !Array.isArray(a.expectedPending) || !Array.isArray(a.creationChangeIds) ||
+    !Array.isArray(a.normalizations)
+  ) fail("INVALID_APPROVAL", "Sync approval metadata is malformed.");
+  const ids = a.expectedPending.map((p) => p?.id);
+  if (
+    ids.some((id) => typeof id !== "string") ||
+    new Set(ids).size !== ids.length ||
+    new Set(a.creationChangeIds).size !== a.creationChangeIds.length ||
+    a.creationChangeIds.some((id) =>
+      !a.expectedPending.some((p) =>
+        p.id === id && ["create-slide", "create-element"].includes(p.kind)
+      )
+    ) ||
+    new Set(a.normalizations.map((n) => n.changeId)).size !==
+      a.normalizations.length ||
+    a.normalizations.some((n) =>
+      !ids.includes(n.changeId) ||
+      canonical(n.expectedAfter) !== canonical(
+          a.expectedPending.find((p) => p.id === n.changeId)!.after,
+        )
+    )
+  ) {
+    fail(
+      "INVALID_APPROVAL",
+      "Sync approval expectations do not identify exact pending edits.",
+    );
+  }
+}
+/** Called only with fresh executed source before compose; approval is never inferred from IDs. */
+export function prepareApprovedSync(
+  state: ProjectState,
+  generated: BentoDoc,
+  sourceHash: string,
+  envelope: SyncApprovalEnvelope,
+): ProjectState {
+  validateSyncApproval(envelope);
+  const a = envelope.approval;
+  if (
+    state.docId !== a.docId || generated.docId !== a.docId ||
+    sourceHash !== a.sourceHash || state.revision < a.stateRevision
+  ) {
+    fail(
+      "STALE_APPROVAL",
+      "Approved sync differs from the current source, document or state revision; recover/review before rendering.",
+    );
+  }
+  for (const expected of a.expectedPending) {
+    if (
+      canonical(state.pending.find((p) => p.id === expected.id)) !==
+        canonical(expected)
+    ) {
+      fail(
+        "STALE_APPROVAL",
+        "A selected pending edit changed after source synchronization; preserve it and review the approval.",
+      );
+    }
+  }
+  const prepared = clone(state);
+  for (const n of a.normalizations) {
+    prepared.pending.find((p) => p.id === n.changeId)!.after = clone(n.after);
+  }
+  for (
+    const change of a.expectedPending.filter((p) => p.kind === "delete-slide")
+  ) {
+    const slideId = change.target.slideId;
+    if (!slideId || generated.slides.some((slide) => slide.id === slideId)) {
+      fail(
+        "STALE_APPROVAL",
+        "Approved source deletion is not reflected by fresh execution.",
+      );
+    }
+    delete prepared.provenance[targetKey({ slideId })];
+    for (
+      const element of prepared.generatedBaseline.slides.find((slide) =>
+        slide.id === slideId
+      )?.elements ?? []
+    ) {
+      delete prepared.provenance[targetKey({ slideId, elementId: element.id })];
+    }
+  }
+  return promoteCreated(prepared, generated, a.creationChangeIds);
+}
 function chooseBlock(
   sourceText: string,
   state: ProjectState,
@@ -217,6 +382,14 @@ function chooseBlock(
     fail(
       "UNMAPPED_SOURCE",
       `Change ${change.id} has no verified original source fragment.`,
+    );
+  }
+  // The current renderer flattens Markdown links and inline code. A bounded
+  // replacement is still lossy unless original inline semantics are supported.
+  if (/(?<!\\)(?:`|\[|<)|https?:\/\//i.test(source.content)) {
+    fail(
+      "SOURCE_FORMAT_UNSUPPORTED",
+      "Original source contains links, inline code or unverified inline syntax; edit that fragment in QMD until a faithful reverse conversion is available.",
     );
   }
   const doc = scanSource(sourceText),
@@ -265,60 +438,198 @@ function buildPlan(
   text: string,
   state: ProjectState,
   selectedChangeIds?: string[],
+  options: SyncOptions = {},
 ): SyncPlan {
-  const ids = selectedChangeIds ?? state.pending.map((p) => p.id);
+  const ids = selectedChangeIds ?? state.pending.map((p) => p.id),
+    confirmedDeleteIds = options.confirmedDeleteIds ?? [];
   if (!ids.length) fail("NO_PENDING_CHANGES", "No pending changes selected.");
-  if (new Set(ids).size !== ids.length) {
-    fail("INVALID_SELECTION", "Selected change IDs must be unique.");
+  if (
+    new Set(ids).size !== ids.length ||
+    confirmedDeleteIds.some((id) => !ids.includes(id))
+  ) {
+    fail(
+      "INVALID_SELECTION",
+      "Selected changes must be unique and deletion confirmations must be selected.",
+    );
   }
-  const changes: SyncItem[] = ids.map((id) => {
-    const found = state.pending.filter((p) => p.id === id);
-    if (found.length !== 1) {
-      fail(
-        "INVALID_SELECTION",
-        `Pending change ${id} is missing or ambiguous.`,
-      );
+  const selected = ids.map((id) => {
+    const p = state.pending.find((p) => p.id === id);
+    if (!p) fail("INVALID_SELECTION", `Pending change ${id} is missing.`);
+    if (p.status === "conflict") {
+      fail("SYNC_CONFLICT", `Resolve conflict ${id} before synchronization.`);
     }
-    const change = found[0],
-      provenance = state.provenance[targetKey(change.target)];
-    if (change.status === "conflict") {
-      fail("SYNC_CONFLICT", `Resolve conflict ${id} before synchronizing.`);
-    }
-    if (
-      change.kind !== "field" ||
-      canonical(change.path) !== canonical(["html"]) || !change.after.present ||
-      typeof change.after.value !== "string"
-    ) {
-      fail(
-        "UNSUPPORTED_SYNC",
-        `Change ${id} is not a supported authored html text edit. Select supported changes explicitly.`,
-      );
-    }
-    if (change.origin !== "authored" || provenance?.origin !== "authored") {
-      fail(
-        "COMPUTED_SYNC_FORBIDDEN",
-        `Change ${id} is not authored source text.`,
-      );
-    }
-    const { block, expected } = chooseBlock(text, state, change);
-    return {
-      changeId: id,
-      target: change.target,
-      blockId: block.id,
-      kind: block.kind,
-      before: expected,
-      after: inlineHtmlToMarkdown(change.after.value),
-      html: change.after.value,
-    };
+    return p;
   });
-  const patch = previewPatches(
-    scanSource(text),
-    changes.map((c) => ({
-      blockId: c.blockId,
-      expected: c.before,
-      replacement: c.after,
-    })),
-  );
+  const changes: SyncItem[] = [],
+    normalizations: SyncNormalization[] = [],
+    operations: StructureOperation[] = [],
+    creationChangeIds: string[] = [];
+  const textRequests: {
+    blockId: string;
+    expected: string;
+    replacement: string;
+  }[] = [];
+  const addNormalization = (change: Change, after: Value) => {
+    if (canonical(change.after) !== canonical(after)) {
+      normalizations.push({
+        changeId: change.id,
+        expectedAfter: clone(change.after),
+        after,
+      });
+    }
+  };
+  // Existing text edits first, then source creation/deletion, finally the requested final order.
+  for (const change of selected) {
+    if (change.kind === "field") {
+      if (
+        canonical(change.path) !== canonical(["html"]) ||
+        !change.after.present || typeof change.after.value !== "string"
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          `Change ${change.id} is not an authored HTML text edit.`,
+        );
+      }
+      if (
+        change.origin !== "authored" ||
+        state.provenance[targetKey(change.target)]?.origin !== "authored"
+      ) {
+        fail(
+          "COMPUTED_SYNC_FORBIDDEN",
+          `Change ${change.id} is not authored source text.`,
+        );
+      }
+      const { block, expected } = chooseBlock(text, state, change),
+        after = inlineHtmlToMarkdown(change.after.value);
+      textRequests.push({ blockId: block.id, expected, replacement: after });
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId: block.id,
+        kind: block.kind,
+        before: expected,
+        after,
+        html: change.after.value,
+      });
+      addNormalization(change, {
+        present: true,
+        value: canonicalInlineHtml(change.after.value),
+      });
+    } else if (change.kind === "create-slide") {
+      const slide = change.after.value as BentoSlide;
+      if (
+        !change.after.present || !slide || slide.id !== change.target.slideId ||
+        !Array.isArray(slide.elements)
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "New slide lacks a valid native document identity.",
+        );
+      }
+      if (
+        (slide.notes && slide.notes !== "") ||
+        (slide.title && slide.title !== "")
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "New-slide notes and separate title metadata need explicit source authoring.",
+        );
+      }
+      if (
+        slide.elements.some((e) =>
+          !["text", "shape", "line", "arrow", "path"].includes(e.type)
+        )
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "New slides currently support authored text and pure visual decorations.",
+        );
+      }
+      const texts = slide.elements.filter((e) => e.type === "text");
+      if (!texts.length || texts.some((e) => typeof e.html !== "string")) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "New slide requires a text title and supported text bodies.",
+        );
+      }
+      const title = inlineHtmlToMarkdown(texts[0].html as string),
+        body = texts.slice(1).map((e) =>
+          inlineHtmlToMarkdown(e.html as string)
+        );
+      operations.push({
+        type: "insert-slide",
+        id: slide.id,
+        title,
+        body: body.join("\n\n"),
+        titleElementId: texts[0].id,
+        bodyIds: texts.slice(1).map((e) => e.id),
+      });
+      creationChangeIds.push(change.id);
+      const normalized = clone(slide);
+      for (const e of normalized.elements) {
+        if (e.type === "text") e.html = canonicalInlineHtml(e.html as string);
+      }
+      addNormalization(change, { present: true, value: normalized });
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId: slide.id,
+        kind: "create-slide",
+        before: "",
+        after: [title, ...body].join("\n\n"),
+        html: canonical(slide),
+      });
+    } else if (change.kind === "slide-order") {
+      if (
+        !Array.isArray(change.after.value) ||
+        change.after.value.some((id) => typeof id !== "string")
+      ) fail("UNSUPPORTED_SYNC", "Pending slide order is malformed.");
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId: "slides",
+        kind: "slide-order",
+        before: canonical(change.before.value),
+        after: canonical(change.after.value),
+        html: "",
+      });
+    } else if (change.kind === "delete-slide") {
+      if (!confirmedDeleteIds.includes(change.id) || !change.target.slideId) {
+        fail(
+          "CONFIRM_DELETE_REQUIRED",
+          "Source deletion requires a separately explicit confirmedDeleteIds selection.",
+        );
+      }
+      operations.push({
+        type: "delete-slide",
+        id: change.target.slideId,
+        confirmed: true,
+      });
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId: change.target.slideId,
+        kind: "delete-slide",
+        before: canonical(change.before.value),
+        after: "",
+        html: "",
+      });
+    } else {fail(
+        "UNSUPPORTED_SYNC",
+        `Change ${change.id} is not a supported source synchronization operation.`,
+      );}
+  }
+  for (const change of selected.filter((p) => p.kind === "slide-order")) {
+    operations.push({
+      type: "reorder-slides",
+      ids: change.after.value as string[],
+    });
+  }
+  const patch = previewPatches(scanSource(text), textRequests);
+  const structure = operations.length
+    ? previewStructure(scanSource(patch.result), operations)
+    : undefined;
+  const result = structure?.result ?? patch.result;
   const unsigned = {
     version: 1 as const,
     source,
@@ -326,11 +637,17 @@ function buildPlan(
     stateRevision: state.revision,
     stateHash: hashSource(canonical(state)),
     selectedChangeIds: [...ids],
-    excludedChangeIds: state.pending.filter((p) => !ids.includes(p.id)).map(
-      (p) => p.id,
-    ),
+    excludedChangeIds: state.pending.filter((p) => !ids.includes(p.id)).map((
+      p,
+    ) => p.id),
     changes,
     patch,
+    ...(structure ? { structure } : {}),
+    result,
+    resultHash: hashSource(result),
+    confirmedDeleteIds: [...confirmedDeleteIds],
+    creationChangeIds,
+    normalizations,
   };
   return { ...unsigned, planHash: hashSource(canonical(unsigned)) };
 }
@@ -343,6 +660,7 @@ async function readableSnapshot(source: string) {
       "operation.lock",
       "sync-transaction.json",
       "render-transaction.json",
+      "sync-approved.json",
     ]
   ) {
     if (await present(resolve(paths.stateDir, name))) {
@@ -384,9 +702,10 @@ async function readableSnapshot(source: string) {
 export async function previewSync(
   source: string,
   selectedChangeIds?: string[],
+  options: SyncOptions = {},
 ): Promise<SyncPlan> {
   const { paths, state, text } = await readableSnapshot(source);
-  return buildPlan(paths.source, text, state, selectedChangeIds);
+  return buildPlan(paths.source, text, state, selectedChangeIds, options);
 }
 /** Explicit approved action; leaves pending semantic edits until a future render confirms them. */
 export async function applySync(
@@ -394,6 +713,12 @@ export async function applySync(
   plan: SyncPlan,
 ): Promise<SyncReceipt> {
   return await withProject(source, async (paths, store) => {
+    if (await present(resolve(paths.stateDir, "sync-approved.json"))) {
+      fail(
+        "APPROVAL_PENDING",
+        "Render or explicitly recover the previous approved sync before applying another.",
+      );
+    }
     const stat = await regular(paths.source), state = await store.load();
     if (!state) fail("NO_BASELINE", "Project baseline is missing.");
     if (plan.version !== 1 || plan.source !== paths.source) {
@@ -417,6 +742,7 @@ export async function applySync(
       text,
       state,
       plan.selectedChangeIds,
+      { confirmedDeleteIds: plan.confirmedDeleteIds },
     );
     if (canonical(verified) !== canonical(plan)) {
       fail(
@@ -424,7 +750,18 @@ export async function applySync(
         "Sync plan was altered or no longer reproduces the approved result.",
       );
     }
-    const result = applyPatches(text, verified.patch);
+    const textResult = applyPatches(text, verified.patch);
+    const result = verified.structure
+      ? applyStructure(textResult, verified.structure)
+      : textResult;
+    if (
+      result !== verified.result || hashSource(result) !== verified.resultHash
+    ) {
+      fail(
+        "INVALID_PLAN",
+        "Combined text and structure result differs from approved source.",
+      );
+    }
     const transactionId = crypto.randomUUID(),
       history = resolve(paths.stateDir, "history");
     await Deno.mkdir(history, { recursive: true });
@@ -445,6 +782,35 @@ export async function applySync(
     await fsyncDirectory(paths.directory);
     await durableWrite(stateBackup, await Deno.readTextFile(store.path));
     await fsyncDirectory(history);
+    const needsApproval = verified.creationChangeIds.length > 0 ||
+      verified.normalizations.length > 0 ||
+      verified.confirmedDeleteIds.length > 0;
+    const approvalPath = resolve(paths.stateDir, "sync-approved.json"),
+      approvalStaging = resolve(history, `sync-approval-${transactionId}.json`);
+    if (needsApproval) {
+      const approval: SyncApproval = {
+        version: 1,
+        docId: state.docId,
+        sourceHash: verified.resultHash,
+        stateRevision: state.revision + 1,
+        planHash: verified.planHash,
+        expectedPending: verified.selectedChangeIds.map((id) =>
+          clone(state.pending.find((p) => p.id === id)!)
+        ),
+        creationChangeIds: verified.creationChangeIds,
+        normalizations: verified.normalizations,
+      };
+      const envelope: SyncApprovalEnvelope = {
+        format: "qbento-sync-approval/1",
+        sha256: hashSource(canonical(approval)),
+        approval,
+      };
+      await durableWrite(
+        approvalStaging,
+        JSON.stringify(envelope, null, 2) + "\n",
+      );
+      await fsyncDirectory(history);
+    }
     await durableWrite(
       journal,
       JSON.stringify(
@@ -457,10 +823,11 @@ export async function applySync(
           staging,
           receiptPath,
           sourceHash: plan.sourceHash,
-          resultHash: plan.patch.resultHash,
+          resultHash: plan.resultHash,
           stateRevision: state.revision,
           planHash: plan.planHash,
           selectedChangeIds: plan.selectedChangeIds,
+          ...(needsApproval ? { approvalPath, approvalStaging } : {}),
         },
         null,
         2,
@@ -510,7 +877,7 @@ export async function applySync(
     await fsyncDirectory(paths.directory);
     if (
       hashSource(await Deno.readTextFile(paths.source)) !==
-        verified.patch.resultHash
+        verified.resultHash
     ) {
       fail(
         "STALE_SOURCE",
@@ -521,12 +888,16 @@ export async function applySync(
     const saved = await store.save(state, plan.stateRevision);
     if (
       hashSource(await Deno.readTextFile(paths.source)) !==
-        verified.patch.resultHash
+        verified.resultHash
     ) {
       fail(
         "STALE_SOURCE",
         "Source changed while recording sync; inspect the retained transaction.",
       );
+    }
+    if (needsApproval) {
+      await Deno.link(approvalStaging, approvalPath);
+      await fsyncDirectory(paths.stateDir);
     }
     const receipt: SyncReceipt = {
       version: 1,
@@ -534,7 +905,7 @@ export async function applySync(
       source: paths.source,
       planHash: plan.planHash,
       previousSourceHash: plan.sourceHash,
-      sourceHash: verified.patch.resultHash,
+      sourceHash: verified.resultHash,
       previousRevision: state.revision,
       revision: saved.revision,
       appliedChangeIds: [...plan.selectedChangeIds],

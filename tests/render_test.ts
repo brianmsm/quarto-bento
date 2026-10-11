@@ -96,3 +96,103 @@ Deno.test("remote asset refuses an apparently successful offline deck", async ()
   }
   throw new Error("remote image accepted");
 });
+Deno.test("projection preserves approved native title and body source marker identities", async () => {
+  const ast: Ast = {
+    meta: {},
+    blocks: [
+      {
+        t: "Header",
+        c: [2, ["native-slide", [], [["bento-title-id", "native-title"]]], [{
+          t: "Str",
+          c: "Title",
+        }]],
+      },
+      { t: "RawBlock", c: ["html", "<!-- qb:native-body -->"] },
+      { t: "Para", c: [{ t: "Str", c: "Body" }] },
+    ],
+  };
+  const projected = await projectAst(ast, "doc", []);
+  assert(
+    projected.document.slides[0].elements.map((e) => e.id).join(",") ===
+      "native-title,native-body",
+  );
+  assert(
+    projected.origins["native-slide"]["native-title"].sourceId ===
+      "native-slide",
+  );
+  assert(
+    projected.origins["native-slide"]["native-body"].sourceId === "native-body",
+  );
+});
+Deno.test("computed cell headings retain computed provenance and producer; computed notes refuse authored classification", async () => {
+  const ast: Ast = {
+    meta: {},
+    blocks: [{
+      t: "Div",
+      c: [["producer", ["cell"], []], [{
+        t: "Div",
+        c: [["", ["cell-output-display"], []], [{
+          t: "Header",
+          c: [2, ["computed-title", [], []], [{ t: "Str", c: "Generated" }]],
+        }]],
+      }]],
+    }],
+  };
+  const projection = await projectAst(ast, "doc", []);
+  assert(
+    projection.origins["computed-title"]["computed-title-title"].origin ===
+      "computed",
+  );
+  assert(
+    projection.origins["computed-title"]["computed-title-title"].producer ===
+      "producer",
+  );
+  const notes: Ast = {
+    meta: {},
+    blocks: [{
+      t: "Div",
+      c: [["producer", ["cell"], []], [{
+        t: "Div",
+        c: [["", ["notes"], []], [{
+          t: "Para",
+          c: [{ t: "Str", c: "Generated note" }],
+        }]],
+      }]],
+    }],
+  };
+  let refused = false;
+  try {
+    await projectAst(notes, "doc", []);
+  } catch (error) {
+    assert(String(error).includes("COMPUTED_NOTES_UNSUPPORTED"));
+    refused = true;
+  }
+  assert(refused);
+});
+Deno.test("speaker notes refuse lists and code instead of silently dropping content", async () => {
+  for (
+    const unsupported of [{
+      t: "BulletList",
+      c: [[{ t: "Plain", c: [{ t: "Str", c: "Point" }] }]],
+    }, { t: "CodeBlock", c: [["", [], []], "x=1"] }]
+  ) {
+    const ast: Ast = {
+      meta: {},
+      blocks: [{ t: "Header", c: [2, ["a", [], []], [{ t: "Str", c: "A" }]] }, {
+        t: "Div",
+        c: [["", ["notes"], []], [
+          { t: "Para", c: [{ t: "Str", c: "Kept" }] },
+          unsupported,
+        ]],
+      }],
+    };
+    let refused = false;
+    try {
+      await projectAst(ast, "doc", []);
+    } catch (error) {
+      assert(String(error).includes("UNSUPPORTED_NOTES"));
+      refused = true;
+    }
+    assert(refused);
+  }
+});

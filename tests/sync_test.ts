@@ -165,10 +165,10 @@ Deno.test("computed, conflict, unsupported and explicitly unselected edits are n
   try {
     const state = await f.store.load();
     state!.pending.push({
-      id: "slide-order",
-      target: {},
-      path: ["slides"],
-      kind: "slide-order",
+      id: "unsupported-field",
+      target: { slideId: "slide", elementId: "body" },
+      path: ["notes"],
+      kind: "field",
       origin: "authored",
       status: "bento-ahead",
       before: { present: true, value: ["slide"] },
@@ -177,7 +177,7 @@ Deno.test("computed, conflict, unsupported and explicitly unselected edits are n
     await f.store.save(state!);
     await rejects(() => previewSync(f.source), "UNSUPPORTED_SYNC");
     const plan = await previewSync(f.source, [f.state.pending[0].id]);
-    eq(plan.excludedChangeIds, ["slide-order"]);
+    eq(plan.excludedChangeIds, ["unsupported-field"]);
     await applySync(f.source, plan);
     eq((await f.store.load())!.pending.length, 2);
   } finally {
@@ -315,5 +315,26 @@ Deno.test("inline subset refuses formatting whose Markdown conversion is ambiguo
     );
   } finally {
     await Deno.remove(f.directory, { recursive: true });
+  }
+});
+Deno.test("bounded sync refuses original inline semantics flattened by the current projector", async () => {
+  for (
+    const content of [
+      "Read [manual](https://example.org) using `foo`.",
+      "Use `foo` today.",
+      "Read [manual].",
+      "Visit <https://example.org>.",
+    ]
+  ) {
+    const f = await fixture({
+      source: `## Title {#slide}\n\n<!-- qb:body -->\n${content}\n`,
+      html: "Please read manual using foo.",
+    });
+    try {
+      await rejects(() => previewSync(f.source), "SOURCE_FORMAT_UNSUPPORTED");
+      eq(await Deno.readTextFile(f.source), f.text);
+    } finally {
+      await Deno.remove(f.directory, { recursive: true });
+    }
   }
 });
