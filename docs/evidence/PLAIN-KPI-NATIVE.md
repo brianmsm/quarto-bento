@@ -72,6 +72,16 @@ initial, saved, preview and final KPI screenshots were visually inspected:
 `kpi-native-preview.png` and `kpi-native-recomputed.png`. The final value and
 label are readable within the native component without clipping.
 
+A subsequent native edit changed the computed value to `999.00`. Save retained
+it as a pending computed edit; Compare displayed
+`Resultado calculado ·
+Conflicto`, the base and fresh QMD value `200.00`, and
+the native value `999.00`. Choosing the explicit source-restoration option
+returned `200.00` with all saved native fields intact, no source changes and
+zero pending edits at revision **7**. The conflict and restored screenshots were
+visually inspected at `output/playwright/kpi-native-computed-conflict.png` and
+`kpi-native-computed-restored.png`; the same receipt records this follow-up.
+
 One UI race was observed when closing Review and requesting Recalculate before
 Apply returned: the revision guard rejected the overlapping save with HTTP 409,
 preserving source and state. Recalculate succeeded after Apply completed. UI
