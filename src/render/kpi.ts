@@ -252,6 +252,9 @@ export async function projectKpi(
   // A valid source baseline keeps normal flow. Only a baseline refusal may
   // use retained typography with fresh HTML; unsafe saved styles remain final
   // composed diagnostics rather than new initial-source refusals.
+  const geometryOwned = [...geometry].some((field) =>
+    field in declaration.properties
+  );
   const text = elements.slice(1);
   const measured = await measureNativeText(text, appearance?.resources);
   let appearanceRescued = false;
@@ -302,14 +305,27 @@ export async function projectKpi(
     y += Number(element.h) + 16;
   }
   if (frame.w <= 48 || y - 16 > frame.y + frame.h - 24 + .01) {
-    fail(
-      "KPI_CONTENT_OVERFLOW",
-      "KPI text exceeds the frame; increase the dimensions or explicitly change typography. Automatic shrink and clipping refuse.",
-    );
+    // Unowned frame capacity can use verified saved typography for every role.
+    // Source-coupled geometry remains strict, and baseline boxes stay unchanged:
+    // the consumer preserves saved geometry and checks the actual composed boxes.
+    let fitsRetained = false;
+    if (!geometryOwned && frame.w > 48 && retained.every(Boolean)) {
+      const measurements = await effectiveMeasurements();
+      const height = measurements.reduce((sum, result) =>
+        sum + result.height, 0) +
+        48 + 16 * (text.length - 1);
+      fitsRetained = height <= frame.h + .01 &&
+        retained.every((element, index) =>
+          element && !unsupportedTypography(element, measurements[index]) &&
+          measurements[index].width <= Number(element.w) + 1
+        );
+    }
+    if (fitsRetained) appearanceRescued = true;
+    else {fail(
+        "KPI_CONTENT_OVERFLOW",
+        "KPI text exceeds the frame; increase the dimensions or explicitly change typography. Automatic shrink and clipping refuse.",
+      );}
   }
-  const geometryOwned = [...geometry].some((field) =>
-    field in declaration.properties
-  );
   for (const element of elements) {
     if (geometryOwned) fields[element.id].ownedPaths.push(...geometry);
     for (const field of generic) {

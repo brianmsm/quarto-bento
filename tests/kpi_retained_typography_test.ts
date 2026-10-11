@@ -1,4 +1,5 @@
 import { kpiReadabilityDiagnostics, projectKpi } from "../src/render/kpi.ts";
+import { measureNativeText } from "../src/render/measure.ts";
 import { scanSource } from "../src/source/mod.ts";
 import { kpiSource } from "../src/source/kpi.ts";
 import { executeQuarto } from "../src/render/quarto.ts";
@@ -199,6 +200,91 @@ Deno.test("KPI retained small fonts cannot bypass an explicit source frame capac
     ),
   );
   await refuses(() => project(source, saved), "KPI_CONTENT_OVERFLOW");
+});
+Deno.test("KPI fresh long text can use complete retained typography for unowned frame capacity only", async () => {
+  const initial = await project(qmd),
+    long = Array.from({ length: 200 }, () => "score").join(" "),
+    source = qmd.replace("\n123\n", `\n${long}\n`),
+    saved = new Map(
+      initial.elements.filter((element) => element.type === "text").map(
+        (element) => [element.id, { ...element }],
+      ),
+    );
+  Object.assign(saved.get("label/paragraph:1")!, { y: frame.y + 24, h: 40 });
+  Object.assign(saved.get("value/paragraph:1")!, {
+    html: "old native body",
+    fontSize: 12,
+    lineHeight: 1.6,
+    y: frame.y + 80,
+    w: 700,
+    h: 310,
+  });
+  Object.assign(saved.get("detail/paragraph:1")!, { y: frame.y + 420, h: 40 });
+  const before = JSON.stringify([...saved]),
+    actual: Element = { ...saved.get("value/paragraph:1")!, html: long },
+    actualMeasurement = (await measureNativeText([actual]))[0];
+  assert(actualMeasurement.height <= Number(actual.h));
+  assert(actualMeasurement.width <= Number(actual.w) + 1);
+  assert(
+    actualMeasurement.overhangTop === 0 &&
+      actualMeasurement.overhangBottom === 0,
+  );
+  await refuses(() => project(source), "KPI_CONTENT_OVERFLOW");
+  const rescued = await project(source, saved),
+    projected = value(rescued.elements);
+  assert(rescued.appearanceRescued && projected.html === long);
+  assert(projected.fontSize === 52 && projected.lineHeight === 1.25);
+  assert(projected.x === 104 && projected.w === 1072);
+  assert(
+    Number(projected.h) > frame.h,
+    "Source baseline must stay intact for sidecar composition",
+  );
+  assert(!rescued.fields[projected.id].ownedPaths.includes("fontSize"));
+  const composed = doc(rescued.elements.map((element) => ({
+    ...element,
+    ...saved.get(element.id),
+    ...(element.type === "text" ? { html: element.html } : {}),
+  })));
+  assert(
+    (await kpiReadabilityDiagnostics(scanSource(source), composed)).length ===
+      0,
+  );
+  assert(
+    JSON.stringify([...saved]) === before,
+    "Capacity fallback mutated native appearance",
+  );
+  const partial = new Map(saved);
+  partial.delete("detail/paragraph:1");
+  const wrong = new Map(saved);
+  wrong.set("detail/paragraph:1", {
+    ...wrong.get("detail/paragraph:1")!,
+    id: "foreign",
+  });
+  for (const rejected of [partial, wrong]) {
+    await refuses(() => project(source, rejected), "KPI_CONTENT_OVERFLOW");
+  }
+  for (const declaration of ['h="470"', 'x="80"']) {
+    await refuses(
+      () =>
+        project(
+          source.replace(".bento-kpi}", `.bento-kpi ${declaration}}`),
+          saved,
+        ),
+      "KPI_CONTENT_OVERFLOW",
+    );
+  }
+  await refuses(
+    () =>
+      project(
+        source.replace(
+          'bento-role="value"',
+          'bento-role="value" font-size="52"',
+        ),
+        saved,
+      ),
+    "KPI_CONTENT_OVERFLOW",
+  );
+  assert(JSON.stringify([...saved]) === before);
 });
 Deno.test("real computed KPI restoration keeps fresh execution and saved unreadable typography for diagnosis", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qb-kpi-retained-computed-" }),
