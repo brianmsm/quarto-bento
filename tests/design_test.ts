@@ -128,7 +128,7 @@ Deno.test("malformed/injected/unsupported attributes fail explicitly", () => {
     "DUPLICATE_DESIGN_ATTRIBUTE",
   );
   throws(
-    () => parseDesignAttributes(["id", ["bento-kpi"], []]),
+    () => parseDesignAttributes(["id", ["bento-unsupported-test"], []]),
     "UNSUPPORTED_COMPONENT",
   );
   throws(

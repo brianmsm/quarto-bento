@@ -5,8 +5,14 @@ import {
 } from "../src/core/project.ts";
 import { applySync, previewSync } from "../src/core/sync.ts";
 import { originalAnnotationLevel } from "../src/core/annotations.ts";
-import { canonical, StateError, StateStore } from "../src/state/mod.ts";
+import {
+  canonical,
+  StateError,
+  StateStore,
+  targetKey,
+} from "../src/state/mod.ts";
 import { recoverProject } from "../src/core/recovery.ts";
+import { hashSource, scanSource } from "../src/source/mod.ts";
 function eq(a: unknown, b: unknown) {
   if (canonical(a) !== canonical(b)) {
     throw new Error(`${canonical(a)} != ${canonical(b)}`);
@@ -174,7 +180,7 @@ Deno.test({
 });
 Deno.test({
   name:
-    "weak identities show stable optional diagnostics semantic sync survives and diagnostic-only apply refuses",
+    "weak identities retain diagnostic-only refusal and semantic sync acquires reviewed IDs before optional traces",
   ignore: !canRun,
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "qbento-annotation-weak-" });
@@ -192,24 +198,106 @@ Deno.test({
       eq(blocked.annotations.diagnostics[0].code, "ANNOTATION_UNSAFE_REBUILD");
       eq(blocked.changes[0].kind, "annotation-diagnostic");
       eq((await previewSync(source)).planHash, blocked.planHash);
-      const before = await Deno.readTextFile(dir + "/.qbento/state.json");
+      const before = await Deno.readTextFile(dir + "/.qbento/state.json"),
+        beforeOutput = await Deno.readTextFile(dir + "/deck.bento.html");
+      eq(blocked.identities, undefined);
       await refuses(() => applySync(source, blocked), "NO_SOURCE_CHANGES");
       eq(await Deno.readTextFile(source), original);
       eq(await Deno.readTextFile(dir + "/.qbento/state.json"), before);
+      eq(await Deno.readTextFile(dir + "/deck.bento.html"), beforeOutput);
       const loaded = await readProject(source);
       const semantic = structuredClone(loaded.emitted);
       semantic.slides[0].elements[0].html = "Título editado";
-      await saveProject(source, semantic, loaded.revision);
-      const plan = await previewSync(source);
-      eq(plan.annotations.patches, []);
-      eq(plan.annotations.diagnostics[0].code, "ANNOTATION_UNSAFE_REBUILD");
-      const receipt = await applySync(source, plan);
-      eq(receipt.annotations.diagnostics, plan.annotations.diagnostics);
-      eq(receipt.annotations.patchCount, 0);
+      const saved = await saveProject(source, semantic, loaded.revision),
+        savedBytes = await Deno.readTextFile(dir + "/.qbento/state.json"),
+        savedOutput = await Deno.readTextFile(dir + "/deck.bento.html");
+      eq(await Deno.readTextFile(source), original);
+      const plan = await previewSync(source),
+        paragraphIds = semantic.slides[0].elements.slice(1).map((e) => e.id),
+        sourceIds = paragraphIds.map((id) =>
+          `qb-identity-${
+            hashSource(canonical([saved.docId, semantic.slides[0].id, id]))
+              .slice(0, 24)
+          }`
+        ),
+        weakParagraphs = scanSource(original).blocks.filter((block) =>
+          block.kind === "paragraph"
+        );
       eq(
-        await Deno.readTextFile(source),
-        original.replace("Título {", "Título editado {"),
+        plan.identities?.requests,
+        weakParagraphs.map((block, index) => ({
+          blockId: block.id,
+          sourceId: sourceIds[index],
+          nativeId: paragraphIds[index],
+          title: false,
+        })),
       );
+      eq(plan.identityBindings?.length, 2);
+      eq(
+        plan.changes.filter((change) => change.kind === "source-identity")
+          .length,
+        2,
+      );
+      eq(plan.selectedChangeIds, saved.pending.map((change) => change.id));
+      eq(plan.annotations.diagnostics, []);
+      eq(plan.annotations.patches.length, 1);
+      eq(plan.annotations.patches[0].replacement, " .qbento-design");
+      const expected = [
+        "## Título editado {#slide .qbento-design}",
+        "",
+        `::: {#${sourceIds[0]} bento-element-id="${paragraphIds[0]}"}`,
+        "",
+        "Primer párrafo.",
+        "",
+        ":::",
+        "",
+        `::: {#${sourceIds[1]} bento-element-id="${paragraphIds[1]}"}`,
+        "",
+        "Segundo párrafo.",
+        "",
+        ":::",
+        "",
+      ].join("\n");
+      eq(plan.result, expected);
+      eq(await Deno.readTextFile(source), original);
+      eq(await Deno.readTextFile(dir + "/.qbento/state.json"), savedBytes);
+      eq(await Deno.readTextFile(dir + "/deck.bento.html"), savedOutput);
+      const receipt = await applySync(source, plan);
+      eq(receipt.annotations.diagnostics, []);
+      eq(receipt.annotations.patchCount, 1);
+      eq(await Deno.readTextFile(source), expected);
+      eq(await Deno.readTextFile(receipt.sourceBackup), original);
+      const next = await renderProject(source);
+      eq(next.state.pending, []);
+      eq(next.state.emitted, semantic);
+      eq(next.state.docId, first.state.docId);
+      eq(next.state.emitted.slides[0].elements[1].x, 240);
+      eq(
+        next.state.generatedBaseline.slides[0].elements[1].x,
+        first.state.generatedBaseline.slides[0].elements[1].x,
+      );
+      for (const [index, id] of paragraphIds.entries()) {
+        const proof = next.state.provenance[
+          targetKey({
+            slideId: semantic.slides[0].id,
+            elementId: id,
+          })
+        ];
+        eq(proof.origin, "authored");
+        eq(proof.source?.blockId, `${sourceIds[index]}/paragraph:1`);
+        eq(proof.source?.stable, false);
+        eq(proof.source?.parentId, sourceIds[index]);
+        eq(proof.source?.siblings, 1);
+        eq(
+          scanSource(expected).blocks.find((block) =>
+            block.id === sourceIds[index]
+          )
+            ?.stable,
+          true,
+        );
+        eq(proof.source?.hash, hashSource(expected));
+      }
+      eq(await Deno.readTextFile(source), expected);
     } finally {
       await Deno.remove(dir, { recursive: true });
     }
