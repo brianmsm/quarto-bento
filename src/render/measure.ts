@@ -16,6 +16,7 @@ export interface NativeTextMeasurement {
   height: number;
   width: number;
   lineBoxHeight: number;
+  /** Conservative fragment count when native CSS line boxes collapse. */
   lineCount: number;
   overhangTop: number;
   overhangBottom: number;
@@ -50,17 +51,21 @@ export async function measureNativeText(
         "Native mathematical or document-field markers transform text semantics; use supported literal text or an explicit faithful adapter.",
       );
     }
-    const fontSize = Number(element.fontSize),
+    const fontSize = Number(element.fontSize ?? 16),
       w = Number(element.w),
-      lineHeight = Number(element.lineHeight ?? 1.25),
+      lineHeight = element.lineHeight == null
+        ? "normal"
+        : Number(element.lineHeight),
       letterSpacing = Number(element.letterSpacing ?? 0);
     if (
-      ![fontSize, w, lineHeight, letterSpacing].every(Number.isFinite) ||
-      fontSize <= 0 || w <= 0 || lineHeight <= 0
+      ![fontSize, w, letterSpacing].every(Number.isFinite) ||
+      fontSize <= 0 || w <= 0 ||
+      (typeof lineHeight === "number" &&
+        (!Number.isFinite(lineHeight) || lineHeight < 0))
     ) {
       fail(
         "INVALID_TEXT_MEASUREMENT",
-        "Native text requires finite positive geometry and typography.",
+        "Native text requires finite positive geometry/font size and nonnegative line-height.",
       );
     }
     return {
@@ -69,9 +74,12 @@ export async function measureNativeText(
       fontSize,
       lineHeight,
       letterSpacing,
-      fontFamily: String(element.fontFamily ?? "Arial, sans-serif"),
+      fontFamily: String(
+        element.fontFamily ?? resources?.theme?.fontFamily ??
+          designTheme().fontFamily,
+      ),
       fontWeight: Number(element.fontWeight ?? 400),
-      align: String(element.align ?? "left"),
+      align: String(element.align ?? "start"),
     };
   });
   const resourceFields = resources as unknown as
@@ -83,7 +91,7 @@ export async function measureNativeText(
     docId: "native-text-metrics",
     title: "Native text metrics",
     size: { width: 1280, height: 720 },
-    theme: designTheme(),
+    theme: resources?.theme ?? designTheme(),
     slides: [{
       id: "metrics",
       background: "#ffffff",
@@ -122,14 +130,20 @@ export async function measureNativeText(
         if(!window.bento?.loadDoc) throw new Error('Pinned Bento text runtime did not load');
         document.body.style.margin='0';
         const metrics=${JSON.stringify(data)};
-        const nodes=metrics.map(e=>{
+        const probes=[];
+        const nodes=metrics.map((e,index)=>{
           const outer=document.createElement('div');outer.className='bento-el bento-el-text';
           Object.assign(outer.style,{position:'absolute',width:e.w+'px',overflowWrap:'break-word',display:'flex',flexDirection:'column',contain:'layout style'});
           const inner=document.createElement('div');inner.className='bento-text-inner';inner.dir='auto';
           Object.assign(inner.style,{width:'100%',fontSize:e.fontSize+'px',fontFamily:e.fontFamily,fontWeight:String(e.fontWeight),textAlign:e.align,lineHeight:String(e.lineHeight),letterSpacing:e.letterSpacing+'px'});
-          inner.innerHTML=e.html;outer.appendChild(inner);document.body.appendChild(outer);return inner;
+          inner.innerHTML=e.html;outer.appendChild(inner);document.body.appendChild(outer);
+          if(e.lineHeight==='normal'){
+            const probe=inner.cloneNode(false);probe.textContent='M';outer.appendChild(probe);probes[index]=probe;
+          }
+          return inner;
         });
         nodes.forEach(node=>node.getBoundingClientRect());
+        probes.forEach(node=>node.getBoundingClientRect());
         await document.fonts.ready;
         return nodes.map((node,index)=>{
           const box=node.getBoundingClientRect();
@@ -141,9 +155,14 @@ export async function measureNativeText(
           const right=Math.max(box.right,...rects.map(rect=>rect.right));
           const overhangTop=box.top-top,overhangBottom=bottom-box.bottom;
           const overhangLeft=box.left-left,overhangRight=right-box.right;
+          const lineStep=metrics[index].lineHeight==='normal'
+            ? probes[index].getBoundingClientRect().height
+            : metrics[index].fontSize*metrics[index].lineHeight;
+          const lineCount=Math.max(1,node.querySelectorAll('br').length+1,
+            lineStep>0?Math.round(box.height/lineStep):0,box.height===0?rects.length:0);
           return {height:box.height+2*Math.max(overhangTop,overhangBottom)+4,
             width:Math.max(node.scrollWidth,right-left),lineBoxHeight:box.height,
-            lineCount:Math.max(1,Math.round(box.height/(metrics[index].fontSize*metrics[index].lineHeight))),
+            lineCount,
             overhangTop,overhangBottom,overhangLeft,overhangRight};
         });
       })()`,
