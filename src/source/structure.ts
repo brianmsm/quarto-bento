@@ -14,6 +14,13 @@ export type StructureOperation =
     titleElementId?: string;
     afterId?: string | null;
   }
+  | {
+    type: "insert-text";
+    slideId: string;
+    id: string;
+    elementId: string;
+    markdown: string;
+  }
   | { type: "reorder-slides"; ids: string[] }
   | { type: "delete-slide"; id: string; confirmed: true }
   | { type: "pin-identities"; bindings: { blockId: string; id: string }[] };
@@ -114,12 +121,12 @@ function hasHtmlReference(text: string, id: string): boolean {
   }
   return false;
 }
-/** A immediately preceding technical marker travels with the heading it identifies. */
+/** A preceding technical marker travels with the heading it identifies. */
 function sectionSpans(doc: SourceDocument): Map<string, Span> {
   const starts = doc.slides.map((slide) => {
     const before = sliceBytes(doc.text, { start: 0, end: slide.span.start });
     const marker = before.match(
-      /(?:^|\n)([ \t]*<!--[ \t]*qb:([A-Za-z][\w:.-]*)[ \t]*-->[ \t]*(?:\r\n|\n))$/,
+      /(?:^|\n)([ \t]*<!--[ \t]*qb:([A-Za-z][\w:.-]*)[ \t]*-->[ \t]*(?:(?:\r\n|\n)[ \t]*)+)$/,
     );
     if (marker && marker[2] === slide.id) {
       return slide.span.start - encode.encode(marker[1]).length;
@@ -165,18 +172,23 @@ function replace(doc: SourceDocument, edits: StructuralEdit[]): string {
   }
   return decode.decode(bytes);
 }
-function producerOrder(doc: SourceDocument): string[] {
+function producerOrder(doc: SourceDocument, boundaryNewline = false): string[] {
   return doc.blocks.filter((b) => b.origin === "computed").map((b) =>
-    JSON.stringify([b.kind, b.explicitId ?? null, b.raw])
+    JSON.stringify([
+      b.kind,
+      b.explicitId ?? null,
+      boundaryNewline ? b.raw.replace(/\r?\n$/, "") : b.raw,
+    ])
   );
 }
 function sameProducerOrder(
   before: SourceDocument,
   after: SourceDocument,
+  boundaryNewline = false,
 ): void {
   if (
-    JSON.stringify(producerOrder(before)) !==
-      JSON.stringify(producerOrder(after))
+    JSON.stringify(producerOrder(before, boundaryNewline)) !==
+      JSON.stringify(producerOrder(after, boundaryNewline))
   ) {
     fail(
       "execution-order",
@@ -267,6 +279,36 @@ function generatedSlide(
   }
   return result;
 }
+/** One standalone authored paragraph, with a distinct source and native identity. */
+function generatedText(
+  doc: SourceDocument,
+  operation: Extract<StructureOperation, { type: "insert-text" }>,
+): string {
+  assertIdentity(operation.id);
+  assertIdentity(operation.elementId);
+  const body = operation.markdown.replace(/\r\n|\r/g, "\n");
+  const parsed = scanSource(body), block = parsed.blocks[0];
+  if (
+    parsed.diagnostics.length || parsed.blocks.length !== 1 ||
+    block.kind !== "paragraph" || !block.editable || block.explicitId ||
+    block.parentId || block.content !== body ||
+    /<!--|-->|\{\{[<%]/.test(body)
+  ) {
+    fail(
+      "invalid-text-insertion",
+      "New text must be one complete authored paragraph; author structural or executable content explicitly in QMD.",
+    );
+  }
+  const result =
+    `::: {#${operation.id} bento-element-id="${operation.elementId}"}\n${body}\n:::\n\n`;
+  const existing = new Set(doc.blocks.map((b) => b.id));
+  for (const created of scanSource(result).blocks) {
+    if (existing.has(created.id)) {
+      fail("duplicate-id", `Source identity ${created.id} already exists.`);
+    }
+  }
+  return result.replace(/\n/g, doc.newline);
+}
 function validateStep(
   doc: SourceDocument,
   operation: StructureOperation,
@@ -284,6 +326,20 @@ function validateStep(
       } else if (operation.afterId !== undefined) {
         offset = spans.get(uniqueSlide(doc, operation.afterId).id)!.end;
       }
+      const before = sliceBytes(doc.text, { start: 0, end: offset });
+      const prefix = before && !/(?:\r?\n){2}$/.test(before)
+        ? (/(?:\r?\n)$/.test(before) ? doc.newline : doc.newline + doc.newline)
+        : "";
+      return [{
+        span: { start: offset, end: offset },
+        expected: "",
+        replacement: prefix + section,
+      }];
+    }
+    case "insert-text": {
+      const slide = uniqueSlide(doc, operation.slideId);
+      const section = generatedText(doc, operation);
+      const offset = spans.get(slide.id)!.end;
       const before = sliceBytes(doc.text, { start: 0, end: offset });
       const prefix = before && !/(?:\r?\n){2}$/.test(before)
         ? (/(?:\r?\n)$/.test(before) ? doc.newline : doc.newline + doc.newline)
@@ -419,6 +475,51 @@ function verifyResult(
       );
     }
     sameProducerOrder(before, after);
+  } else if (operation.type === "insert-text") {
+    const added = after.blocks.filter((block) =>
+      block.id === operation.id || block.parentId === operation.id
+    );
+    const wrapper = added.find((block) => block.id === operation.id);
+    const paragraph = added.find((block) =>
+      block.id === `${operation.id}/paragraph:1`
+    );
+    const prior = before.blocks.map((
+      block,
+    ) => [
+      block.kind,
+      block.raw.replace(/\r?\n$/, ""),
+      block.origin,
+      block.level,
+      block.slideId,
+    ]);
+    const remaining = after.blocks.filter((block) => !added.includes(block))
+      .map((
+        block,
+      ) => [
+        block.kind,
+        block.raw.replace(/\r?\n$/, ""),
+        block.origin,
+        block.level,
+        block.slideId,
+      ]);
+    if (
+      added.length !== 2 || wrapper?.kind !== "div" || wrapper.parentId ||
+      !wrapper.stable || wrapper.slideId !== operation.slideId ||
+      paragraph?.kind !== "paragraph" || paragraph.origin !== "authored" ||
+      !paragraph.editable || paragraph.slideId !== operation.slideId ||
+      paragraph.content.replace(/\r\n/g, "\n") !==
+        operation.markdown.replace(/\r\n|\r/g, "\n") ||
+      JSON.stringify(before.slides.map((slide) => [slide.id, slide.stable])) !==
+        JSON.stringify(after.slides.map((slide) => [slide.id, slide.stable])) ||
+      JSON.stringify(prior) !== JSON.stringify(remaining)
+    ) {
+      fail(
+        "invalid-text-insertion",
+        "Insertion must create exactly one standalone text block without changing existing source boundaries; close or explicitly repair the surrounding QMD first.",
+      );
+    }
+    // A separator may add the first newline after the final original fence.
+    sameProducerOrder(before, after, true);
   } else if (operation.type === "delete-slide") {
     if (after.slides.length !== before.slides.length - 1) {
       fail(

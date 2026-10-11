@@ -2,6 +2,7 @@ import {
   canonicalInlineHtml,
   INLINE_CODEC_VERSION,
   inlineHtmlToMarkdown,
+  renderInline,
 } from "../render/inline.ts";
 export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
 import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
@@ -29,7 +30,12 @@ import {
   previewPatches,
   scanSource,
 } from "../source/mod.ts";
-import type { PatchPreview, SourceBlock } from "../source/mod.ts";
+import type {
+  PatchPreview,
+  SourceBlock,
+  SourceDocument,
+} from "../source/mod.ts";
+import type { Node } from "../render/types.ts";
 import {
   applyAttributePatches,
   previewAttributePatches,
@@ -364,6 +370,85 @@ function assertMappedDisplayMath(html: string): void {
     );
   }
 }
+/** New source acquisition needs the current executed identities, never ID coincidence. */
+function assertTextCreationSource(
+  state: ProjectState,
+  source: SourceDocument,
+  change: Change,
+) {
+  const slideId = change.target.slideId, elementId = change.target.elementId;
+  const baseline = state.generatedBaseline.slides.find((slide) =>
+    slide.id === slideId
+  );
+  if (
+    !slideId || !elementId || !baseline ||
+    !state.emitted.slides.some((slide) => slide.id === slideId) ||
+    change.origin !== "authored" || change.before.present ||
+    baseline.elements.some((element) => element.id === elementId) ||
+    state.provenance[targetKey(change.target)]
+  ) {
+    fail(
+      "UNSUPPORTED_TEXT_INSERTION",
+      "New text needs an existing source slide and an unused native identity; restore or resolve conflicting objects first. Pending edits are retained.",
+    );
+  }
+  const proofs = Object.values(state.provenance);
+  const hashes = new Set(
+    proofs.map((proof) => proof.source?.hash).filter((hash) =>
+      typeof hash === "string"
+    ),
+  );
+  if (hashes.size !== 1 || !hashes.has(source.hash)) {
+    fail(
+      "STALE_SOURCE",
+      "QMD differs from the executed baseline; recalculate and review before inserting new text. Pending edits are retained.",
+    );
+  }
+  for (const proof of proofs.filter((proof) => proof.origin !== "computed")) {
+    const binding = proof.source;
+    const parent = source.blocks.find((block) =>
+      block.id === binding?.parentId
+    );
+    if (
+      binding?.stable !== true && !(parent?.stable && binding?.siblings === 1)
+    ) {
+      fail(
+        "AMBIGUOUS_IDENTITY",
+        "Pin existing authored block identities in QMD and recalculate before inserting text; the insertion must not invalidate saved visual mappings. Pending edits are retained.",
+      );
+    }
+  }
+}
+/** Parse only the new fragment; this never executes source or rewrites the document. */
+async function assertInsertedInline(markdown: string, expected: string) {
+  const process = new Deno.Command("quarto", {
+    args: ["pandoc", "--from", "markdown", "--to", "json"],
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
+  }).spawn();
+  const output = process.output(), writer = process.stdin.getWriter();
+  await writer.write(new TextEncoder().encode(markdown));
+  await writer.close();
+  const result = await output;
+  if (!result.success) {
+    fail(
+      "UNSUPPORTED_TEXT_INSERTION",
+      "Pandoc could not verify the inserted text fragment; author it explicitly in QMD.",
+    );
+  }
+  const parsed = JSON.parse(new TextDecoder().decode(result.stdout));
+  if (
+    !Array.isArray(parsed.blocks) || parsed.blocks.length !== 1 ||
+    parsed.blocks[0].t !== "Para" ||
+    renderInline(parsed.blocks[0].c as Node[]) !== expected
+  ) {
+    fail(
+      "UNSUPPORTED_TEXT_INSERTION",
+      "The inserted text does not round-trip faithfully through Pandoc; remove unsupported formatting or author it explicitly in QMD. Pending edits are retained.",
+    );
+  }
+}
 async function buildPlan(
   source: string,
   text: string,
@@ -588,6 +673,57 @@ async function buildPlan(
       addNormalization(change, {
         present: true,
         value: normalized,
+      });
+    } else if (change.kind === "create-element") {
+      const element = change.after.value as Record<string, unknown>;
+      if (
+        !change.after.present || !element || element.type !== "text" ||
+        element.id !== change.target.elementId ||
+        typeof element.html !== "string"
+      ) {
+        fail(
+          "UNSUPPORTED_TEXT_INSERTION",
+          "Only a new authored text object on an existing slide can be inserted into QMD. Pending content is retained.",
+        );
+      }
+      if (element.groupId) {
+        fail(
+          "UNSUPPORTED_TEXT_INSERTION",
+          "Ungroup the new text before syncing it as a standalone block, or author its component explicitly in QMD. Grouped content remains pending.",
+        );
+      }
+      const mapping = scanSource(text);
+      assertTextCreationSource(state, mapping, change);
+      assertMappedDisplayMath(element.html);
+      const markdown = inlineHtmlToMarkdown(element.html),
+        html = canonicalInlineHtml(element.html);
+      const blockId = `qb-text-${
+        hashSource(canonical([change.target.slideId, element.id])).slice(0, 24)
+      }`;
+      const operation: StructureOperation = {
+        type: "insert-text",
+        slideId: change.target.slideId!,
+        id: blockId,
+        elementId: change.target.elementId!,
+        markdown,
+      };
+      // Validate boundaries/identities before consulting Pandoc's fragment reader.
+      previewStructure(mapping, [operation]);
+      await assertInsertedInline(markdown, html);
+      operations.push(operation);
+      creationChangeIds.push(change.id);
+      addNormalization(change, {
+        present: true,
+        value: { ...clone(element), html },
+      });
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId,
+        kind: "create-element",
+        before: "",
+        after: markdown,
+        html,
       });
     } else if (change.kind === "create-slide") {
       const slide = change.after.value as BentoSlide;
