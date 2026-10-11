@@ -317,7 +317,7 @@ Deno.test("inline subset refuses formatting whose Markdown conversion is ambiguo
     await Deno.remove(f.directory, { recursive: true });
   }
 });
-Deno.test("bounded sync refuses original inline semantics flattened by the current projector", async () => {
+Deno.test("bounded sync refuses rich original source from a legacy flattened baseline", async () => {
   for (
     const content of [
       "Read [manual](https://example.org) using `foo`.",

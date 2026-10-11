@@ -1,6 +1,6 @@
 import type { SourceDocument } from "../source/mod.ts";
 import { isAbsolute, relative, resolve } from "node:path";
-import { escapeHtml } from "./html.ts";
+import { renderInline as inline } from "./inline.ts";
 import type {
   Ast,
   BentoDoc,
@@ -11,39 +11,6 @@ import type {
   Slide,
 } from "./types.ts";
 type Attr = [string, string[], [string, string][]];
-function inline(nodes: Node[]): string {
-  return nodes.map((node) => {
-    switch (node.t) {
-      case "Str":
-        return escapeHtml(String(node.c));
-      case "Space":
-      case "SoftBreak":
-        return " ";
-      case "LineBreak":
-        return "<br>";
-      case "Strong":
-        return `<b>${inline(node.c as Node[])}</b>`;
-      case "Emph":
-        return `<i>${inline(node.c as Node[])}</i>`;
-      case "Underline":
-        return `<u>${inline(node.c as Node[])}</u>`;
-      case "Strikeout":
-        return `<span style="text-decoration:line-through">${
-          inline(node.c as Node[])
-        }</span>`;
-      case "Code":
-        return escapeHtml((node.c as [Attr, string])[1]);
-      case "Span":
-        return inline((node.c as [Attr, Node[]])[1]);
-      case "Link":
-        return inline((node.c as [Attr, Node[], unknown])[1]);
-      default:
-        throw new Error(
-          `UNSUPPORTED_INLINE: ${node.t}; no faithful projection implemented`,
-        );
-    }
-  }).join("");
-}
 function images(nodes: Node[]): Node[] {
   const result: Node[] = [];
   const walk = (value: unknown) => {

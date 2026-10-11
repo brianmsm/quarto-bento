@@ -1,3 +1,4 @@
+import { INLINE_CODEC_VERSION } from "../render/inline.ts";
 import { basename, dirname, resolve } from "node:path";
 import { executeQuarto } from "../render/quarto.ts";
 import {
@@ -183,6 +184,7 @@ export async function projectProjection(
           hash: mapping.hash,
           ...(block
             ? {
+              inlineCodec: INLINE_CODEC_VERSION,
               blockId: block.id,
               content: block.content,
               kind: block.kind,

@@ -30,7 +30,7 @@ Full product acceptance and public v1 release remain pending. See
 | HTML guard in every render entry point | Core render and ordinary Quarto integration tested; native capture receipts reject stale/foreign/consumed generations. Direct Quarto invocation verification currently Linux-only. [Quarto](evidence/QUARTO.md), [capture](evidence/CAPTURE.md). |
 | Verified preview/apply + recoverable source/state transaction | Text/structural plans, exact fragment/hash/state checks, recoverable source transaction and promotion receipts integrated. Interrupted render/sync finish/rollback tested. [Recovery](evidence/RECOVERY.md). |
 | New/order/hide/restore/delete slides safely | New slide/text/order and explicit safe deletion implemented; computed producer ordering/deletion protected. Native new-slide/order/save/reopen/sync tested live; repeated template IDs have an independent real-Quarto regression; hide/restore/delete UI needs further work. [Structural sync](evidence/SYNC-STRUCTURE.md). |
-| Authored text/math/displayed code/notes synchronization | Text mapping in progress; remaining conversions pending. |
+| Authored text/math/displayed code/notes synchronization | Plain/bold/italic/strikeout/web-link/inline-code text round-trip tested, including live native editing. [Inline](evidence/INLINE.md). Math/displayed-code/notes still pending. |
 | Computed provenance and explicit detach | Executed origins verified against original source; generated as-is content refuses ambiguous provenance. Explicit reconciliation supports restore/detach; broader fixtures remain. |
 | QMD visual attributes + annotation levels | Bounded attribute patch/design primitives tested; projector ownership and annotations are not integrated. |
 | Components, layouts, themes, animation/morph | Pending full supported projections and retention checks. |
@@ -51,6 +51,7 @@ Full product acceptance and public v1 release remain pending. See
   refuses before execution; a generated heading must never become implicitly
   authored content. Original-source/producer checks also validate projection.
 - Rich original Markdown outside the faithful reverse subset refuses sync.
+  Link/code/strikeout projection and bounded synchronization are now supported.
   Native charts/tables, notes/math/code round-trip, components, widgets,
   Presenter/PDF and cross-platform packaging remain separate incomplete gates.
 - Capture permits one accepted capture per published generation and refuses

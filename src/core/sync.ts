@@ -1,3 +1,9 @@
+import {
+  canonicalInlineHtml,
+  INLINE_CODEC_VERSION,
+  inlineHtmlToMarkdown,
+} from "../render/inline.ts";
+export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { basename, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
@@ -139,140 +145,6 @@ async function durableWrite(path: string, text: string, mode = 0o600) {
     file.close();
   }
 }
-function decodeEntities(value: string): string {
-  return value.replace(/&([^;\s]+);/g, (_whole, name: string) => {
-    const named: Record<string, string> = {
-      amp: "&",
-      lt: "<",
-      gt: ">",
-      quot: '"',
-      apos: "'",
-      nbsp: "\u00a0",
-    };
-    if (name in named) return named[name];
-    if (/^#(?:[0-9]+|x[0-9a-f]+)$/i.test(name)) {
-      const point = name[1].toLowerCase() === "x"
-        ? parseInt(name.slice(2), 16)
-        : parseInt(name.slice(1), 10);
-      if (
-        point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
-      ) return String.fromCodePoint(point);
-    }
-    return fail(
-      "UNSUPPORTED_HTML",
-      `Unsupported or invalid HTML entity &${name};.`,
-    );
-  });
-}
-/** Small explicit inline subset, never a whole-document Markdown writer. */
-export function inlineHtmlToMarkdown(html: string): string {
-  if (html.length > 1_000_000 || html.includes("\u0000")) {
-    fail("UNSUPPORTED_HTML", "Invalid or excessive text fragment.");
-  }
-  let input = html.trim();
-  // A single editor paragraph wrapper does not change the source paragraph boundary.
-  const wrapper = input.match(/^<(p|div)>((?:[\s\S])*)<\/\1>$/i);
-  if (wrapper && !new RegExp(`<\\/?${wrapper[1]}\\b`, "i").test(wrapper[2])) {
-    input = wrapper[2];
-  }
-  const tokens = input.match(/<[^>]*>|[^<]+|</g) ?? [],
-    stack: { tag: string; close: string; start: number }[] = [];
-  let result = "";
-  for (const token of tokens) {
-    if (!token.startsWith("<")) {
-      const text = decodeEntities(token).replace(/[\r\n\t ]+/g, " ");
-      result += text.replace(/[\\`*_[\]{}<>!#$|~^@]/g, "\\$&");
-      continue;
-    }
-    if (/^<br\s*\/?\s*>$/i.test(token)) {
-      result += "  \n";
-      continue;
-    }
-    const end = token.match(/^<\/([a-z]+)\s*>$/i);
-    if (end) {
-      const open = stack.pop();
-      if (!open || open.tag !== end[1].toLowerCase()) {
-        fail("UNSUPPORTED_HTML", "HTML tags are unbalanced.");
-      }
-      const inner = result.slice(open.start);
-      if (!inner || /^\s|\s$/.test(inner) || inner.includes("\n")) {
-        fail(
-          "UNSUPPORTED_HTML",
-          "Emphasis containing empty text, boundary whitespace, or line breaks needs source review.",
-        );
-      }
-      result += open.close;
-      continue;
-    }
-    const open = token.match(/^<(b|strong|i|em)\s*>$/i);
-    if (open) {
-      const tag = open[1].toLowerCase(),
-        delimiter = ["b", "strong"].includes(tag) ? "**" : "*";
-      if (stack.length || /(?:\*\*|\*|~~)$/.test(result)) {
-        fail(
-          "UNSUPPORTED_HTML",
-          "Nested or adjacent emphasis needs source review.",
-        );
-      }
-      result += delimiter;
-      stack.push({ tag, close: delimiter, start: result.length });
-      continue;
-    }
-    const strike = token.match(
-      /^<span\s+style=(?:"text-decoration:\s*line-through;?"|'text-decoration:\s*line-through;?')\s*>$/i,
-    );
-    if (strike) {
-      if (stack.length || /(?:\*\*|\*|~~)$/.test(result)) {
-        fail(
-          "UNSUPPORTED_HTML",
-          "Nested or adjacent emphasis needs source review.",
-        );
-      }
-      result += "~~";
-      stack.push({ tag: "span", close: "~~", start: result.length });
-      continue;
-    }
-    fail(
-      "UNSUPPORTED_HTML",
-      "Only plain text, b/strong, i/em, line-through spans, and br are supported for text sync; review other formatting in QMD.",
-    );
-  }
-  if (stack.length) fail("UNSUPPORTED_HTML", "HTML tags are unclosed.");
-  result = result.trim();
-  // Escape Markdown list prefixes without changing displayed text.
-  result = result.replace(/(^|\n)([-+] )/g, "$1\\$2");
-  result = result.replace(/(^|\n)(\d+)([.)]) /g, "$1$2\\$3 ");
-  if (!result) {
-    fail(
-      "UNSUPPORTED_HTML",
-      "An empty text field requires explicit deletion, not text sync.",
-    );
-  }
-  return result;
-}
-/** Canonical rendering of the same explicitly supported HTML subset. */
-export function canonicalInlineHtml(html: string): string {
-  inlineHtmlToMarkdown(html);
-  let input = html.trim();
-  const wrapper = input.match(/^<(p|div)>([\s\S]*)<\/\1>$/i);
-  if (wrapper && !new RegExp(`<\\/?${wrapper[1]}\\b`, "i").test(wrapper[2])) {
-    input = wrapper[2];
-  }
-  return (input.match(/<[^>]*>|[^<]+/g) ?? []).map((token) => {
-    if (!token.startsWith("<")) {
-      return decodeEntities(token).replace(/[\r\n\t ]+/g, " ").replace(
-        /&/g,
-        "&amp;",
-      ).replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-    if (/^<br/i.test(token)) return "<br>";
-    if (/^<span/i.test(token)) {
-      return '<span style="text-decoration:line-through">';
-    }
-    return token.toLowerCase().replace(/strong/g, "b").replace(/em/g, "i")
-      .replace(/\s+>/g, ">");
-  }).join("").trim();
-}
 export function validateSyncApproval(
   value: unknown,
 ): asserts value is SyncApprovalEnvelope {
@@ -384,12 +256,15 @@ function chooseBlock(
       `Change ${change.id} has no verified original source fragment.`,
     );
   }
-  // The current renderer flattens Markdown links and inline code. A bounded
-  // replacement is still lossy unless original inline semantics are supported.
-  if (/(?<!\\)(?:`|\[|<)|https?:\/\//i.test(source.content)) {
+  // Old saved projections flattened links/code. Require a fresh faithful baseline
+  // before permitting rich original fragments to synchronize after an upgrade.
+  if (
+    source.inlineCodec !== INLINE_CODEC_VERSION &&
+    /(?<!\\)(?:`|\[|<)|https?:\/\//i.test(source.content)
+  ) {
     fail(
       "SOURCE_FORMAT_UNSUPPORTED",
-      "Original source contains links, inline code or unverified inline syntax; edit that fragment in QMD until a faithful reverse conversion is available.",
+      "This saved baseline predates faithful inline projection. Recalculate and review the source before syncing links or inline code.",
     );
   }
   const doc = scanSource(sourceText),
