@@ -24,6 +24,8 @@ export interface IdentityPreview {
   kind: "source-identities";
   sourceHash: string;
   requests: IdentityRequest[];
+  /** Preserve offset-derived computed identities without editing executable bytes. */
+  producerRequests?: string[];
   patches: SourcePatch[];
   bindings: { blockId: string; newBlockId: string }[];
   result: string;
@@ -61,6 +63,7 @@ function splice(text: string, patches: SourcePatch[]) {
 export function previewIdentities(
   document: SourceDocument,
   requests: IdentityRequest[],
+  producerRequests: string[] = [],
 ): IdentityPreview {
   if (
     hashSource(document.text) !== document.hash || document.diagnostics.length
@@ -145,6 +148,27 @@ export function previewIdentities(
     });
     bindings.push({ blockId: block.id, newBlockId });
   }
+  for (const producerId of producerRequests) {
+    const blocks = document.blocks.filter((block) => block.id === producerId);
+    const block = blocks[0];
+    if (
+      !/^chunk@(?:0|[1-9][0-9]*)$/.test(producerId) || seen.has(producerId) ||
+      blocks.length !== 1 || !block || block.kind !== "chunk" ||
+      block.origin !== "computed" || block.stable || block.parentId ||
+      block.id !== `chunk@${block.span.start}`
+    ) {
+      fail(
+        "Producer identity needs one exact unlabelled top-level executable chunk.",
+      );
+    }
+    seen.add(producerId);
+    patches.push({
+      blockId: producerId,
+      span: { start: block.span.start, end: block.span.start },
+      expected: "",
+      replacement: `<!-- qb-producer:${producerId} -->${document.newline}`,
+    });
+  }
   const ordered = [...patches].sort((a, b) => a.span.start - b.span.start);
   for (let i = 1; i < ordered.length; i++) {
     if (ordered[i].span.start < ordered[i - 1].span.end) {
@@ -165,11 +189,25 @@ export function previewIdentities(
       after[0].content !== before.content || after[0].origin !== "authored"
     ) fail("Identity acquisition changed authored content.");
   }
+  for (const producerId of producerRequests) {
+    const before = document.blocks.find((block) => block.id === producerId)!;
+    const matches = fresh.blocks.filter((block) => block.id === producerId);
+    const after = matches[0];
+    if (
+      matches.length !== 1 || after.kind !== "chunk" ||
+      after.origin !== "computed" || !after.stable ||
+      after.raw !== before.raw || after.content !== before.content ||
+      after.editable
+    ) fail("Producer identity changed executable content or ownership.");
+  }
   return {
     version: 1,
     kind: "source-identities",
     sourceHash: document.hash,
     requests: structuredClone(requests),
+    ...(producerRequests.length
+      ? { producerRequests: [...producerRequests] }
+      : {}),
     patches,
     bindings,
     result,
@@ -183,7 +221,11 @@ export function applyIdentities(text: string, plan: IdentityPreview): string {
       "Source changed after identity preview.",
     );
   }
-  const fresh = previewIdentities(scanSource(text), plan.requests);
+  const fresh = previewIdentities(
+    scanSource(text),
+    plan.requests,
+    plan.producerRequests,
+  );
   if (JSON.stringify(fresh) !== JSON.stringify(plan)) {
     throw new SourceError(
       "invalid-identity-plan",

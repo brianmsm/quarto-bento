@@ -156,3 +156,43 @@ The combined focused regression run passed **38 tests, zero failures** in
 `agent_create_test.ts` with `DENO_JOBS=2` and `deno test --parallel` plus read,
 write, env, run and localhost-net permissions. `deno task check`, lint and format
 checks for all changed TypeScript files, and `git diff --check` also passed.
+
+### Unlabelled computed producers after a new notes insertion
+
+Independent review reproduced an additional failure: adding notes to slide A
+before an unlabelled R chunk in slide B shifted that chunk's byte offset. Its
+source identity and native figure/code identities had been derived from the
+old offset. Simply ignoring changed IDs would risk losing the existing design.
+
+Reviewed identity acquisition now retains each unlabelled top-level producer's
+existing identity with an explicit technical comment immediately before it,
+for example `<!-- qb-producer:chunk@36 -->`. This marker belongs to the source
+identity phase and is visible in the approved source diff. It does not add a
+Quarto execution label or alter any executable fence/body bytes. The scanner
+only accepts this dedicated marker on an unlabelled top-level executable
+chunk; its origin remains computed and its source remains non-editable.
+Ordinary source/native identifier syntax is not expanded.
+
+The unchanged executed source hash is required before acquiring such an
+identity. Preview and Apply independently verify the exact chunk ID, kind,
+origin, raw bytes and body. Duplicate, malformed, dangling, displaced or
+wrong-kind markers refuse; marker-looking strings inside code remain code.
+After acquisition, native figure and `/code:1` identities remain the same
+through subsequent source insertion and rebuild, so retained design continues
+to address the same computed objects.
+
+Two additional tests cover the marker guards and the real R failure case. The
+latter saves notes before the unlabelled chunk, changes both figure and code
+geometry, rejects a forged plan, applies the reviewed marker/notes insertion,
+recomputes with zero pending edits and preserves the entire computed slide.
+Copying only QMD and the two durable sidecar files into a fresh directory then
+rebuilds the exact complete emitted document with the same `docId`. These two
+checks passed on Linux in 14 seconds.
+
+After the producer-identity repair, the expanded focused run passed **56 tests,
+zero failures** in **1 min 24 s**. It includes the six earlier modules plus
+`source_test.ts` and `plain_qmd_test.ts`, with the same permissions and two-worker
+parallelism. The existing computed-producer deletion test remains unchanged and
+passes: a producer inside a slide selected for deletion reaches the original
+`unsafe-delete` guard instead of being acquired. Types, lint, formatting and
+source diff whitespace checks passed for the repair as well.

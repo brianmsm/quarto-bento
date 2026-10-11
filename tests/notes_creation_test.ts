@@ -1,4 +1,8 @@
 import {
+  applyIdentities,
+  previewIdentities,
+} from "../src/source/identities.ts";
+import {
   readProject,
   renderProject,
   saveProject,
@@ -240,6 +244,123 @@ Deno.test({
       eq(await Deno.readTextFile(path), original);
       eq(await Deno.readTextFile(dir + "/.qbento/state.json"), unsafeSaved);
       await refuses(() => Deno.stat(dir + "/marker"), "NotFound");
+    } finally {
+      await Deno.remove(dir, { recursive: true });
+    }
+  },
+});
+
+Deno.test("retained producer identities preserve executable bytes and reject malformed, displaced, colliding and forged markers", async () => {
+  const original = "## A {#a}\r\n\r\n```{r}\r\nplot(1)\r\n```\r\n";
+  const doc = scanSource(original),
+    chunk = doc.blocks.find((block) => block.kind === "chunk")!;
+  const plan = previewIdentities(doc, [], [chunk.id]);
+  eq(plan.patches[0].replacement, `<!-- qb-producer:${chunk.id} -->\r\n`);
+  const after = scanSource(plan.result).blocks.find((block) =>
+    block.id === chunk.id
+  )!;
+  eq(after.raw, chunk.raw);
+  eq(after.content, chunk.content);
+  eq(after.origin, "computed");
+  eq(after.editable, false);
+  eq(after.stable, true);
+  eq(applyIdentities(original, plan), plan.result);
+  const forged = structuredClone(plan);
+  forged.producerRequests![0] = "chunk@999";
+  await refuses(() => applyIdentities(original, forged), "ambiguous-identity");
+  await refuses(() => applyIdentities(original + "\n", plan), "stale-source");
+  await refuses(
+    () => previewIdentities(doc, [], [chunk.id, chunk.id]),
+    "ambiguous-identity",
+  );
+  for (
+    const invalid of [
+      "<!-- qb-producer:chunk@1 -->\nParagraph.\n",
+      "<!-- qb-producer:chunk@1 -->\n\n```{r}\n1\n```\n",
+      "<!-- qb-producer:chunk@1 -->\n<!-- other -->\n```{r}\n1\n```\n",
+      "<!-- qb-producer:chunk@1 -->\n```{r named}\n1\n```\n",
+      "<!-- qb-producer:chunk@1 -->\n",
+      "<!-- qb-producer:unsafe -->\n```{r}\n1\n```\n",
+      "<!-- qb-producer:chunk@1 -->\n```{r}\n1\n```\n\n<!-- qb-producer:chunk@1 -->\n```{r}\n2\n```\n",
+    ]
+  ) {
+    if (!scanSource(invalid).diagnostics.length) {
+      throw new Error(`Accepted invalid producer marker: ${invalid}`);
+    }
+  }
+  const embedded = scanSource(
+    '```{r}\nx <- "<!-- qb-producer:chunk@99 -->"\n```\n',
+  );
+  eq(embedded.diagnostics, []);
+  eq(embedded.blocks[0].id, "chunk@0");
+  eq(embedded.blocks[0].stable, false);
+});
+Deno.test({
+  name:
+    "notes before an unlabelled R producer retain computed identities, code and figure design through approved sync and rebuild",
+  ignore: !canRun,
+  fn: async () => {
+    const dir = await Deno.makeTempDir({ prefix: "qbento-notes-producer-" });
+    try {
+      const path = dir + "/deck.qmd",
+        original =
+          "---\nqbento-annotations: none\n---\n\n## A {#a}\n\nBody before.\n\n## B {#b}\n\n```{r}\nplot(c(1,2,3), c(2,4,6))\n```\n";
+      await Deno.writeTextFile(path, original);
+      const chunk = scanSource(original).blocks.find((block) =>
+        block.kind === "chunk"
+      )!;
+      const first = (await renderProject(path)).state,
+        doc = structuredClone(first.emitted);
+      doc.slides[0].notes = "Plain notes before computed content β";
+      const computed = doc.slides[1].elements.filter((element) =>
+        element.type === "code" || element.type === "image"
+      );
+      eq(computed.length, 2);
+      computed.forEach((element, i) => {
+        element.x = 231 + i * 110;
+        element.y = 347 + i * 31;
+        element.w = 510 - i * 100;
+        element.h = 190 + i * 20;
+      });
+      await saveProject(path, doc, first.revision);
+      const pending = (await renderProject(path)).state;
+      const plan = await previewSync(path);
+      eq(plan.identities?.producerRequests, [chunk.id]);
+      eq(
+        plan.identities?.patches.filter((patch) => patch.blockId === chunk.id)
+          .length,
+        1,
+      );
+      eq(await Deno.readTextFile(path), original);
+      const tampered = structuredClone(plan);
+      tampered.identities!.producerRequests![0] = "chunk@999";
+      await refuses(() => applySync(path, tampered), "INVALID_PLAN");
+      eq((await readProject(path)).revision, pending.revision);
+      await applySync(path, plan);
+      const pinned = scanSource(await Deno.readTextFile(path)).blocks.find(
+        (block) => block.id === chunk.id,
+      )!;
+      eq(pinned.raw, chunk.raw);
+      eq(pinned.origin, "computed");
+      eq(pinned.stable, true);
+      const final = (await renderProject(path)).state;
+      eq(final.pending.length, 0);
+      eq(final.docId, first.docId);
+      eq(final.emitted.slides[1], doc.slides[1]);
+      for (const element of computed) {
+        const proof = final.provenance[canonical(["b", element.id])];
+        eq(proof.origin, "computed");
+        eq(proof.producer, chunk.id);
+      }
+      const copy = dir + "/rebuilt";
+      await Deno.mkdir(copy + "/.qbento", { recursive: true });
+      for (
+        const file of ["deck.qmd", ".qbento/state.json", ".qbento/project.json"]
+      ) await Deno.copyFile(dir + "/" + file, copy + "/" + file);
+      const rebuilt = (await renderProject(copy + "/deck.qmd")).state;
+      eq(rebuilt.emitted, final.emitted);
+      eq(rebuilt.pending.length, 0);
+      eq(rebuilt.docId, first.docId);
     } finally {
       await Deno.remove(dir, { recursive: true });
     }

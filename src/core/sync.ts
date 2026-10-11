@@ -660,7 +660,28 @@ function identityAcquisition(
       title,
     });
   }
-  return requests.length ? previewIdentities(document, requests) : undefined;
+  const producerRequests = document.blocks.filter((block) =>
+    block.kind === "chunk" && !block.stable && !block.parentId &&
+    !selected.some((change) =>
+      change.kind === "delete-slide" && change.target.slideId === block.slideId
+    )
+  ).map((block) => block.id);
+  if (producerRequests.length) {
+    const hashes = new Set(
+      Object.values(state.provenance).map((proof) => proof.source?.hash).filter(
+        (hash) => typeof hash === "string",
+      ),
+    );
+    if (hashes.size !== 1 || !hashes.has(document.hash)) {
+      fail(
+        "AMBIGUOUS_IDENTITY",
+        "Retaining executable producer identities requires the unchanged executed source; recalculate before review.",
+      );
+    }
+  }
+  return requests.length || producerRequests.length
+    ? previewIdentities(document, requests, producerRequests)
+    : undefined;
 }
 function assertMappedDisplayMath(html: string): void {
   if (/\$\$|\\\[/.test(html)) {
@@ -1603,11 +1624,18 @@ async function buildPlan(
         expectedHtml: html,
       });
     }
-    for (const [index, patch] of identities.patches.entries()) {
-      const binding = identityBindings[index];
+    for (const patch of identities.patches) {
+      const index = identities.bindings.findIndex((binding) =>
+        binding.blockId === patch.blockId
+      );
+      const binding = index >= 0 ? identityBindings[index] : undefined;
+      const producer = document.blocks.find((block) =>
+        block.id === patch.blockId
+      );
       changes.push({
         changeId: `identity:${patch.blockId}`,
-        target: binding.target,
+        target: binding?.target ??
+          { ...(producer?.slideId ? { slideId: producer.slideId } : {}) },
         blockId: patch.blockId,
         kind: "source-identity",
         before: patch.expected,

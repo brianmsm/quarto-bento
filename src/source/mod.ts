@@ -263,6 +263,7 @@ export function scanSource(
   };
   const stack: { block: SourceBlock; fence: number }[] = [];
   let marker: string | undefined;
+  let producerMarker: string | undefined;
   const add = (
     kind: BlockKind,
     first: number,
@@ -278,11 +279,22 @@ export function scanSource(
     const ordinal =
       blocks.filter((b) => b.parentId === parentId && b.kind === kind).length +
       1;
+    if (producerMarker && (kind !== "chunk" || id || marker || parentId)) {
+      diagnostics.push({
+        code: "invalid-producer-marker",
+        message:
+          "A retained producer marker requires exactly one unlabelled top-level executable chunk.",
+        span,
+      });
+    }
+    const retainedProducer = kind === "chunk" && !id && !marker && !parentId
+      ? producerMarker
+      : undefined;
     const block: SourceBlock = {
-      id: id ?? marker ??
+      id: id ?? marker ?? retainedProducer ??
         (parentId ? `${parentId}/${kind}:${ordinal}` : `${kind}@${span.start}`),
-      explicitId: id ?? marker,
-      stable: Boolean(id ?? marker),
+      explicitId: id ?? marker ?? retainedProducer,
+      stable: Boolean(id ?? marker ?? retainedProducer),
       kind,
       span,
       contentSpan: inner,
@@ -293,6 +305,7 @@ export function scanSource(
       parentId: stack.at(-1)?.block.id,
     };
     marker = undefined;
+    producerMarker = undefined;
     if (isDynamic) {
       block.reason =
         "Computed content cannot be reverse-written to executable source.";
@@ -323,6 +336,14 @@ export function scanSource(
   while (i < lines.length) {
     const line = lines[i], s = line.text;
     if (!s.trim()) {
+      if (producerMarker) {
+        diagnostics.push({
+          code: "invalid-producer-marker",
+          message:
+            "A producer marker must immediately precede its executable chunk.",
+        });
+        producerMarker = undefined;
+      }
       i++;
       continue;
     }
@@ -332,6 +353,22 @@ export function scanSource(
       const comment = lines.slice(first, Math.min(i + 1, lines.length)).map((
         l,
       ) => l.text).join("\n");
+      if (producerMarker) {
+        diagnostics.push({
+          code: "invalid-producer-marker",
+          message:
+            "A producer marker must directly precede its executable chunk.",
+        });
+      }
+      producerMarker = comment.match(
+        /^\s*<!--\s*qb-producer:(chunk@(?:0|[1-9][0-9]*))\s*-->\s*$/,
+      )?.[1];
+      if (/^\s*<!--\s*qb-producer:/.test(comment) && !producerMarker) {
+        diagnostics.push({
+          code: "invalid-producer-marker",
+          message: "Malformed retained producer identity.",
+        });
+      }
       marker = comment.match(/^\s*<!--\s*qb:([^\s]+)\s*-->\s*$/)?.[1];
       if (marker && !isSourceIdentity(marker)) marker = undefined;
       if (i === lines.length) {
@@ -545,6 +582,12 @@ export function scanSource(
       blockIds: members.map((b) => b.id),
     };
   });
+  if (producerMarker) {
+    diagnostics.push({
+      code: "invalid-producer-marker",
+      message: "A producer marker has no executable chunk.",
+    });
+  }
   return doc;
 }
 
