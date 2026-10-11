@@ -108,9 +108,11 @@ qbento patch presentation.qmd patch.json # Save bounded structured edits
 ```
 
 The versioned [JSON agent API](docs/AGENT-API.md) supports existing-element and
-slide fields, order and hide/show with strict document/revision checks. It saves
-the same visual state and pending semantic changes as Studio; it does not
-implicitly synchronize QMD. Creation/deletion are outside that API slice.
+slide fields, order, hide/show and bounded authored slide creation with strict
+document/revision checks. Creation requires a current executed source baseline;
+it accepts native text and decorative shapes. The API saves the same visual
+state and pending semantic changes as Studio; it does not implicitly synchronize
+QMD. Reviewed deletion remains available through Studio.
 
 Ordinary `quarto render presentation.qmd` is supported through the installed
 `qbento-html` extension after `qbento init presentation.qmd`; see
@@ -122,6 +124,12 @@ establish full product or native cross-platform release acceptance.
 **Save ≠ sync ≠ render.** Save persists Studio edits (including unsynchronized
 content); sync writes approved changes to QMD; render recomputes and combines
 QMD with saved visual state.
+
+Studio's **Diseños y temas** edits the project's named layouts and basic themes.
+**Guardar diseños** updates `.qbento/design.json`; **Recalcular** applies its
+defaults while preserving saved overrides and pending content. Explicit QMD
+attributes retain their authority. See the [registry contract](docs/DESIGN_REGISTRY.md)
+and [save/conflict/recovery evidence](docs/evidence/STUDIO-REGISTRY.md).
 
 ### Proposed project files
 

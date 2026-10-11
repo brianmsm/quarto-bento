@@ -141,3 +141,37 @@ and `studio-registry-theme-recalculated.png`. The console retained the existing
 favicon refusal and upstream release-check CSP refusals; there was no registry
 form pattern error after escaping the name pattern for Chromium's HTML
 validation mode.
+
+## Integrated pending-content acceptance
+
+The coordinator repeated the native flow at integrated `bf32f8d` using
+`/tmp/qbento-studio-design-native-final/deck.qmd` and Chromium headless at
+1280 × 720. A native double-click edit changed the left card's literal paragraph
+to “Texto editado en Bento, pendiente de sincronizar.” **Guardar proyecto**
+produced revision 2 with one pending authored edit. The registry form then
+changed the `balanced` layout gap from 24 to 40 and renamed the active theme
+from `forest` to `ocean`, with background `#eef2ff`, text `#24376c` and accent
+`#4169b1`.
+
+**Guardar diseños** retained byte-identical QMD, state and generated HTML:
+
+- QMD SHA-256: `f7b48dcb6b8ce9c6cb3109947159c79daf4d710e346f035f9309ad218697ede2`.
+- State SHA-256: `6b433d5d6dc82d4e2ab3b5517a8bb966e3d98e0d4a7a9185003bb8a67ff5f13f`.
+- HTML SHA-256: `1798be35da771f431acb461662d51e892c6f729f4ee5b7ed4160add1b8153a77`.
+
+**Recalcular** produced revision 3 with the same
+`docId=34dd476f-1342-469b-8960-5bbb8390a39f`, exact original QMD and the same
+pending edit identity, before/after content and `bento-ahead` status. Reconciliation
+added its current source value to the pending record. The emitted native slide
+retained the edited paragraph. The two card widths changed from 536 to 528;
+the second card moved from x=652 to x=660, making the requested 40-pixel gap.
+The explicit QMD fill `#eefaff` on the first card remained intact while the
+second card and slide used the new theme background.
+
+The actual form and regenerated native canvas screenshots were inspected:
+`output/playwright/studio-registry-parent-saved.png` and
+`studio-registry-parent-recalculated.png`. Both cards and their text are readable,
+with the pending count visible in Studio. The console contained only the
+existing favicon refusal and CSP-blocked upstream release checks. This proves
+the save/registry/recompute interaction with pending text; it does not claim
+native operating-system dialog or other-platform validation.

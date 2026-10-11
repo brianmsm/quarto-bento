@@ -73,8 +73,19 @@ those fields; native edits to them remain recoverable pending changes requiring
 an explicit source operation. Other native visual fields are sparse overrides in
 `.qbento/state.json`. Changing a selected registry theme updates unoverridden
 fields. Saving a native Theme palette edit preserves that edit in state; it does
-not rewrite the named registry. Editing this JSON locally is the registry
-editing interface. No native registry picker/editor is claimed.
+not rewrite the named registry. Studio's **Diseños y temas** form edits named
+layouts, named themes and the explicit active theme. **Guardar diseños** saves
+the registry alone; **Recalcular** applies it to the deck while retaining saved
+overrides and pending semantics. The form does not rewrite QMD layout references
+when a name changes. Direct JSON editing remains supported.
+
+Studio checks the loaded registry bytes, project identity and revision before
+saving. If another editor changes them, the draft remains available and the
+save refuses; **Descartar borrador y recargar registro** explicitly replaces the
+draft. Interrupted publication can leave a durable `design-save.json` marker:
+reads and renders then refuse until the documented manual recovery preserves
+the competing versions. The generic `qbento recover` command does not handle
+this separate journal. See [Studio registry evidence and recovery](evidence/STUDIO-REGISTRY.md).
 
 Native palette and code-palette fields also survive recomputation. Literal
 colors without `themeRefs` stay independent: changing the native document accent

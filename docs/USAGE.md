@@ -107,10 +107,18 @@ forma parte de un plan revisado, nunca de un guardado o render implícito. Si
 añadirlas no es seguro para las identidades existentes, Studio explica la
 omisión.
 
-Los layouts con nombre y los temas básicos reutilizables se configuran en
-`.qbento/design.json`, siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
-Los cambios nativos del diseño se conservan en el estado del proyecto. Los
-atributos visuales declarados explícitamente en QMD mantienen su autoridad.
+Abre **Diseños y temas** para añadir o cambiar layouts con nombre y temas
+básicos reutilizables. Selecciona el tema activo explícitamente. **Guardar
+diseños** actualiza `.qbento/design.json`; no cambia el QMD, el HTML ni ejecuta
+cálculos. Después, **Recalcular** aplica los valores guardados conservando las
+modificaciones visuales y el contenido pendiente del proyecto. Los atributos
+visuales declarados explícitamente en QMD mantienen su autoridad.
+
+Los layouts se seleccionan en QMD con `bento-layout-name`. Renombrar o eliminar
+un layout en el formulario requiere revisar esas referencias. Si el registro
+cambió en otro editor, el guardado se rechaza y conserva el borrador: revísalo
+antes de pulsar **Descartar borrador y recargar registro**. También puedes editar
+el JSON siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
 
 ## Cambiar datos y reconstruir
 
@@ -183,6 +191,11 @@ deno task qbento render /ruta/a/mi-presentacion/deck.qmd
 `get` y `patch` permiten leer un snapshot y aplicar lotes JSON limitados, con
 identidad y revisión obligatorias. Sigue el [contrato de la API](AGENT-API.md):
 un parche guarda estado y no sincroniza ni ejecuta el QMD implícitamente.
+La operación `slide.create` admite una diapositiva con texto y formas decorativas
+y puede combinarse con edición o movimiento en el mismo lote. Exige un cálculo
+que corresponda al QMD actual; si devuelve `STALE_SOURCE`, recalcula y vuelve a
+leer el snapshot antes de preparar el lote. La nueva diapositiva se convierte
+en QMD sólo después de revisar y aplicar su plan de sincronización.
 
 `init` instala la extensión local para usar `quarto render` ordinario. Se niega
 a reemplazar configuración existente; el modo `--extension-only` copia la
@@ -201,6 +214,7 @@ proyecto Quarto existente.
 | `UNSUPPORTED_SYNC` o `UNMAPPED_DESIGN` | Conserva el cambio pendiente. Examina el diagnóstico y el subconjunto de contenido admitido; no se puede asumir una conversión segura.                                                        |
 | Transacción interrumpida               | Ejecuta `recover deck.qmd inspect`, revisa el estado y elige explícitamente `finish` o `rollback` si el diagnóstico lo permite. Para el wrapper de Quarto, consulta también `quarto-recover`. |
 | Estado corrupto o identidad distinta   | Conserva los archivos y sus backups para investigar. Borrar `.qbento/` pierde el vínculo con el diseño y los cambios pendientes.                                                              |
+| `DESIGN_REGISTRY_RECOVERY_REQUIRED`    | Conserva el marcador y las versiones del registro. Sigue la [recuperación manual del registro](evidence/STUDIO-REGISTRY.md); el comando genérico `recover` no gestiona ese journal. |
 
 Los límites de contenido y las pruebas que todavía faltan se mantienen en el
 [registro de implementación](IMPLEMENTATION_STATUS.md).
