@@ -126,7 +126,7 @@ function codeSpan(text: string): string {
 }
 interface OpenTag {
   tag: string;
-  kind: "b" | "i" | "s" | "code" | "a";
+  kind: "b" | "i" | "s" | "code" | "a" | "span";
   text: string;
   href?: string;
 }
@@ -173,32 +173,42 @@ function convertInline(html: string): { markdown: string; html: string } {
           "Empty formatting or boundary whitespace needs explicit source review.",
         );
       }
-      if (open.kind === "code") markdown += codeSpan(open.text);
+      if (open.kind === "span") markdown += escapeMarkdown(open.text);
+      else if (open.kind === "code") markdown += codeSpan(open.text);
       else if (open.kind === "a") {
         markdown += `[${escapeMarkdown(open.text)}](<${open.href}>)`;
       } else {
         const mark = ({ b: "**", i: "*", s: "~~" })[open.kind];
         markdown += mark + escapeMarkdown(open.text) + mark;
       }
-      canonical += `<${open.kind}${
-        open.kind === "a" ? ` href="${escapeHtml(open.href!)}"` : ""
-      }>${escapeHtml(open.text)}</${open.kind}>`;
+      canonical += open.kind === "span"
+        ? escapeHtml(open.text)
+        : `<${open.kind}${
+          open.kind === "a" ? ` href="${escapeHtml(open.href!)}"` : ""
+        }>${escapeHtml(open.text)}</${open.kind}>`;
       open = undefined;
       continue;
     }
     if (open) fail("Nested formatting needs explicit source review.");
+    const transparentSpan = /^<span\s*>$/i.test(token);
     const style = token.match(/^<(b|strong|i|em|s|code)\s*>$/i);
     const legacyStrike =
       /^<span\s+style=(?:"text-decoration:\s*line-through;?"|'text-decoration:\s*line-through;?')\s*>$/i
         .test(token);
     const link = token.match(/^<a\s+href=(?:"([^"]*)"|'([^']*)')\s*>$/i);
-    if (!style && !legacyStrike && !link) {
+    if (!style && !legacyStrike && !link && !transparentSpan) {
       fail(
-        "Supported text sync: plain text, b/strong, i/em, s, code, web links and br. Review other formatting in QMD.",
+        "Supported text sync: plain text, attribute-free span, b/strong, i/em, s, code, web links and br. Review other formatting in QMD.",
       );
     }
-    const tag = link ? "a" : legacyStrike ? "span" : style![1].toLowerCase();
-    const kind = link
+    const tag = link
+      ? "a"
+      : legacyStrike || transparentSpan
+      ? "span"
+      : style![1].toLowerCase();
+    const kind = transparentSpan
+      ? "span"
+      : link
       ? "a"
       : legacyStrike || tag === "s"
       ? "s"
