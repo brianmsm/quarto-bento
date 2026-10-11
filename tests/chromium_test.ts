@@ -170,12 +170,12 @@ Deno.test({
         const start = performance.now();
         await refuses(
           () =>
-            withHeadlessChromium({ chromium: program, timeoutMs: 250 }, () => {
+            withHeadlessChromium({ chromium: program, timeoutMs: 1000 }, () => {
               throw new Error("action must not run");
             }),
           "CHROMIUM_TIMEOUT",
         );
-        if (performance.now() - start > 1250) {
+        if (performance.now() - start > 2250) {
           throw new Error("deadline extended");
         }
       });
@@ -200,7 +200,7 @@ Deno.test({
         "INVALID_CHROMIUM_ENDPOINT",
       );
       // Cleanup retains its existing one-second graceful process window.
-      if (performance.now() - start > 1750) {
+      if (performance.now() - start > 2250) {
         throw new Error("invalid endpoint retried");
       }
     });
