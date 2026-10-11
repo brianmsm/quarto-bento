@@ -1,6 +1,13 @@
 # QMD authoring and visual annotations
 
-**Status:** this document describes the **intended Quarto-Bento contract**. Direct-object visual attributes on identified headings/single-object fenced divs now have integrated [projection and sync evidence](evidence/DESIGN.md). Identified cards, two-column layouts and displayed-code components now have [executed component evidence](evidence/COMPONENTS.md); the remaining vocabulary and annotation levels are incomplete. Standard Pandoc/Quarto fenced div syntax underlies the examples; component-specific semantics are ours.
+**Status:** this document defines the **target authoring contract** and
+distinguishes implemented subsets below. Direct-object visual attributes,
+plain-QMD identity acquisition, `.bento-kpi`, cards, two-column layouts,
+displayed code and the `none`/`minimal`/`detailed` informational annotations
+have bounded Linux implementation evidence. `.bento-diagram` and
+`.bento-timeline` remain target vocabulary; meaningful card/KPI creation from
+Studio is not yet supported. Standard Pandoc/Quarto fenced div syntax underlies
+the examples; component-specific semantics are ours.
 
 ## Three modes
 
@@ -52,19 +59,33 @@ This example uses a computed SVG image inside a card. Native `.bento-chart`
 instead consumes explicit simple table data and currently belongs outside
 cards/layouts; see its implemented contract below.
 
-### Component vocabulary (target API)
+### Component vocabulary and status
 
-| QMD component | Intended role / likely Bento projection |
+| QMD component | Role and current status |
 |---|---|
-| `.bento-layout` | Named reusable arrangement for a group (`bento-layout-name="two-column"` etc.). |
-| `.bento-card` | Styled group/card whose meaningful heading and body remain in QMD. |
-| `.bento-kpi` | KPI/metric composition; literal or computed provenance must be retained. |
-| `.bento-chart` | Native chart if faithful; SVG/static fallback otherwise. |
-| `.bento-diagram` | Nodes/labels/connectors, composed from Bento elements when possible. |
-| `.bento-timeline` | Sequence of annotated milestones and connecting shapes. |
-| `.bento-code` | Displayed source-code component (distinct from a computed output). |
+| `.bento-layout` | Implemented `two-column` arrangement with two identified direct children. |
+| `.bento-card` | Implemented bounded card with source-backed content and decorative background. |
+| `.bento-kpi` | Implemented bounded source-authored metric; see its exact contract below. Creating a semantic KPI from Studio is not implemented. |
+| `.bento-chart` | Implemented native bar/straight-line subset with identified source data. |
+| `.bento-diagram` | Target vocabulary; adapter not yet implemented. |
+| `.bento-timeline` | Target vocabulary; adapter not yet implemented. |
+| `.bento-code` | Implemented wrapper for one displayed, non-executable code fence. |
 
-These are **Quarto-Bento abstractions**, not necessarily built-in Bento element types. The exact per-component schema, editable subset and conversion thresholds are implementation work.
+These are **Quarto-Bento abstractions**, not necessarily built-in Bento element types. See the evidence links for the implemented schemas and refusal boundaries. Target-only entries are not accepted source syntax yet.
+
+### Source KPI (`.bento-kpi`, implemented subset)
+
+An identified KPI must be a top-level component on its source slide. It contains
+two or three direct, identified fenced-div children, in this order:
+`bento-role="label"`, `bento-role="value"`, and optional
+`bento-role="detail"`. Each child has exactly one paragraph; each role ID is
+globally unique and the role containers have no extra classes. The value is
+literal text or one supported single-line Quarto inline expression. The adapter
+retains computed provenance and never writes a rendered number over its
+producing source. It does not infer labels, coerce or round values, or support
+nested KPI composition. See the exact [KPI schema and refusals](evidence/KPI.md),
+its [canonical example](../examples/kpi/deck.qmd), and [native
+acceptance](evidence/PLAIN-KPI-NATIVE.md).
 
 ### Implemented component subset
 
@@ -207,9 +228,10 @@ execution limits are documented in [notes evidence](evidence/NOTES.md).
 ### Stable identities
 
 - Reuse explicit heading/block IDs and chunk labels when possible.
+- Plain headings and paragraphs can be projected without explicit source IDs. When a reviewed source change needs stable bindings, the sync plan can propose identity patches for affected and untouched weak bindings. These are visible source changes: Save and render never pin identities implicitly. Explicit IDs remain useful, and a change to an existing identity is never treated as automatic authorization to rebind saved design. See [plain-QMD evidence](evidence/PLAIN-QMD.md).
 - Add stable `qb:*` source markers only when needed for round-trip; do not flood clean QMD with markers at initialization.
 - Distinguish **semantic ID** (source content), **Bento element ID** (object on a particular slide), and **morph ID** (animation pairing across slides). A semantic figure may have multiple visual instances.
-- A meaningful card/title/annotation created in Studio should map to a QMD fenced div or another faithful semantic construct **when synced**. Spatial proximity alone does not automatically imply semantic grouping.
+- Target behavior: meaningful content created in a Studio card/KPI should map to a QMD fenced div or another faithful semantic construct when synced. Semantic card/KPI creation from Studio remains unimplemented; spatial proximity alone does not establish grouping.
 - Purely decorative shapes/paths can remain entirely in `.qbento/`.
 
 ## Configurable QMD annotations
@@ -258,14 +280,14 @@ preview exposes every annotation patch alongside semantic patches, and apply
 uses the same recoverable source/state transaction. A change to the original
 QMD, saved state or exact registry bytes invalidates the reviewed plan.
 
-Optional annotation updates require an existing explicit heading attribute ID
-such as `{#resultados}`. Technical `qb:*` markers are retained, but annotation
-sync never pins an identity implicitly. Unmapped slides, attributes outside the
-bounded source parser, or existing weak provenance that cannot safely survive a
-source hash change produce visible omission diagnostics. Compatible semantic
-sync remains available. Existing weak identities need an explicit, verified
-migration before optional traces can be enabled; simply adding an ID does not
-automatically authorize rebinding retained design.
+Optional annotation updates require an explicit heading attribute ID such as
+`{#resultados}`. Technical `qb:*` markers are retained, but annotation sync
+never pins an identity implicitly. Separately, the reviewed plain-QMD identity
+phase can propose source IDs before annotation patches in the same complete
+plan; neither phase applies automatically. Unmapped slides, attributes outside
+the bounded source parser, or existing weak provenance that cannot safely
+survive a source hash change produce visible omission diagnostics. Adding an ID
+by itself does not authorize rebinding retained design.
 
 The reserved reference namespace is strict: malformed, conflicting, duplicated
 or misplaced `qbento-design` comments are preserved and refuse sync instead of

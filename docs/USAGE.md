@@ -36,7 +36,7 @@ ejemplos del repositorio, copia `deck.qmd` y `data.csv` de
 [`examples/semantic-roundtrip`](../examples/semantic-roundtrip) a una carpeta
 nueva. Este ejemplo necesita R y usa una figura SVG calculada a partir del CSV.
 
-Define IDs explícitos antes de comenzar el diseño. Por ejemplo:
+Es recomendable definir IDs explícitos antes de comenzar el diseño. Por ejemplo:
 
 ```qmd
 ---
@@ -56,16 +56,20 @@ Siguiente paso del estudio.
 :::
 ```
 
-Los IDs permiten verificar a qué fragmento corresponde cada edición. Cambiar
-identidades una vez guardado el diseño puede exigir resolver la correspondencia;
-no se supone que añadir un ID posteriormente migre automáticamente el estado.
-Consulta [la sintaxis y sus límites](AUTHORING.md) para componentes, código,
-ecuaciones, notas, tablas y gráficos.
+Los IDs permiten verificar a qué fragmento corresponde cada edición. También
+puedes empezar con encabezados y párrafos Markdown normales, sin IDs. Si una
+sincronización necesita identidades estables, **Revisar cambios** puede proponer
+los IDs de origen como parches explícitos, incluso para contenido que no
+modificaste. Revisa y aplica esos parches junto con los cambios semánticos; no se
+añaden al guardar ni al recalcular. Cambiar identidades cuando ya hay diseño
+guardado todavía puede requerir resolver su correspondencia. Consulta
+[la sintaxis y sus límites](AUTHORING.md) para componentes, código, ecuaciones,
+notas, tablas y gráficos, y la [prueba de QMD normal](evidence/PLAIN-QMD.md).
 
 ## Diseñar, guardar y sincronizar
 
 1. Mueve, redimensiona o estiliza los objetos en el editor Bento. Puedes añadir
-   formas decorativas y editar contenido authored compatible.
+   formas decorativas y editar contenido redactado compatible.
 2. Pulsa **Guardar proyecto**. Se conservan diseño y cambios semánticos
    pendientes en `.qbento/`; el QMD sigue intacto. Puedes cerrar y volver a
    abrir Studio.
@@ -74,8 +78,8 @@ ecuaciones, notas, tablas y gráficos.
    visuales del sidecar no necesitan convertirse en Markdown.
 4. Pulsa **Aplicar estos cambios a QMD** cuando apruebes la propuesta. El
    proceso verifica que el documento y el estado sigan correspondiendo al plan.
-   Una eliminación de diapositiva requiere además la confirmación visible
-   específica.
+   Las eliminaciones de diapositiva y de elementos fuente requieren además sus
+   confirmaciones visibles específicas.
 5. Pulsa **Recalcular** para ejecutar Quarto y actualizar la presentación con el
    contenido sincronizado y el diseño guardado.
 
@@ -96,13 +100,37 @@ su QMD. Marcarla para eliminar conserva una operación pendiente que puede
 restaurarse antes de sincronizar. Eliminar código productor, referencias u otros
 casos ambiguos puede ser rechazado con un diagnóstico.
 
+También puedes borrar del lienzo ciertos elementos respaldados por el QMD.
+**Guardar proyecto** conserva la eliminación pendiente. En la revisión, marca la
+confirmación que identifica el elemento; antes de aplicar puedes usar
+**Comparar con QMD** para restaurarlo con su texto y diseño pendientes. La
+eliminación confirmada solo sincroniza unidades fuente independientes admitidas
+(párrafos, código mostrado o ecuaciones de visualización con identidad técnica
+estable, o una de esas unidades cuando es hija única de un div sencillo,
+identificado y de nivel superior). Encabezados, resultados calculados y
+estructuras compartidas o ambiguas se conservan y muestran un diagnóstico. Ver
+el [alcance y la prueba nativa de eliminación](evidence/ELEMENT-DELETION.md).
+
 También puedes añadir un cuadro de texto independiente en una diapositiva
 existente. **Guardar proyecto** lo conserva como pendiente; **Revisar cambios**
 propone insertarlo como un bloque identificado al final de esa sección del QMD.
 Tras aplicar y recalcular, conserva su posición, tamaño y estilo. La inserción
-admite un párrafo del subconjunto de texto compatible; objetos agrupados,
-estructuras ambiguas o identidades débiles pueden requerir autoría explícita en
-QMD. Consulta el [alcance y la prueba nativa](evidence/TEXT-INSERTION.md).
+admite un párrafo del subconjunto de texto compatible; objetos agrupados y
+estructuras ambiguas pueden requerir autoría explícita en QMD. Consulta el
+[alcance y la prueba nativa](evidence/TEXT-INSERTION.md).
+
+## KPI declarados en QMD
+
+El adaptador de fuente `.bento-kpi` admite un componente identificado al nivel
+de la diapositiva, con contenedores directos identificados para `label`, `value`
+y, opcionalmente, `detail`. El ejemplo reproducible está en
+[`examples/kpi`](../examples/kpi/deck.qmd); la
+[evidencia KPI](evidence/KPI.md) detalla el esquema admitido y sus rechazos. El
+valor puede ser texto literal o una expresión Quarto en línea compatible. Si es
+calculado, sigue vinculado a su expresión: editar el valor presentado no
+modifica el código; la reconciliación permite restaurarlo o separarlo
+explícitamente. Este adaptador de QMD no crea todavía un KPI semántico nuevo
+desde Studio.
 
 ## Anotaciones y diseños reutilizables
 

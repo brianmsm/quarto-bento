@@ -58,18 +58,23 @@ Capture native local edits explicitly with
 [edited-copy.html]` before regeneration. A
 changed uncaptured output is refused.
 
-Currently demonstrated projection: explicit slide headings, supported rich text
-in identified fenced divs, displayed code, identified display equations and
-speaker notes, R-generated SVG figures, plain tables, bounded native charts,
-cards and named two-column layouts. The component example has native visual
-inspection and a literal-text save/sync/changed-data loop with retained design.
-Reproducible sources include:
+Currently demonstrated projection includes plain QMD headings and paragraphs,
+supported rich text in identified fenced divs, displayed code, identified
+display equations and speaker notes, R-generated SVG figures, plain tables,
+bounded native charts, cards, named two-column layouts, and source-authored
+`.bento-kpi` components. Plain QMD can acquire stable identities only through an
+inspectable reviewed source plan; save and render do not add them implicitly.
+Native Studio also supports reviewed deletion of bounded source-backed elements.
+The examples and evidence describe these limits; they do not imply semantic KPI
+creation from Studio or support for every QMD construct. Reproducible sources
+include:
 
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
 - [Native charts](examples/native-charts/deck.qmd)
 - [Computed gt/gtsummary tables](examples/rich-tables/deck.qmd)
 - [Two-column components](examples/components/deck.qmd)
+- [Source-authored KPI components](examples/kpi/deck.qmd)
 - [Offline Plotly](examples/plotly-offline/deck.qmd)
 
 Examples use their accompanying CSV inputs. The rich-table example also uses
@@ -78,9 +83,11 @@ PNG with its source formatting; native slide and offline PDF inspection are
 recorded in [rich-table evidence](docs/evidence/RICH-TABLES.md). Rendering that
 fallback requires an installed Chromium. Unknown conversions refuse rather than
 invent a result. Studio supports text/structural review, reversible slide
-actions and fresh conflict resolution. New standalone native text can be
-reviewed and inserted into an existing identified QMD slide, then regenerated
-with its saved geometry and style; see the
+actions and fresh conflict resolution. Reviewed source-element deletion can be
+restored before approval and safely applied for supported source units; see the
+[deletion evidence](docs/evidence/ELEMENT-DELETION.md). New standalone native
+text can be reviewed and inserted into an existing identified QMD slide, then
+regenerated with its saved geometry and style; see the
 [insertion scope and native acceptance](docs/evidence/TEXT-INSERTION.md). See
 the bounded [component evidence](docs/evidence/COMPONENTS.md). The guarded
 `qbento-html` extension executes Quarto once per render (verified on Linux). The
@@ -162,10 +169,11 @@ and checksummed design, baselines and pending edits in `.qbento/state.json`.
 Version both files with QMD and inputs; build artifacts and history are
 rebuildable or recovery material. The detailed split shown above remains a
 future storage design. **Directly saving a generated `.bento.html` edits that
-file, not `.qbento/`**: a local explicit capture/import path is a viable
-secondary workflow, but must run before any render that would overwrite that
-changed HTML. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and
-[SYNC.md](docs/SYNC.md).
+file, not `.qbento/`**: the explicit `qbento capture` command can capture a
+copy with a matching project publication receipt and generation. Capture it
+before the next render. It is not an import path for arbitrary or independently
+distributed HTML. See [capture evidence](docs/evidence/CAPTURE.md),
+[ARCHITECTURE.md](docs/ARCHITECTURE.md), and [SYNC.md](docs/SYNC.md).
 
 ## Reproducibility boundary
 

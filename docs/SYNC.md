@@ -58,9 +58,15 @@ A displayed number sourced from `fitMeasures(model)` cannot be rewritten back to
 
 Literal authored Markdown and source LaTeX *can* round-trip. Dynamic Quarto inline output is **computed**, even when visually presented as text.
 
-## Local HTML read-back (original `overrides.json` route)
+## Explicit local HTML capture
 
-An **optional secondary workflow** can support editing a project-generated `.bento.html` in unmodified Bento, then explicitly capturing its changes into `.qbento/` **before the next render**. This does **not** require a live Studio bridge and is a useful early feasibility proof:
+The bounded secondary workflow is implemented by `qbento capture`. After
+editing a project-generated `.bento.html` in native Bento, capture the saved
+file into `.qbento/` **before the next render**. The capture checks the
+publication receipt, document identity, generation and current emitted
+baseline; it accepts one capture per publication generation. It supports a
+same-path native save and a downloaded copy when those checks pass. See the
+[usage steps](USAGE.md) and [capture evidence](evidence/CAPTURE.md).
 
 ```text
 Last emitted BentoDoc baseline + locally saved HTML's #bento-doc
@@ -70,7 +76,15 @@ Last emitted BentoDoc baseline + locally saved HTML's #bento-doc
   → next Quarto render reapplies the overrides
 ```
 
-This cannot safely infer a source patch from rendered HTML alone. Semantic changes need the source provenance/baseline and must follow the normal merge rules; computed-content edits cannot be reverse-written to code. A changed, not-yet-captured project HTML must **not be silently overwritten** by a subsequent render (guard/refuse, or explicitly choose a different output). Native browser Save may produce a newly downloaded file instead of changing the existing path. Encrypted or unrelated/collaborative Bento files require separate import handling; do not blindly parse or merge them. The command name and exact implementation of local capture are **not yet decided**. Import of an independently distributed copy remains a later feature.
+Capture is not a general HTML import and does not directly write semantic edits
+to QMD. Any captured semantic differences remain subject to the ordinary
+provenance, review and sync rules; computed content cannot be reverse-written to
+its producer. A changed, not-yet-captured project HTML must **not be silently
+overwritten** by a subsequent render. Native browser Save may download a copy
+instead of changing the existing path. Legacy receipt-less, stale, foreign,
+encrypted or collaborative HTML requires separate reconciliation and is not
+accepted by this command. A second capture requires a fresh publication; see
+the evidence for the exact refusal and recovery behavior.
 
 ## Failure and recovery principles
 

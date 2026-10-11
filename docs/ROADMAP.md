@@ -2,7 +2,14 @@
 
 **Status:** acceptance roadmap; implementation started 2026-10-11. Current evidence and unfinished work are tracked in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). Build toward the [product target](PRODUCT_TARGET.md) in **vertical slices**. A small throwaway exporter is not the goal. The final public v1 release boundary must be frozen before shipping, not guessed by an agent.
 
-## Start here: critical feasibility experiments
+## Original feasibility gates — bounded Linux proof integrated
+
+The questions below defined the initial feasibility work. The integrated Linux
+implementation now demonstrates bounded S0–S4 workflows; those questions are
+acceptance criteria and historical context, not instructions to repeat the
+spikes. Use [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for the current
+evidence and remaining work. The proofs do not imply support for arbitrary QMD
+or every Bento operation.
 
 | Spike | Question to answer | Evidence required |
 |---|---|---|
@@ -12,11 +19,18 @@
 | **S3 — regenerate without resetting design** | Can recomputation replace figures/tables while retaining visual design and object identity? | Changed input dataset → changed SVG/chart data, original placement and styles preserved. |
 | **S4 — merge and persistence** | Can independently edited QMD and Studio reconcile safely, including crashes and stale baselines? | Field-level three-way diff, conflict display, atomic patch, durable unsynced edits, clean reload. |
 
-These are **technical gates**, not additional product-policy questions. **Run S0 first or alongside S1/S2**: it validates the original high-value concept without requiring a full Studio UI or semantic reverse editing. S1/S2/S4 are still essential before claiming full bidirectional round-trip. If a spike fails, document the limitation, test an alternative and propose a conscious spec change only if unavoidable.
+These were **technical gates**, not product-policy questions. Their successful
+bounded Linux workflows are recorded in the implementation ledger and linked
+evidence. Remaining acceptance work extends those workflows; it does not reopen
+the settled authority, persistence or conflict decisions.
 
 **Initial design experiment (superseded by the integrated evidence):** local Quarto 1.10.19 produced `demo.bento.html` from a throwaway `check-html` format using `output-ext: bento.html`; this **only proves Quarto custom-format output naming**, not actual BentoDoc generation, editor behavior, or read-back. A bare unsuffixed `check` format failed. The test directory was removed.
 
-## First vertical slice — definition of done
+## First vertical slice — acceptance definition and result
+
+The bounded Linux first slice has been demonstrated end to end; see
+[first-slice evidence](evidence/FIRST-SLICE.md). The definition below remains
+the acceptance baseline, not a claim of full QMD or platform compatibility.
 
 Use **one `presentation.qmd`** containing:
 - authored heading and paragraph;
@@ -37,7 +51,11 @@ Workflow to demonstrate end-to-end:
 
 **Passing this slice establishes the project's core value.** It does not prove full compatibility with arbitrary QMD syntax or every Bento feature.
 
-## Subsequent vertical slices (proposed order)
+## Broader product slices (original proposed grouping)
+
+This grouping predates several integrated features and is not the current task
+list. Use the implementation ledger to see which parts have evidence and which
+gates remain.
 
 | Sequence | Scope |
 |---|---|
@@ -50,7 +68,7 @@ Workflow to demonstrate end-to-end:
 
 Sequences are illustrative; features may move earlier to support validation without changing the agreed full target.
 
-## Concrete items to design after the spikes
+## Initial design backlog (partly superseded by implementation)
 
 - Versioned Deck IR and Bento adapter schemas, provenance/semantic IDs and morph identity mapping.
 - Precise on-disk `.qbento/` schemas, pending edit journal, baseline snapshots, Git behavior and migrations.
@@ -71,13 +89,10 @@ Sequences are illustrative; features may move earlier to support validation with
 
 ## Suggested next-session action
 
-The first supported Linux bidirectional workflow now has [integrated evidence](evidence/FIRST-SLICE.md).
-Continue hardening and subsequent slices from the implementation ledger, preserving
-these checks. The original startup sequence below remains historical context.
-
-1. Inspect/pin Bento upstream, then run **S0** (the simple QMD → Bento → visual override → regenerated Bento loop). Reuse its output and adapter in later slices; don't build a throwaway converter.
-2. Test **S1** (accurate source mapping) and **S2** (Studio editor bridge) separately. Record measured limits, update `ARCHITECTURE.md` and `AUTHORING.md` as needed; don't prematurely commit to a permanent Bento fork.
-3. Complete **S3/S4** and the first full bidirectional vertical slice only after source mapping and Studio integration are credible.
+Continue from the remaining gates in the implementation ledger, preserving the
+demonstrated Linux workflows. The original startup sequence—pin upstream, run
+S0, then separately prove S1/S2/S4—is complete for the documented bounded
+scope and is no longer a next-session instruction.
 
 Useful references:
 - Bento: https://github.com/nyblnet/bento

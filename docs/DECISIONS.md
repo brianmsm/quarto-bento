@@ -31,24 +31,23 @@
 | Scope | v1 is the **full target**, developed in vertical slices; do not make a throwaway architecture. [PRODUCT_TARGET.md](PRODUCT_TARGET.md) gives behavioral acceptance; the specific public release boundary still requires explicit confirmation. |
 | First project scope | Single `.qmd` for first working implementation; data models prepare for multifile sources later. |
 
-## Proposed technical choices (not frozen)
+## Implemented architecture and open schema details
 
-- Deck IR between Quarto/Pandoc and BentoDoc; QMD source scanner/mapping plus a separate design state and sync engine.
-- TypeScript core, Deno runtime/CLI, Lua filters, TypeScript Studio, JSON Schema, pinned Bento upstream shell.
-- `qbento edit/render/status/diff/sync/validate/doctor`; `qbento init` and `qbento import` under consideration.
-- `.qbento/{deck.yml,theme.yml,sync.lock.json,slides/,layouts/,assets/,widgets/}` as conceptual structure. **Preserve Bento `docId` across regenerations**, likely in `deck.yml`, and prefer sparse, stable-ID-keyed **visual overrides** for QMD-backed elements; keep Bento-only objects and pending/detached semantic content separately. These storage choices are provisional; exact schemas, baseline snapshots, journal and filenames remain open.
-- A **local HTML capture/reconcile** mode may extract `#bento-doc` from a Bento-saved generated file, compare it to a pinned baseline and store safe visual changes in `.qbento/` without Studio. This is distinct from arbitrary third-party HTML import; automatic reverse conversion to QMD is **not** assumed.
-- Syntax examples in `AUTHORING.md` are proposed extension contracts; verify parsing/Quarto integration first. Do **not** assume bare `format: bento` or `quarto bento` is registered by a Quarto extension; a suffixed format such as `qbento-html` and the separate `qbento` CLI are more realistic.
+- The development build uses a typed deck model, original-source mapping, separate visual state and a bounded sync engine. Core runtime and CLI use TypeScript/Deno; Quarto integration includes Lua filters and the local Studio uses the pinned upstream Bento shell.
+- The development CLI implements `doctor`, `render`, `edit`, `status`, `diff`, `sync`, `capture`, `get`, `patch` and `init`; see [README.md](../README.md) and [USAGE.md](USAGE.md). A general `qbento import` for arbitrary or independently distributed HTML remains unimplemented.
+- The earlier `.qbento/{deck.yml,theme.yml,sync.lock.json,slides/,layouts/,assets/,widgets/}` layout remains conceptual. The current implementation stores project identity in `.qbento/project.json` and checksummed design, baseline and pending state in `.qbento/state.json`. Preserve the Bento `docId` across regenerations and keep QMD-backed design sparse, keyed by stable IDs. Exact migrations and the broader storage schemas remain open.
+- Bounded local HTML capture is implemented as `qbento capture`: it accepts a copy with a valid receipt for the current project publication and stores captured changes before a subsequent render. This is distinct from arbitrary third-party HTML import; automatic reverse conversion of computed content to QMD is **not** assumed. See [CAPTURE.md](evidence/CAPTURE.md).
+- The installed `qbento-html` Quarto extension and separate `qbento` CLI are verified on Linux. Do **not** assume bare `format: bento` or `quarto bento` is registered. Any new extension syntax still needs validation against installed Quarto and the pinned Bento revision.
 
 ## How the original September proposal fits
 
-The original `QMD → Bento base → _bento/overrides.json → .bento.html` model **remains valid for visual edits** and is the simplest useful proof of concept. The later `.qbento/` design generalizes `_bento/`: it does not require a literal `overrides.json` filename. Deck IR adds typed provenance; Studio and three-way merge add safe **optional semantic round-trip**. Original `linked/detached` becomes authored/computed provenance plus explicit detach/pending-sync; dragging an object still never rewrites QMD. The original `quarto bento sync` syntax is replaced by the proposed `qbento sync` CLI. A Quarto format extension and render scripts are viable integration points, but the Bento shell assembly, live editor bridge and QMD source mapping still need proof.
+The original `QMD → Bento base → _bento/overrides.json → .bento.html` model is historical design rationale for separating source and visual state. The current implementation uses `.qbento/` and does not require the proposed `overrides.json` filename. It now has a pinned Bento shell, a local Studio bridge, bounded QMD mapping, durable state, review/apply transactions, and CLI capture. Safe semantic round-trip is part of the product target and has evidence for documented subsets; it is not universal support for arbitrary QMD or HTML. Authored/computed provenance and explicit detach/pending sync replace the original `linked/detached` shorthand. The proposed `quarto bento sync` spelling was replaced by the implemented `qbento sync` CLI.
 
-## Technical unknowns (not new product decisions)
+## Remaining technical limits (not new product decisions)
 
-1. Efficient, reliable observation/control of Bento editor changes and selection through upstream hooks or adapter.
-2. Faithful QMD source mapping through reader transforms, execution, includes, and inline computations; atomic patches.
-3. IR ↔ Bento projection with stable element identity/morph semantics and safe recomputation preserving visual edits.
-4. Specific baseline, save-journal, conflict transaction, widgets/Presenter, and version-compatibility implementations.
+1. Source mapping and reverse edits are bounded to the documented QMD forms. Unsupported reader transformations, source structures and computed content require an explicit diagnostic; they are not covered by the plain-QMD evidence.
+2. `.bento-diagram` and `.bento-timeline` adapters, and creation of meaningful semantic cards/KPIs from Studio, are not yet implemented. Do not infer membership or source structure from native grouping or position.
+3. Arbitrary widgets, reconciliation of independently distributed HTML copies, multi-QMD editing and live collaboration remain outside the implemented scope described by [PRODUCT_TARGET.md](PRODUCT_TARGET.md).
+4. This work has Linux-local evidence. Other-platform and hosted validation, along with the public v1 release boundary, remain separate decisions and acceptance gates.
 
-See `ROADMAP.md` for experiments and acceptance criteria. Do not change a settled product choice because an initial integration attempt is inconvenient; record trade-offs and propose a conscious revision.
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for current receipts and unfinished work. Do not change a settled product choice because an initial integration attempt is inconvenient; record trade-offs and propose a conscious revision.
