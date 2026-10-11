@@ -2,24 +2,30 @@
 
 This package is a local development artifact, not a v1 release or a native
 installer. It contains the current TypeScript runtime, Lua filters, offline
-Quarto extension, pinned Bento shell/schema, upstream license and notices, Unix
-and Windows command launchers, and a sorted SHA256 inventory. It requires
-installed Deno 2, Quarto (tested with 1.10.19), and the language/packages used
-by the user's QMD. It does not install or manage these dependencies.
+Quarto extension, pinned Bento shell/schema and provenance, upstream license and
+notices, Unix and Windows command launchers, and a sorted SHA256 inventory. It
+requires installed Deno 2, Quarto (tested with 1.10.19), and the
+language/packages used by the user's QMD. It does not install or manage these
+dependencies.
 
 From a source checkout, create a **new** directory whose parent already exists:
 
 ```sh
-deno run --no-config --allow-read --allow-write scripts/package.ts '/tmp/qbento development'
+deno run --no-config --allow-read --allow-write --allow-run=git scripts/package.ts '/tmp/qbento development'
 ```
 
 The builder refuses an existing destination, an input symlink, an unexpected
-runtime file, or a Bento shell inconsistent with `vendor/bento/pin.json`. It
-copies an explicit runtime inventory; it does not copy `.git`, worktrees, user
-configuration, fixtures, caches, `node_modules`, or generated presentations. No
-timestamps or absolute source paths are written to `manifest.json`. Identical
-input bytes produce identical package files and inventory; this is not a claim
-of reproducible compilation of Bento upstream.
+runtime file, or a pinned Bento asset inconsistent with `vendor/bento/pin.json`.
+It copies an explicit runtime inventory; it does not copy `.git`, worktrees,
+user configuration, fixtures, caches, `node_modules`, or generated
+presentations. No timestamps or absolute source paths are written to
+`manifest.json`. Identical input bytes produce identical package files and
+inventory; this is not a claim of reproducible compilation of Bento upstream.
+The `--allow-run=git` permission is used only by the package builder to record
+the source checkout commit and Git dirty state; it is not used by the installed
+launcher. When Git cannot identify the source root and status, the manifest
+records an explicit `qbentoSource.kind: "unknown"` reason. Run without this
+permission only when an unknown source record is intended.
 
 Move or archive this entire directory. On Unix, preserve the executable bit on
 `bin/qbento` (for example, with tar), or invoke it with `sh`. Run from your
@@ -44,9 +50,12 @@ configuration and remote/npm module resolution, preserve the caller's working
 directory, and forward arguments and exit status. Their permissions match the
 development CLI: read/write files, execute user computations, inspect
 environment, and serve Studio on IPv4 loopback. Only run trusted QMD and code.
-There are no remote Deno imports or npm dependencies in the packaged runtime.
-Ordinary workflow remains offline with compatible installed computation packages
-and local input assets.
+There are no remote Deno imports or installed npm dependencies required by the
+packaged runtime. The pinned Bento npm manifest and lockfile are included under
+`runtime/vendor/bento/provenance/` as read-only provenance data; the launcher
+does not consult them, install packages, or access a registry. Ordinary workflow
+remains offline with compatible installed computation packages and local input
+assets.
 
 `init` copies the self-contained extension into the user's project and refuses
 to replace existing Quarto configuration or an installed extension. Its ordinary
@@ -61,19 +70,44 @@ project-relative hooks also support spaces and quotes in project/source paths;
 the measured Quarto hook correction is recorded in `docs/evidence/QUARTO.md` in
 the source checkout.
 
-`manifest.json` lists each payload file's relative path, byte count, SHA256 and
-executable flag. The manifest itself is excluded to avoid a recursive self-hash.
-It detects differences when independently checked against a trusted inventory;
-it is not a signed authenticity guarantee. Concurrent changes to the source
-checkout during packaging are unsupported; build from a reviewed, stable tree.
+`manifest.json` schema version 2 lists each payload file's relative path, byte
+count, SHA256 and executable flag, plus the Quarto-Bento source Git commit and
+whether the checkout has tracked, staged, or non-ignored untracked changes. The
+dirty bit comes from `git status --porcelain=v1 --untracked-files=all`; an
+unavailable Git result is recorded as `unknown`, never guessed clean. The
+manifest itself is excluded to avoid a recursive self-hash. It detects
+differences when independently checked against a trusted inventory; it is not a
+signed authenticity guarantee. Concurrent changes to the source checkout during
+packaging are unsupported; build from a reviewed, stable tree.
 
-The Bento shell is pinned to the revision recorded in the inventory. Retain
-`runtime/vendor/bento/LICENSE` and `THIRD_PARTY_NOTICES.md`; the shell also
-embeds upstream notices. The source checkout currently has no root LICENSE
-declaring terms for Quarto-Bento's own code. This artifact does not assign those
-terms and must not be presented as a publicly licensed release without resolving
-that project decision. Bundled font and third-party notice completeness remains
-part of release review.
+The Bento shell, schema, upstream MIT license, upstream third-party notice,
+`slides/package.json`, and `slides/package-lock.json` are tied to the revision
+in `runtime/vendor/bento/pin.json` by their pinned SHA256 values. The package
+builder checks the shell and each pinned upstream/provenance file before
+creating its destination. The offline `runtime-dependencies.json` inventory
+records the three direct dependencies from Bento's `slides/package.json` and the
+lockfile's production entries (`dev` not true), with exact versions, declared
+license metadata and lockfile paths. The builder cross-checks the inventory
+against the included Bento package manifest and lockfile and verifies that those
+direct roots agree. This is a traceable dependency inventory, not a claim that
+every production-scoped entry contributes bytes to the shell or a complete legal
+audit. The shell embeds upstream notices. The inventory marks verification of
+the authoritative full SIL Open Font License 1.1 text for Fraunces and
+Instrument Sans, and its inclusion in the package, as pending. The notice
+identifies those fonts and links to the license, but this package does not
+establish legal completeness.
+
+At the pinned revision, `slides/package.json` declares version `1.2.6`, but the
+root entry (`packages[""]`) in the original `slides/package-lock.json` declares
+`1.1.0`. The exact upstream files are preserved and independently hash-pinned;
+the builder checks each recorded version against its own source file and checks
+that the direct dependency roots match. The lockfile was not rewritten to hide
+the upstream metadata difference.
+
+The source checkout currently has no root LICENSE declaring terms for
+Quarto-Bento's own code. This artifact does not assign those terms and must not
+be presented as a publicly licensed release without resolving that project
+decision.
 
 ## Authored portability CI and local smoke
 

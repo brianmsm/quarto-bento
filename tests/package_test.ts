@@ -24,6 +24,48 @@ async function digest(bytes: Uint8Array) {
   ]
     .map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+async function copyTree(source: string, destination: string) {
+  await Deno.mkdir(destination, { recursive: true });
+  for await (const entry of Deno.readDir(source)) {
+    const from = resolve(source, entry.name);
+    const to = resolve(destination, entry.name);
+    if (entry.isDirectory) await copyTree(from, to);
+    else if (entry.isFile) await Deno.copyFile(from, to);
+    else throw new Error(`unexpected fixture entry ${from}`);
+  }
+}
+async function sourceFixture(destination: string) {
+  for (const tree of ["src", "vendor", "_extensions"]) {
+    await copyTree(resolve(root, tree), resolve(destination, tree));
+  }
+  await Deno.mkdir(resolve(destination, "bin"), { recursive: true });
+  await Deno.copyFile(
+    resolve(root, "bin/qbento"),
+    resolve(destination, "bin/qbento"),
+  );
+  await Deno.copyFile(
+    resolve(root, "bin/qbento.cmd"),
+    resolve(destination, "bin/qbento.cmd"),
+  );
+  await Deno.mkdir(resolve(destination, "docs"), { recursive: true });
+  await Deno.copyFile(
+    resolve(root, "docs/PACKAGING.md"),
+    resolve(destination, "docs/PACKAGING.md"),
+  );
+}
+async function runGit(cwd: string, args: string[]) {
+  const result = await new Deno.Command("git", {
+    args: ["-C", cwd, ...args],
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!result.success) {
+    throw new Error(
+      `git ${args.join(" ")} failed: ${decoder.decode(result.stderr)}`,
+    );
+  }
+  return decoder.decode(result.stdout).trim();
+}
 Deno.test("portable payload is deterministic, complete and refuses existing destinations", async () => {
   const directory = await Deno.makeTempDir({ prefix: "qbento-package-" });
   try {
@@ -43,6 +85,33 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
       ),
     );
     assert(a.files.some((f) => f.path === "runtime/_extensions/qbento/pre.ts"));
+    assert(
+      a.files.some((f) =>
+        f.path === "runtime/vendor/bento/runtime-dependencies.json"
+      ),
+    );
+    assert(a.files.some((f) =>
+      f.path ===
+        "runtime/vendor/bento/provenance/slides.package-lock.json"
+    ));
+    assert(
+      a.files.some((f) =>
+        f.path === "runtime/vendor/bento/provenance/slides.package.json"
+      ),
+    );
+    assert(a.bento.runtimeDependencyInventorySha256.length === 64);
+    const dependencyInventory = JSON.parse(
+      await Deno.readTextFile(
+        resolve(first, "runtime/vendor/bento/runtime-dependencies.json"),
+      ),
+    );
+    assert(dependencyInventory.runtimePackages.length === 25);
+    assert(
+      dependencyInventory.rootDependencies.map((item: { name: string }) =>
+        item.name
+      ).join(",") === "moveable,reveal.js,selecto",
+    );
+    assert(dependencyInventory.noticeReview.status === "pending");
     assert(
       !a.files.some((f) =>
         /(?:^|\/)(\.git|node_modules|\.qbento|fixtures)(?:\/|$)/.test(f.path)
@@ -92,22 +161,52 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
       resolve(first, "PACKAGING.md"),
       resolve(sourceRoot, "docs/PACKAGING.md"),
     );
-    const shell = resolve(sourceRoot, "vendor/bento/shell.html");
-    await Deno.writeTextFile(shell, "tampered shell");
+    const tamperedFiles = [
+      "vendor/bento/shell.html",
+      "vendor/bento/slides.schema.json",
+      "vendor/bento/LICENSE",
+      "vendor/bento/THIRD_PARTY_NOTICES.md",
+      "vendor/bento/provenance/slides.package.json",
+      "vendor/bento/provenance/slides.package-lock.json",
+      "vendor/bento/runtime-dependencies.json",
+    ];
+    for (const [index, relativePath] of tamperedFiles.entries()) {
+      const target = resolve(sourceRoot, relativePath);
+      const original = await Deno.readFile(target);
+      const changed = new Uint8Array(original.length + 1);
+      changed.set(original);
+      changed[original.length] = 0;
+      await Deno.writeFile(target, changed);
+      const destination = resolve(directory, `tampered-${index}`);
+      await rejects(
+        () => buildDevelopmentPackage({ destination, sourceRoot }),
+        "BENTO_PIN_MISMATCH",
+      );
+      try {
+        await Deno.lstat(destination);
+        throw new Error(
+          `failed build published destination for ${relativePath}`,
+        );
+      } catch (error) {
+        assert(error instanceof Deno.errors.NotFound);
+      }
+      await Deno.writeFile(target, original);
+    }
+    const pinPath = resolve(sourceRoot, "vendor/bento/pin.json");
+    const originalPin = await Deno.readTextFile(pinPath);
+    const changedPin = JSON.parse(originalPin);
+    changedPin.runtimeDependencyInventory.sha256 = "0".repeat(64);
+    await Deno.writeTextFile(pinPath, JSON.stringify(changedPin));
     await rejects(
       () =>
         buildDevelopmentPackage({
-          destination: resolve(directory, "tampered"),
+          destination: resolve(directory, "tampered-pin"),
           sourceRoot,
         }),
       "BENTO_PIN_MISMATCH",
     );
-    try {
-      await Deno.lstat(resolve(directory, "tampered"));
-      throw new Error("failed build published destination");
-    } catch (error) {
-      assert(error instanceof Deno.errors.NotFound);
-    }
+    await Deno.writeTextFile(pinPath, originalPin);
+    const shell = resolve(sourceRoot, "vendor/bento/shell.html");
     if (Deno.build.os !== "windows") {
       await Deno.remove(shell);
       await Deno.symlink(
@@ -122,6 +221,95 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
           }),
         "UNSAFE_PACKAGE_INPUT",
       );
+    }
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("portable manifest records exact Git provenance or explicit unknown state", async () => {
+  const directory = await Deno.makeTempDir({
+    prefix: "qbento-package-provenance-",
+  });
+  try {
+    const checkout = resolve(directory, "git source with spaces");
+    await sourceFixture(checkout);
+    await runGit(checkout, ["init", "--quiet"]);
+    await runGit(checkout, ["add", "-A"]);
+    await runGit(checkout, [
+      "-c",
+      "user.name=qbento packaging test",
+      "-c",
+      "user.email=qbento-packaging@example.invalid",
+      "commit",
+      "--quiet",
+      "-m",
+      "fixture baseline",
+    ]);
+    const commit = await runGit(checkout, [
+      "rev-parse",
+      "--verify",
+      "HEAD^{commit}",
+    ]);
+    const clean = await buildDevelopmentPackage({
+      destination: resolve(directory, "clean package"),
+      sourceRoot: checkout,
+    });
+    assert(clean.schemaVersion === 2);
+    assert(clean.qbentoSource.kind === "git");
+    if (clean.qbentoSource.kind === "git") {
+      assert(clean.qbentoSource.commit === commit);
+      assert(clean.qbentoSource.dirty === false);
+    }
+
+    const cliPath = resolve(checkout, "src/cli.ts");
+    const originalCli = await Deno.readFile(cliPath);
+    await Deno.writeTextFile(
+      cliPath,
+      await Deno.readTextFile(cliPath) + "\n// dirty fixture\n",
+    );
+    const dirty = await buildDevelopmentPackage({
+      destination: resolve(directory, "dirty package"),
+      sourceRoot: checkout,
+    });
+    assert(dirty.qbentoSource.kind === "git");
+    if (dirty.qbentoSource.kind === "git") {
+      assert(dirty.qbentoSource.commit === commit);
+      assert(dirty.qbentoSource.dirty === true);
+    }
+
+    await Deno.writeFile(cliPath, originalCli);
+    const untrackedPath = resolve(checkout, "src/untracked-provenance.ts");
+    await Deno.writeTextFile(untrackedPath, "// untracked fixture\n");
+    const untracked = await buildDevelopmentPackage({
+      destination: resolve(directory, "untracked package"),
+      sourceRoot: checkout,
+    });
+    assert(untracked.qbentoSource.kind === "git");
+    if (untracked.qbentoSource.kind === "git") {
+      assert(untracked.qbentoSource.commit === commit);
+      assert(untracked.qbentoSource.dirty === true);
+    }
+    await runGit(checkout, ["add", "src/untracked-provenance.ts"]);
+    const staged = await buildDevelopmentPackage({
+      destination: resolve(directory, "staged package"),
+      sourceRoot: checkout,
+    });
+    assert(staged.qbentoSource.kind === "git");
+    if (staged.qbentoSource.kind === "git") {
+      assert(staged.qbentoSource.commit === commit);
+      assert(staged.qbentoSource.dirty === true);
+    }
+
+    const archive = resolve(directory, "archive without git metadata");
+    await sourceFixture(archive);
+    const unknown = await buildDevelopmentPackage({
+      destination: resolve(directory, "archive package"),
+      sourceRoot: archive,
+    });
+    assert(unknown.qbentoSource.kind === "unknown");
+    if (unknown.qbentoSource.kind === "unknown") {
+      assert(unknown.qbentoSource.reason === "not-a-git-checkout");
     }
   } finally {
     await Deno.remove(directory, { recursive: true });

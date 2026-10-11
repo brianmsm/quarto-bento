@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "bento": {
+    "repository": "https://github.com/nyblnet/bento",
+    "revision": "3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b",
+    "version": "1.2.6"
+  },
+  "source": {
+    "packageManifestPath": "slides/package.json",
+    "packageManifestSha256": "877feb8aa18b3e034615e6fb7c545cf94cd5b79e2c4959e933bc0c5b796f147f",
+    "packageManifestVersion": "1.2.6",
+    "packageLockPath": "slides/package-lock.json",
+    "packageLockSha256": "109e3d5f3ce502ea5ba11979d96569e99247db8235f3e2fb71a09ccad846729b",
+    "packageLockRootVersion": "1.1.0",
+    "versionMetadataNote": "The pinned upstream package.json declares 1.2.6, while the package-lock.json root packages[\"\"].version declares 1.1.0. Both original files are preserved and independently hash-pinned.",
+    "fontSourcePath": "slides/src/fontdata.ts",
+    "fontSourceSha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f",
+    "selectionMethod": "npm-lockfile-v3-dev-not-true",
+    "selectionScope": "All package-lock v3 entries under packages/node_modules/* with dev not true. This records the production-scoped lockfile package set for the direct dependencies below, not proof that every package contributes bytes to the generated shell."
+  },
+  "rootDependencies": [
+    {
+      "name": "moveable",
+      "range": "^0.53.0",
+      "resolvedVersion": "0.53.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/moveable"
+    },
+    {
+      "name": "reveal.js",
+      "range": "^5.2.1",
+      "resolvedVersion": "5.2.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/reveal.js"
+    },
+    {
+      "name": "selecto",
+      "range": "^1.26.3",
+      "resolvedVersion": "1.26.3",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/selecto"
+    }
+  ],
+  "runtimePackages": [
+    {
+      "name": "@cfcs/core",
+      "version": "0.0.6",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@cfcs/core"
+    },
+    {
+      "name": "@daybrush/utils",
+      "version": "1.13.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@daybrush/utils"
+    },
+    {
+      "name": "@egjs/agent",
+      "version": "2.4.4",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@egjs/agent"
+    },
+    {
+      "name": "@egjs/children-differ",
+      "version": "1.0.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@egjs/children-differ"
+    },
+    {
+      "name": "@egjs/component",
+      "version": "3.0.5",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@egjs/component"
+    },
+    {
+      "name": "@egjs/list-differ",
+      "version": "1.0.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@egjs/list-differ"
+    },
+    {
+      "name": "@scena/dragscroll",
+      "version": "1.4.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@scena/dragscroll"
+    },
+    {
+      "name": "@scena/event-emitter",
+      "version": "1.0.5",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@scena/event-emitter"
+    },
+    {
+      "name": "@scena/matrix",
+      "version": "1.1.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/@scena/matrix"
+    },
+    {
+      "name": "croact",
+      "version": "1.0.4",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/croact"
+    },
+    {
+      "name": "croact-css-styled",
+      "version": "1.1.9",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/croact-css-styled"
+    },
+    {
+      "name": "croact-moveable",
+      "version": "0.9.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/croact-moveable"
+    },
+    {
+      "name": "css-styled",
+      "version": "1.0.8",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/css-styled"
+    },
+    {
+      "name": "css-to-mat",
+      "version": "1.1.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/css-to-mat"
+    },
+    {
+      "name": "framework-utils",
+      "version": "1.1.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/framework-utils"
+    },
+    {
+      "name": "gesto",
+      "version": "1.19.4",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/gesto"
+    },
+    {
+      "name": "keycode",
+      "version": "2.2.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/keycode"
+    },
+    {
+      "name": "keycon",
+      "version": "1.4.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/keycon"
+    },
+    {
+      "name": "moveable",
+      "version": "0.53.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/moveable"
+    },
+    {
+      "name": "overlap-area",
+      "version": "1.1.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/overlap-area"
+    },
+    {
+      "name": "react-css-styled",
+      "version": "1.1.9",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/react-css-styled"
+    },
+    {
+      "name": "react-moveable",
+      "version": "0.56.0",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/react-moveable"
+    },
+    {
+      "name": "react-selecto",
+      "version": "1.26.3",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/react-selecto"
+    },
+    {
+      "name": "reveal.js",
+      "version": "5.2.1",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/reveal.js"
+    },
+    {
+      "name": "selecto",
+      "version": "1.26.3",
+      "licenseDeclared": "MIT",
+      "packageLockPath": "packages/node_modules/selecto"
+    }
+  ],
+  "embeddedFonts": [
+    {
+      "name": "Fraunces",
+      "asset": "FRAUNCES_900",
+      "version": null,
+      "versionEvidence": "No font version is recorded in the pinned source file.",
+      "licenseDeclared": "SIL Open Font License 1.1",
+      "sourcePath": "slides/src/fontdata.ts",
+      "sourceSha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f"
+    },
+    {
+      "name": "Instrument Sans",
+      "asset": "INSTRUMENT_VAR",
+      "version": null,
+      "versionEvidence": "No font version is recorded in the pinned source file.",
+      "licenseDeclared": "SIL Open Font License 1.1",
+      "sourcePath": "slides/src/fontdata.ts",
+      "sourceSha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f"
+    }
+  ],
+  "noticeReview": {
+    "status": "pending",
+    "pending": [
+      "Verify and include the authoritative full SIL OFL 1.1 text for the embedded Fraunces and Instrument Sans font data before any public distribution. This inventory does not establish legal completeness."
+    ]
+  }
+}

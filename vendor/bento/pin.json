@@ -3,6 +3,41 @@
   "revision": "3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b",
   "version": "1.2.6",
   "shellSha256": "90cd74ceeef010473821deb36cb30f30fc7cf1454f3bd758bedb941635d046f1",
+  "upstreamArtifacts": {
+    "schema": {
+      "sourcePath": "schema/slides-1.2.6.json",
+      "vendoredPath": "slides.schema.json",
+      "sha256": "96a070caccdcd41b61374ad79fe87b782586fd6a073deb6a291612bfa93c54d7"
+    },
+    "license": {
+      "sourcePath": "LICENSE",
+      "vendoredPath": "LICENSE",
+      "sha256": "98f7c83ee9c15064fef0198e2ec3228fa57628e5812583fd8cc6c98a42d5ad02"
+    },
+    "thirdPartyNotices": {
+      "sourcePath": "THIRD_PARTY_NOTICES.md",
+      "vendoredPath": "THIRD_PARTY_NOTICES.md",
+      "sha256": "f3838634253d4d4be866871e907b84f80401bba4c030e06cdefa95c8e608000e"
+    },
+    "packageManifest": {
+      "sourcePath": "slides/package.json",
+      "vendoredPath": "provenance/slides.package.json",
+      "sha256": "877feb8aa18b3e034615e6fb7c545cf94cd5b79e2c4959e933bc0c5b796f147f"
+    },
+    "packageLock": {
+      "sourcePath": "slides/package-lock.json",
+      "vendoredPath": "provenance/slides.package-lock.json",
+      "sha256": "109e3d5f3ce502ea5ba11979d96569e99247db8235f3e2fb71a09ccad846729b"
+    },
+    "fontSource": {
+      "sourcePath": "slides/src/fontdata.ts",
+      "sha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f"
+    }
+  },
+  "runtimeDependencyInventory": {
+    "vendoredPath": "runtime-dependencies.json",
+    "sha256": "8da1c8d77655d7cb7af6adc3ad726563962087c6b4f7ce0d94281cc6fe0376d3"
+  },
   "build": "npm ci --ignore-scripts && npm run build:single",
   "quartoTested": "1.10.19"
 }
