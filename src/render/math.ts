@@ -28,8 +28,6 @@ const argumentCounts: Record<string, number> = {
   sqrt: 1,
   text: 1,
   textrm: 1,
-  textbf: 1,
-  textit: 1,
   mathrm: 1,
   mathbf: 1,
   mathit: 1,
@@ -146,9 +144,9 @@ function validateTex(tex: string): void {
     while (tokens[at] && nested) {
       const token = tokens[at++];
       if (token.command) {
-        if (!symbols.has(token.value) && !escaped.has(token.value)) {
-          fail("Unsupported command inside literal math text.");
-        }
+        fail(
+          "Literal math text supports plain Unicode only; the pinned renderer does not faithfully expand text commands or escapes.",
+        );
       } else if (token.value === "{") {
         if (++nested + depth > MAX_DEPTH) {
           fail("Math text is nested too deeply.");
@@ -174,7 +172,7 @@ function validateTex(tex: string): void {
     at++;
     return name;
   }
-  function atom(script = false): void {
+  function atom(script = false): boolean {
     const token = tokens[at++];
     if (!token || (!token.command && ["}", "^", "_"].includes(token.value))) {
       fail("A LaTeX group or script is incomplete.");
@@ -189,7 +187,10 @@ function validateTex(tex: string): void {
         (!opened.length || opened.at(-1)!.depth !== depth ||
           opened.at(-1)!.left !== left.length)
       ) fail("Math alignment is allowed only in a supported environment cell.");
-      return;
+      if (token.value === "&" && script) {
+        fail("A math cell separator cannot be a script argument.");
+      }
+      return token.value !== "&";
     }
     const command = token.value;
     if (command === "begin" || command === "end") {
@@ -202,7 +203,7 @@ function validateTex(tex: string): void {
           fail("Math environment boundaries do not match.");
         }
       }
-      return;
+      return command === "end";
     }
     if (command === "left" || command === "right") {
       if (script) fail("A scalable delimiter cannot be a script argument.");
@@ -215,10 +216,6 @@ function validateTex(tex: string): void {
             "|",
             "langle",
             "rangle",
-            "lvert",
-            "rvert",
-            "lVert",
-            "rVert",
           ].includes(delimiter.value)
           : ["(", ")", "[", "]", "|", "."].includes(delimiter.value))
       ) fail("Unsupported scalable math delimiter.");
@@ -234,7 +231,7 @@ function validateTex(tex: string): void {
           );
         }
       }
-      return;
+      return command === "right";
     }
     if (command === "\\") {
       if (
@@ -243,22 +240,28 @@ function validateTex(tex: string): void {
       ) {
         fail("Math row breaks require a supported environment.");
       }
-      return;
+      return false;
     }
     if (["text", "textrm", "operatorname"].includes(command)) {
       textGroup();
-      return;
+      return true;
+    }
+    if (["textbf", "textit"].includes(command)) {
+      fail(
+        `LaTeX \\${command} is processed as a mathematical font by the pinned renderer and cannot preserve literal word spacing; use native text typography instead.`,
+      );
     }
     const args = argumentCounts[command];
     if (args) {
       for (let i = 0; i < args; i++) group();
-      return;
+      return true;
     }
     if (!symbols.has(command) && !escaped.has(command)) {
       fail(
         `LaTeX command \\${command} needs an explicit supported projection.`,
       );
     }
+    return true;
   }
   function sequence(inGroup = false): void {
     while (at < tokens.length) {
@@ -275,12 +278,17 @@ function validateTex(tex: string): void {
         at++;
         return;
       }
-      atom();
+      const scriptable = atom();
       const scripts = new Set<string>();
       while (
         tokens[at] && !tokens[at].command &&
         ["^", "_"].includes(tokens[at].value)
       ) {
+        if (!scriptable) {
+          fail(
+            "A math script needs a real atom, not an environment opening, delimiter opening, row break or cell separator.",
+          );
+        }
         const script = tokens[at++].value;
         if (scripts.has(script)) fail("A math atom has duplicate scripts.");
         scripts.add(script);

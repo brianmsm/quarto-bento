@@ -80,20 +80,70 @@ deno check src/render/math.ts tests/math_test.ts
 deno lint src/render/math.ts tests/math_test.ts
 ```
 
-Six tests pass: literal escaping and reversible formulas; native multiline
-markup; HTML/prose/source expansion refusal; invalid/unsupported syntax refusal;
-real installed Pandoc AST plus bounded UTF-8/CRLF source patch; real Quarto
-execution retaining an authored anchored display formula. The two external-tool
-tests are explicitly skipped without run permission.
+Eight portable tests pass: literal escaping and reversible formulas; native
+multiline markup; HTML/prose/source expansion refusal; invalid/unsupported
+syntax refusal; the delimiter/script and literal-text regressions below; real
+installed Pandoc AST plus bounded UTF-8/CRLF source patch; real Quarto execution
+retaining an authored anchored display formula. The two Quarto/Pandoc tests are
+explicitly skipped without run permission. A ninth, optional test imports the
+actual pinned Bento renderer only when `QBENTO_BENTO_SOURCE` points to a local
+checkout and run permission is present; its HEAD must match
+`vendor/bento/pin.json`. Ordinary regression tests have no dependency on `/tmp`
+or an upstream checkout.
 
 A separate local harness called the pinned upstream strict `renderMath` and
 `resolveMathHtml` implementations. All eight representative formulas (fraction,
 Greek operators, scalable fences, Unicode/literal HTML, aligned rows and
-matrices) produced MathML through the native delimiter path. A further 160
-supported command examples produced strict MathML. These checks are runtime
+matrices) produced MathML through the native delimiter path. A further 158
+currently supported command examples produced strict MathML after excluding
+`textbf` and `textit` as described below. These checks are runtime
 engine/delimiter evidence; they do not establish browser font, visual layout,
 native edit, save/reopen or integrated safe sync acceptance. The coordinator
 must still integrate projection/sync and perform that UI loop.
+
+## Conservative native fidelity restrictions
+
+The review regressions were verified directly against the pinned parser, using
+its runtime `lenient: true` mode as well as strict positive examples. The codec
+now refuses the following constructs with `UNSUPPORTED_MATH` in both directions:
+
+- After `\left`/`\right`, command delimiters are limited to `\{`, `\}`, `\|`,
+  `\langle` and `\rangle`; raw `(`, `)`, `[`, `]`, `|` and `.` also remain
+  supported. The aliases `\lvert`, `\rvert`, `\lVert` and `\rVert` still work as
+  ordinary symbols, but the pin reports `bad delimiter` when they follow a
+  scalable delimiter command.
+- Environment openings, `\\` row breaks, `&` cell separators and `\left`
+  openings cannot be script bases. For example, `\begin{matrix}\\^x\end{matrix}`
+  and `\begin{matrix}^&\end{matrix}x` have native `script without base` errors.
+  A cell separator cannot be the argument of a script either. A completed matrix
+  or matched scalable fence can still carry a script, as in
+  `\begin{matrix}x\end{matrix}^2` and `\left(x\right)^2`.
+- `\text`, `\textrm` and `\operatorname` groups accept plain Unicode literal
+  text, but no commands or escapes inside the group. The pin prints `\text{\$}`
+  as literal `\$` and `\text{\quad}` as literal `\quad` in MathML, so accepting
+  them would imply a fidelity guarantee the renderer does not provide. Plain
+  text such as `\text{Málaga: a b "q"}` retains its words and visible spacing;
+  Bento emits nonbreaking spaces in its MathML text node.
+- `\textbf` and `\textit` refuse. Bento treats their contents as mathematical
+  fonts: `\textbf{a b}` produces adjacent mathematical letters with the word
+  space removed. Native text typography is the supported styling route; the
+  codec does not silently transform these commands. The separate mathematical
+  font commands remain bounded mathematical expressions.
+
+Reproduce the native engine test against any locally available checkout at the
+pin, without fetching dependencies or changing the checkout:
+
+```sh
+QBENTO_BENTO_SOURCE=/path/to/local/bento deno test \
+  --allow-read --allow-write --allow-env --allow-run \
+  --filter 'pinned Bento renderer' tests/math_test.ts
+```
+
+For this correction, all nine codec tests passed with the pinned checkout,
+including exact native MathML fragments that expose the text loss. Both new pure
+regression tests also passed with no granted filesystem, environment or
+subprocess permissions. This is parser/text fidelity evidence within the stated
+subset, not proof of general TeX support or native visual acceptance.
 
 ## Integrated project loop
 

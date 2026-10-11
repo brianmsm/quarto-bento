@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import {
   mathToNativeHtml,
   nativeDisplayMathToSource,
@@ -10,11 +11,16 @@ function eq(a: unknown, b: unknown) {
     throw new Error(`${canonical(a)} != ${canonical(b)}`);
   }
 }
-function refuses(fn: () => unknown) {
+function refuses(fn: () => unknown, message?: string) {
   try {
     fn();
   } catch (error) {
     if (error instanceof StateError && error.code === "UNSUPPORTED_MATH") {
+      if (message && !error.message.includes(message)) {
+        throw new Error(
+          `Expected message containing ${message}: ${error.message}`,
+        );
+      }
       return;
     }
     throw error;
@@ -148,8 +154,145 @@ Deno.test("display math refuses incomplete or unsupported LaTeX instead of guess
   ) refuses(() => mathToNativeHtml(tex));
   refuses(() => mathToNativeHtml("x", false));
 });
+const unsupportedDelimiters = ["lvert", "rvert", "lVert", "rVert"]
+  .flatMap((name) => [
+    `\\left\\${name} x\\right|`,
+    `\\left| x\\right\\${name}`,
+  ]);
+const scriptsWithoutBases = [
+  String.raw`\begin{matrix}\\^x\end{matrix}`,
+  String.raw`\begin{matrix}^&\end{matrix}x`,
+  String.raw`\begin{matrix}&^x\end{matrix}`,
+  String.raw`\begin{matrix}_x\end{matrix}`,
+  String.raw`\begin{matrix}x\\_y\end{matrix}`,
+  String.raw`\left(^x\right)`,
+];
+const lossyText = [
+  String.raw`\text{\$}`,
+  String.raw`\text{\quad}`,
+  String.raw`\text{\alpha}`,
+  String.raw`\textrm{\&}`,
+  String.raw`\operatorname{arg\ max}`,
+];
+const lossyTextFonts = [
+  String.raw`\textbf{a b}`,
+  String.raw`\textit{a b}`,
+];
+const reviewPositiveCases = [
+  String.raw`\left\{x\right\}`,
+  String.raw`\left|x\right|`,
+  String.raw`\left\|x\right\|`,
+  String.raw`\left\langle x\right\rangle`,
+  String.raw`\left[x\right]`,
+  String.raw`\left(x\right)^2`,
+  String.raw`\begin{matrix}x\end{matrix}^2`,
+  String.raw`\lvert x\rvert + \lVert y\rVert`,
+  String.raw`\text{Málaga: a b "q"}`,
+  String.raw`\textrm{a b}`,
+  String.raw`\operatorname{arg max}`,
+];
+function reviewRefusal(tex: string, message?: string) {
+  refuses(() => mathToNativeHtml(tex), message);
+  refuses(
+    () => parseNativeDisplayMath(`$$${tex.replaceAll("&", "&amp;")}$$`),
+    message,
+  );
+}
+Deno.test("display codec refuses unsupported scalable aliases and structural script bases", () => {
+  for (const tex of unsupportedDelimiters) {
+    reviewRefusal(tex, "Unsupported scalable math delimiter");
+  }
+  for (const tex of scriptsWithoutBases) {
+    reviewRefusal(tex, "A math script needs a real atom");
+  }
+  reviewRefusal(
+    String.raw`\begin{matrix}x^&\end{matrix}`,
+    "A math cell separator cannot be a script argument",
+  );
+  for (const tex of reviewPositiveCases) {
+    eq(parseNativeDisplayMath(mathToNativeHtml(tex)).tex, tex);
+  }
+});
+Deno.test("display codec refuses lossy literal text commands and text font spacing", () => {
+  for (const tex of lossyText) {
+    reviewRefusal(tex, "does not faithfully expand text commands or escapes");
+  }
+  for (const tex of lossyTextFonts) {
+    reviewRefusal(tex, "cannot preserve literal word spacing");
+  }
+});
 const canRun =
   (await Deno.permissions.query({ name: "run" })).state === "granted";
+// Pure regression tests above run without a Bento checkout. Opt in to native
+// engine evidence using any checkout whose HEAD matches the vendored pin.
+const canReadBentoSourceEnv = (await Deno.permissions.query({
+  name: "env",
+  variable: "QBENTO_BENTO_SOURCE",
+})).state === "granted";
+const bentoSource = canReadBentoSourceEnv
+  ? Deno.env.get("QBENTO_BENTO_SOURCE")
+  : undefined;
+Deno.test({
+  name:
+    "pinned Bento renderer verifies math rejection and text fidelity regressions",
+  ignore: !bentoSource || !canRun,
+  fn: async () => {
+    const pin = JSON.parse(
+      await Deno.readTextFile(
+        new URL("../vendor/bento/pin.json", import.meta.url),
+      ),
+    );
+    const revision = await new Deno.Command("git", {
+      args: ["-C", bentoSource!, "rev-parse", "HEAD"],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    if (!revision.success) {
+      throw new Error(new TextDecoder().decode(revision.stderr));
+    }
+    eq(new TextDecoder().decode(revision.stdout).trim(), pin.revision);
+    const native = await import(
+      pathToFileURL(`${bentoSource}/slides/src/maths/index.ts`).href
+    ) as {
+      renderMath: (
+        tex: string,
+        options: { display: boolean; lenient: boolean },
+      ) => string | null;
+    };
+    for (const tex of [...unsupportedDelimiters, ...scriptsWithoutBases]) {
+      eq(native.renderMath(tex, { display: true, lenient: true }), null);
+    }
+    const textEvidence = [
+      [String.raw`\text{\$}`, String.raw`<mtext>\$</mtext>`],
+      [String.raw`\text{\quad}`, String.raw`<mtext>\quad</mtext>`],
+      [String.raw`\textrm{\&}`, String.raw`<mtext>\&amp;</mtext>`],
+      [String.raw`\textbf{a b}`, "<mrow><mi>𝐚</mi><mi>𝐛</mi></mrow>"],
+      [String.raw`\textit{a b}`, "<mrow><mi>𝑎</mi><mi>𝑏</mi></mrow>"],
+    ];
+    for (const [tex, fragment] of textEvidence) {
+      const mathml = native.renderMath(tex, { display: true, lenient: true });
+      if (!mathml?.includes(fragment)) {
+        throw new Error(
+          `Pinned renderer text evidence changed: ${tex}: ${mathml}`,
+        );
+      }
+      reviewRefusal(tex);
+    }
+    for (const tex of reviewPositiveCases) {
+      if (!native.renderMath(tex, { display: true, lenient: false })) {
+        throw new Error(`Pinned renderer refused supported case: ${tex}`);
+      }
+    }
+    const literal = native.renderMath(
+      String.raw`\text{Málaga: a b "q"}`,
+      { display: true, lenient: false },
+    );
+    if (!literal?.includes("<mtext>Málaga: a b &quot;q&quot;</mtext>")) {
+      throw new Error(`Pinned renderer lost plain text spacing: ${literal}`);
+    }
+  },
+});
+
 Deno.test({
   name:
     "display codec matches installed Pandoc math AST and yields bounded UTF-8/CRLF body patches",
