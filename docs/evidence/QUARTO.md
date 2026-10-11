@@ -42,6 +42,23 @@ changes and other CLI overrides are explicitly refused. Normal output is
 Quarto artifact, not the delivery deck. Quarto's final console line names that
 stage; the post hook separately prints the final Bento path.
 
+Project and QMD paths may contain spaces and quotes. Pass a source filename as a
+single argument, for example `quarto render 'slides with spaces.qmd'`. The supplied
+project hooks use the fixed paths `_extensions/qbento/pre.ts` and
+`_extensions/qbento/post.ts` relative to the project directory. Keep the installed
+extension at that location.
+
+**Measured Quarto 1.10.19 path issue:** bare extension hook declarations such as
+`pre-render: pre.ts` were resolved to an absolute path by `readExtension`, then
+split by `runScripts` through `parseShellRunCommand`. A project named
+`project with spaces` consequently attempted to spawn `/tmp/.../project` and
+failed before the hook ran. This was inspected in the installed
+`/opt/quarto/bin/quarto.js` (hook resolution at line 79165, `runScripts` at line
+137909 and `parseShellRunCommand` at line 137334) and reproduced with ordinary
+rendering. Fixed project-relative hook paths avoid embedding the project path in
+the command string; no shell wrapper or escaping of user-supplied paths is added.
+The pre/post hook implementations and their guarded publication remain unchanged.
+
 ## Why staging and preflight are required
 
 The format writes `.qbento-stage.html`. Its `post-quarto` Lua filter captures the
@@ -98,7 +115,7 @@ from those pages.
 
 ```sh
 deno check src/integration/*.ts
-deno test --allow-read --allow-write --allow-env --allow-run tests/extension_test.ts
+deno test --allow-read --allow-write --allow-env --allow-run tests/extension_test.ts tests/quarto_paths_test.ts
 ```
 
 Tests use fresh temporary projects, a scoped `XDG_CACHE_HOME`,
@@ -116,6 +133,10 @@ They verify:
 - Failed computation retains baseline; explicit recovery permits a subsequent run.
 - A native save arriving during execution survives post-render refusal and recovery;
   recovery while the renderer is still alive is rejected.
+- A project path with spaces, single and double quotes, and a QMD filename with
+  spaces and single quotes, renders once through both hooks. Uncaptured native
+  edits and unsafe output arguments are refused before execution; changed-data
+  recomputation retains captured geometry and stable `docId`.
 
 These are Linux execution and file-persistence tests. They do not establish browser
 visual fidelity, native editor interaction, macOS/Windows packaging, Quarto preview

@@ -5,8 +5,10 @@ contributes:
   project:
     project:
       type: default
-      pre-render: pre.ts
-      post-render: post.ts
+      # Quarto 1.10 resolves bare extension hooks to absolute, unquoted commands.
+      # Keep these fixed project-relative paths so spaces in the project are safe.
+      pre-render: _extensions/qbento/pre.ts
+      post-render: _extensions/qbento/post.ts
     filters:
       - guard.lua
     format: qbento-html
