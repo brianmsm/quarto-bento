@@ -85,9 +85,22 @@ visually inspected at `output/playwright/kpi-native-computed-conflict.png` and
 One UI race was observed when closing Review and requesting Recalculate before
 Apply returned: the revision guard rejected the overlapping save with HTTP 409,
 preserving source and state. Recalculate succeeded after Apply completed. UI
-serialization is tracked separately; this receipt does not claim that race is
-fixed. It also does not establish pathological line-height measurement, which
-has separate focused tests and independent review.
+serialization was then fixed in `55e18f6` and independently reviewed. At runtime
+`f7f5296`, a native browser check held the actual server's successful Apply
+response after the QMD write had completed. Close, Apply, Save and Recalculate
+remained disabled and the editor stayed inert; pressing Escape kept Review open.
+Releasing the response updated the revision, allowed normal close and completed
+Recalculate without a conflict. The source contained exactly the reviewed label
+change, pending was zero at revision **10**, and the computed value and design
+stayed intact. Both the locked dialog and completed deck were visually
+inspected. Local evidence is
+`output/verification/studio-sync-busy-native/receipt.json` and
+`output/playwright/studio-sync-busy-native{,-finished}.png`.
+
+The same integrated runtime also passed all **7** focused measurement and
+delayed-Apply client tests, zero failures, in 3 seconds. The shared measurement
+fixes have their separate focused and independent [KPI evidence](KPI.md); this
+ordinary native fixture does not establish pathological glyph layout by itself.
 
 ## Mixed integration check
 
