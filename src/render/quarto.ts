@@ -31,7 +31,11 @@ export async function executeQuarto(
       "--output-dir",
       buildDir,
     ],
-    env: { QBENTO_AST: astPath, XDG_CACHE_HOME: resolve(buildDir, "cache") },
+    env: {
+      QBENTO_AST: astPath,
+      QBENTO_INTERNAL_RENDER: "1",
+      XDG_CACHE_HOME: resolve(buildDir, "cache"),
+    },
     stdout: "piped",
     stderr: "piped",
   }).output();

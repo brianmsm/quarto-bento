@@ -22,7 +22,7 @@ import {
   OFFLINE_CSP,
   prepareIsolatedDocument,
 } from "../bridge/isolation.ts";
-import type { BentoDoc as RenderDoc } from "../render/types.ts";
+import type { Ast, BentoDoc as RenderDoc } from "../render/types.ts";
 
 export function projectPaths(source: string) {
   source = resolve(source);
@@ -111,13 +111,41 @@ export async function withProject<T>(
   }
 }
 export async function renderProject(source: string) {
+  return await render(source);
+}
+export interface ExecutedRender {
+  ast: Ast;
+  sourceHash: string;
+  assetDirectories: string[];
+  expectedRevision?: number | null;
+}
+export async function renderProjectFromAst(
+  source: string,
+  executed: ExecutedRender,
+) {
+  return await render(source, executed);
+}
+async function render(source: string, executed?: ExecutedRender) {
   return await withProject(source, async (paths, store) => {
     let state = await store.load();
+    if (
+      executed?.expectedRevision !== undefined &&
+      (state?.revision ?? null) !== executed.expectedRevision
+    ) {
+      throw new Error(
+        "STALE_REVISION: project changed while Quarto was executing",
+      );
+    }
     await assertOutputUnchanged(state, paths.output);
     const text = await Deno.readTextFile(paths.source),
       mapping = scanSource(text);
+    if (executed && mapping.hash !== executed.sourceHash) {
+      throw new Error(
+        "SOURCE_CHANGED: QMD differs from the executed source snapshot",
+      );
+    }
     const build = resolve(paths.stateDir, "build");
-    const ast = await executeQuarto(paths.source, build);
+    const ast = executed?.ast ?? await executeQuarto(paths.source, build);
     if (hashSource(await Deno.readTextFile(paths.source)) !== mapping.hash) {
       throw new Error(
         "SOURCE_CHANGED: QMD changed during execution; render aborted",
@@ -126,7 +154,7 @@ export async function renderProject(source: string) {
     const projected = await projectAst(
       ast,
       state?.docId ?? crypto.randomUUID(),
-      [build, paths.directory],
+      executed?.assetDirectories ?? [build, paths.directory],
     );
     const generated = prepareIsolatedDocument(
       projected.document,
