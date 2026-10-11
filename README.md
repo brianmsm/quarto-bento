@@ -63,16 +63,19 @@ supported rich text in identified fenced divs, displayed code, identified
 display equations and speaker notes, R-generated SVG figures, plain tables,
 bounded native charts, cards, named two-column layouts, source-authored
 `.bento-kpi` components, and bounded source `.bento-diagram` and
-`.bento-timeline` components. Plain QMD can acquire stable identities only
-through an inspectable reviewed source plan; save and render do not add them
-implicitly. Native Studio also supports reviewed deletion of bounded
-source-backed elements and explicit creation of authored cards and literal-value
-KPI components on existing source slides. Saving a created component leaves
-QMD unchanged; its authored members remain pending until reviewed together in
-the source-sync plan. The Studio KPI value is text, not a computed expression.
-Focused component and Studio tests exist; visual acceptance of this creation
-flow in the native editor has not yet been recorded. These adapters do not imply
-support for every QMD construct. Reproducible sources include:
+`.bento-timeline` components. The Studio **Relaciones** controls can reassign
+both source endpoints of an existing diagram edge as one pending operation;
+timeline adjacency is displayed read-only and remains defined by QMD order.
+Plain QMD can acquire stable identities only through an inspectable reviewed
+source plan; save and render do not add them implicitly. Native Studio also
+supports reviewed deletion of bounded source-backed elements and explicit
+creation of authored cards and literal-value KPI components on existing source
+slides. Saving a created component leaves QMD unchanged; its authored members
+remain pending until reviewed together in the source-sync plan. The Studio KPI
+value is text, not a computed expression. Focused component and Studio tests
+exist; visual acceptance of this creation flow in the native editor has not yet
+been recorded. These adapters do not imply support for every QMD construct.
+Reproducible sources include:
 
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
@@ -99,8 +102,12 @@ regenerated with its saved geometry and style; see the
 the bounded [component evidence](docs/evidence/COMPONENTS.md). Source diagrams
 and timelines use declared node and relationship IDs, literal labels, and a
 bounded native layout; unsupported topology or text metrics refuse before
-publication. Their exact source contract and Linux validation are documented
-with the [example](examples/source-graphs/README.md) and
+publication. Studio's relationship selectors are limited to endpoints in an
+existing source diagram; timeline relationships are read-only. Saving the
+selected pair records pending project state, review/apply writes the inspected
+source patch, and only Recalculate executes QMD. Their exact source contract
+and Linux validation are documented with the
+[example](examples/source-graphs/README.md) and
 [graph evidence](docs/evidence/GRAPHS.md). The guarded
 `qbento-html` extension executes Quarto once per render (verified on Linux). The
 static standalone/PDF workflow has

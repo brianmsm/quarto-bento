@@ -176,21 +176,38 @@ con:
 deno task qbento render examples/source-graphs/deck.qmd
 ```
 
-Los diagramas declaran nodos y relaciones con IDs del QMD. En la versión fijada
-de Bento, arrastrar el extremo nativo de un conector elimina su enlace en vez de
-reasignarlo al nodo bajo el puntero; la revisión conserva el aviso y bloquea la
-aplicación. Usa **Deshacer** para restaurar el enlace. Un selector explícito de
-relaciones en Studio sigue pendiente. Para cambiar el vínculo, edita el atributo
-`from` o `to` del `.bento-edge` en QMD y recalcula. Los lados de anclaje, la
-posición, los colores y el orden visual del conector siguen siendo diseño; la
-cercanía entre objetos no crea una relación fuente.
+Los diagramas declaran nodos y relaciones con IDs del QMD. Abre **Relaciones**
+para elegir la diapositiva, el diagrama, la conexión y los nodos **Desde** y
+**Hacia**. Las opciones muestran la etiqueta y el ID fuente; los dos extremos
+deben ser distintos y pertenecer al mismo diagrama. Al abrir el control Studio
+guarda primero los cambios actuales del editor en `.qbento/` y carga una
+instantánea verificada del proyecto y QMD. Si cambió el proyecto o la fuente,
+cierra y vuelve a abrir el diálogo después de resolver o recalcular las
+diferencias.
 
-La secuencia de una línea de tiempo procede del orden de los bloques
-`.bento-milestone` en QMD. Reordena esos bloques para cambiar la adyacencia; el
-orden visual de los objetos en Bento no cambia el significado. Las etiquetas
-admitidas son párrafos escritos en el QMD. Este adaptador cubre solo topologías
-y métricas de texto delimitadas; rechaza cruces, desbordamiento, relaciones
-ambiguas, rótulos computados y composiciones no admitidas. Consulta el
+En la versión fijada de Bento, arrastrar el extremo nativo de un conector
+desvincula su ancla en lugar de reasignar la relación al nodo bajo el puntero.
+La revisión bloquea ese cambio incompleto. Puedes restaurarlo con **Deshacer**
+o seleccionar explícitamente ambos extremos fuente en **Relaciones**. Pulsa
+**Guardar relación pendiente** para guardar el par `from`/`to` como una sola
+actualización de `.qbento/`, conservando los lados de anclaje visuales. Este
+guardado no modifica QMD ni ejecuta R. Los conflictos con QMD o las identidades
+fuera del diagrama se rechazan; la sincronización también comprueba que la
+relación pendiente aún coincida con el conector guardado y que la topología
+resultante esté admitida.
+
+Después usa **Revisar cambios** para inspeccionar los atributos fuente exactos y
+el QMD propuesto; **Aplicar estos cambios a QMD** escribe solo el parche
+revisado. **Recalcular** es el paso separado que ejecuta QMD y actualiza la
+proyección. Guardar, sincronizar y recalcular no son la misma operación.
+
+El diálogo muestra las líneas de tiempo como secuencias de solo lectura: sus
+relaciones derivan del orden de los bloques `.bento-milestone` en QMD. Reordena
+esos bloques y recalcula para cambiar la adyacencia; el orden visual de los
+objetos en Bento no cambia el significado. Las etiquetas admitidas son párrafos
+escritos en QMD. Este adaptador cubre solo topologías y métricas de texto
+delimitadas; rechaza cruces, desbordamiento, relaciones ambiguas, rótulos
+computados y composiciones no admitidas. Consulta el
 [contrato del ejemplo](../examples/source-graphs/README.md) y la
 [evidencia Linux](evidence/GRAPHS.md) para los límites exactos y la revisión
 nativa headless.

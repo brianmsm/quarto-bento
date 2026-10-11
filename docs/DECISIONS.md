@@ -49,10 +49,16 @@ The original `QMD → Bento base → _bento/overrides.json → .bento.html` mode
 2. `.bento-diagram` and `.bento-timeline` are implemented only for the bounded
    source schemas in [AUTHORING.md](AUTHORING.md) and
    [graph evidence](evidence/GRAPHS.md): literal labels, identified roles,
-   declared DAG endpoints, and source-order timeline adjacency. This does not
-   provide arbitrary graph layouts or native grouping-based membership
-   inference. The pinned editor's endpoint drag deletes its binding and is
-   refused during sync; an explicit Studio relationship selector remains open.
+   declared DAG endpoints, and source-order timeline adjacency. Studio's
+   **Relaciones** controls can save both endpoints of an existing diagram edge
+   together as one pending project update; timeline adjacency is read-only.
+   The request is checked against the open `docId`, project revision, QMD source
+   hash and exact graph identities. This does not provide arbitrary graph
+   layouts or native grouping-based membership inference. The pinned editor's
+   endpoint drag detaches its anchor; use Undo or explicitly select both source
+   nodes in Relaciones. Sync verifies the pending pair still matches the saved
+   connector and rejects unsupported topology before changing QMD. Project
+   Save, reviewed source Apply, and QMD execution remain separate operations.
 3. Studio can explicitly create an authored card or literal-value KPI on an
    existing source-backed slide and promote the complete role set through
    reviewed QMD sync. Save still does not patch source; computed KPI values

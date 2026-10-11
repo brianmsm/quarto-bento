@@ -9,8 +9,8 @@
 | Layout geometry, colors, typography, transitions, animations and decorative elements | `.qbento/` | Save immediately as visual state; no QMD write necessary. |
 | Any **visual property explicitly declared in QMD** | That QMD attribute until changed by deliberate sync | Flag field-level divergence; sync/keep source/revert or resolve conflict. |
 | Studio-created card/KPI content | `.qbento/` until sync, then QMD | Review every pending member together; design stays in the sidecar. |
-| Diagram edge endpoints (`from`/`to`) | Exact QMD attributes | Native drag deletes the binding; sync refuses. Undo restores it; selector pending. |
-| Timeline order and derived links | Source milestone order | Reorder QMD blocks to change adjacency; z-order does not. Restore endpoint edits before publication. |
+| Diagram edge endpoints (`from`/`to`) | Exact QMD attributes | Studio **Relaciones** selects both source nodes as one pending update; reviewed Apply writes the exact attributes. Native drag detaches an anchor; use Relaciones or Undo. |
+| Timeline order and derived links | Source milestone order | Studio displays the sequence read-only. Reorder QMD blocks to change adjacency; z-order does not. Restore native endpoint edits before publication. |
 
 The source of a value and its **provenance** are different from its current **synchronization state**.
 
@@ -28,6 +28,19 @@ No blanket "last writer wins". Disjoint field edits should merge automatically w
 **Save in Studio:** persist current Bento design **and unsynced semantic change journal** in recoverable project state, not only in a generated HTML or the browser. QMD remains unchanged. Sync metadata tracks which changes have already been applied; closing Studio must not lose a pending edit. **Bento's own Save outside Studio instead saves an HTML file**, not `.qbento/`; see the capture workflow below.
 
 **Sync:** load the last confirmed baseline and both current states. Show itemized changes (direction, source, property), preview patches, validate anchors and source hashes/expected fragments, let the user choose actions, then commit applied edits and advance baseline only for successful operations. Writes must be atomic/rollback-capable and avoid unrelated formatting changes.
+
+For a source diagram, Studio's **Relaciones** dialog lists the slide, diagram,
+edge and source nodes by label and ID. A timeline is shown as its milestone
+sequence with endpoint controls disabled. Opening the dialog first saves the
+current native editor state, then reads a snapshot bound to `docId`, project
+revision and QMD source hash. **Guardar relación pendiente** writes the chosen
+`from` and `to` together as one project update, preserving visual anchor sides;
+stale revisions/sources, conflicting endpoints and foreign node IDs are
+refused. This Save does not write QMD or execute Quarto/R. Sync verifies that
+the journal's pair still matches the saved connector and validates the
+prospective topology before offering a source patch. **Apply** writes only the
+reviewed QMD patch; **Recalculate** is the separate step that executes QMD and
+refreshes the projection.
 
 Studio-created cards and KPIs are one semantic creation per component, not a
 loose group inferred from placement. The pending intent records its exact

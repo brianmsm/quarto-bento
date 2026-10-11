@@ -111,10 +111,29 @@ lexical QMD order defines the sequence and derived links. Moving a timeline link
 in native z-order does not change that sequence; a native endpoint edit on a
 derived timeline link remains pending and must be restored before publication.
 The pinned native editor currently removes a diagram endpoint binding when it
-is dragged rather than reassigning it. Review refuses that incomplete change;
-use native Undo to restore it. An explicit Studio relationship selector is
-still in progress. Diagram edge endpoints are QMD-owned meaning; connector
-anchor sides, positions, colors, typography and stacking are visual state.
+is dragged rather than reassigning it. Review refuses that incomplete change.
+Use native Undo to restore it, or open Studio's **Relaciones** controls and
+select the source slide, diagram, connection, and distinct **Desde**/**Hacia**
+nodes to reconnect it explicitly. Node choices display their literal labels
+and source IDs. Timeline entries appear in the same dialog as a read-only
+sequence; their endpoint controls are disabled because adjacency is derived
+from lexical QMD milestone order. Diagram edge endpoints are QMD-owned meaning;
+connector anchor sides, positions, colors, typography and stacking are visual
+state.
+
+Opening **Relaciones** first saves current native editor changes to `.qbento/`
+and reads a checked project/source snapshot. **Guardar relación pendiente**
+stores the selected `from` and `to` endpoints together as one project update,
+retaining each visual anchor side. The request is checked against `docId`,
+project revision, source hash, mapped graph membership, and distinct nodes in
+the same diagram. A stale dialog/source, source conflict, or missing graph
+member refuses the relationship Save. Sync also checks that the pending
+relationship still matches the saved native connector and that its proposed
+topology is supported before it can patch QMD. Thus project Save, source
+Sync/Apply, and QMD execution are separate: relationship Save changes only
+pending project state, reviewed Apply changes QMD, and **Recalculate** executes
+it. Timeline relationships cannot be edited in this dialog; reorder the
+milestone blocks in QMD and recalculate instead.
 
 Both adapters reject computed/dynamic labels, arbitrary HTML, nested graph
 components, automatic native-to-source membership inference, and universal
