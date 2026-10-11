@@ -183,10 +183,11 @@ Deno.test({
       for (
         const [body, code] of [
           ["Text $$x^2$$ more.", "MIXED_MATH_TEXT"],
-          ["<!-- qb:eq-main -->\n$$x^2$$", "UNMAPPED_PROVENANCE"],
+          // Single-line math remains a paragraph slot; the authored inline proof refuses it.
+          ["<!-- qb:eq-main -->\n$$x^2$$", "UNSUPPORTED_INLINE: Math"],
           [
             '```{r}\n#| label: producer\n#| results: asis\nfile.create("must-not-exist")\ncat("$$x^2$$")\n```',
-            "UNMAPPED_PROVENANCE",
+            "UNMAPPED_PROVENANCE: chunk producer uses as-is output",
           ],
         ]
       ) {
@@ -196,6 +197,10 @@ Deno.test({
         eq(await Deno.readTextFile(source), original);
         await refuses(
           () => Deno.stat(dir + "/deck.bento.html"),
+          "No such file",
+        );
+        await refuses(
+          () => Deno.stat(dir + "/.qbento/state.json"),
           "No such file",
         );
         await refuses(() => Deno.stat(dir + "/must-not-exist"), "No such file");
