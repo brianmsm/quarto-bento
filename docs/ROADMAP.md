@@ -14,7 +14,7 @@
 
 These are **technical gates**, not additional product-policy questions. **Run S0 first or alongside S1/S2**: it validates the original high-value concept without requiring a full Studio UI or semantic reverse editing. S1/S2/S4 are still essential before claiming full bidirectional round-trip. If a spike fails, document the limitation, test an alternative and propose a conscious spec change only if unavoidable.
 
-**Verified so far:** local Quarto 1.10.19 produced `demo.bento.html` from a throwaway `check-html` format using `output-ext: bento.html`; this **only proves Quarto custom-format output naming**, not actual BentoDoc generation, editor behavior, or read-back. A bare unsuffixed `check` format failed. The test directory was removed.
+**Initial design experiment (superseded by the integrated evidence):** local Quarto 1.10.19 produced `demo.bento.html` from a throwaway `check-html` format using `output-ext: bento.html`; this **only proves Quarto custom-format output naming**, not actual BentoDoc generation, editor behavior, or read-back. A bare unsuffixed `check` format failed. The test directory was removed.
 
 ## First vertical slice — definition of done
 
@@ -70,6 +70,10 @@ Sequences are illustrative; features may move earlier to support validation with
 - Universal Plotly/htmlwidgets or pixel-identical rendering across platforms.
 
 ## Suggested next-session action
+
+The first supported Linux bidirectional workflow now has [integrated evidence](evidence/FIRST-SLICE.md).
+Continue hardening and subsequent slices from the implementation ledger, preserving
+these checks. The original startup sequence below remains historical context.
 
 1. Inspect/pin Bento upstream, then run **S0** (the simple QMD → Bento → visual override → regenerated Bento loop). Reuse its output and adapter in later slices; don't build a throwaway converter.
 2. Test **S1** (accurate source mapping) and **S2** (Studio editor bridge) separately. Record measured limits, update `ARCHITECTURE.md` and `AUTHORING.md` as needed; don't prematurely commit to a permanent Bento fork.

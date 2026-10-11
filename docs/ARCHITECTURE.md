@@ -1,6 +1,33 @@
 # Architecture — conceptual target
 
-**State:** agreed boundaries and proposed implementation, **not yet implemented**.
+**State:** agreed architectural boundaries. Implementation began 2026-10-11;
+the conceptual examples below are not a claim that every layer is finished.
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured acceptance.
+
+## Current implementation decisions (2026-10-11)
+
+- Deno/TypeScript core and JSON CLI; Quarto executes the supplied environment.
+  A final Lua filter captures the executed HTML AST with figure assets. A
+  `qbento-html` project extension reuses that AST and executes chunks once.
+- Bento 1.2.6 is pinned by revision and shell hash in `vendor/bento/pin.json`.
+  The wrapper polls public document/selection APIs; upstream has no public
+  subscription API at this revision. A limited bootstrap prevents browser
+  recovery/collaboration from replacing project state.
+- `.qbento/state.json` stores checksummed baselines, sparse overrides, retained
+  decorations and pending semantics. Revision checks and an operation lock
+  protect writes. Render and source-sync journals retain recovery artifacts.
+- Source synchronization checks exact original spans and whole-plan hashes.
+  Approved native creations retain their IDs through explicit QMD markers;
+  a separate promotion receipt proves their source acquisition on next render.
+- Published HTML carries a generation receipt outside BentoDoc. Capture checks
+  it against the saved publication and refuses stale copies before comparing
+  edits. This receipt is retained by the pinned native serializer.
+- Studio serves an immutable document/revision pair to each iframe. Saving a
+  stale tab refuses; rendering temporarily disables editor input. Source writes
+  happen only after reviewing and applying a plan.
+- Direct Quarto integration currently validates its invoking process through
+  Linux `/proc`. Unsafe output overrides are refused before Pandoc can truncate
+  the edited HTML. Portable validation remains an unresolved implementation gate.
 
 ## Pipeline
 

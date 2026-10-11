@@ -2,8 +2,9 @@
 
 **Status:** implementation in progress (2026-10-11). The executed Quarto renderer,
 native Bento bridge, local Studio save, source-patch primitives and persistent
-three-way state core exist. The complete first bidirectional slice and full product
-target are **not yet accepted**. See [implementation ledger](docs/IMPLEMENTATION_STATUS.md).
+three-way state core exist. The supported first bidirectional Linux workflow is
+[demonstrated end to end](docs/evidence/FIRST-SLICE.md); the full product target is
+**not yet complete**. See [implementation ledger](docs/IMPLEMENTATION_STATUS.md).
 
 Quarto-Bento aims to combine **computationally reproducible Quarto presentations** with **Bento's fast visual slide editor**, without losing visual edits when results are regenerated.
 
@@ -38,9 +39,10 @@ Capture native local edits explicitly with `deno task qbento capture path.qmd
 
 Currently demonstrated projection: explicit slide headings, text in identified
 fenced divs, and R-generated SVG figures. Unknown conversions refuse rather than
-invent a result. Source identity hardening, full semantic synchronization UI,
-ordinary Quarto extension integration, broader content adapters, PDF/Presenter
-and cross-platform packaging remain in progress. The implementation ledger is
+invent a result. Studio supports text/structural review and fresh conflict resolution. The guarded
+`qbento-html` extension executes Quarto once per render (verified on Linux).
+Broader semantic/content adapters, PDF/Presenter and cross-platform packaging
+remain in progress. The implementation ledger is
 the authority for acceptance evidence; the target documentation below remains
 the intended product contract.
 
@@ -75,7 +77,10 @@ presentation.bento.html    # Generated artifact (usually not committed)
 
 This directory layout and filenames are **proposed**, not finalized schemas. As in the original design, source-backed objects need only **visual overrides** (e.g. a figure's `x/y/w/h`), not a second copy of computed results. Bento-only elements and pending/detached content require their own persisted records. A stable **Bento `docId`** must be saved in project metadata and reused on every regeneration; do not regenerate it with the HTML.
 
-Unsynced Studio edits must be persisted/recoverable independently of the generated HTML; their precise storage is pending design. **Directly saving a generated `.bento.html` edits that file, not `.qbento/`**: a local explicit capture/import path is a viable secondary workflow, but must run before any render that would overwrite that changed HTML. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [SYNC.md](docs/SYNC.md).
+The current implementation persists project identity in `.qbento/project.json`
+and checksummed design, baselines and pending edits in `.qbento/state.json`.
+Version both files with QMD and inputs; build artifacts and history are rebuildable
+or recovery material. The detailed split shown above remains a future storage design. **Directly saving a generated `.bento.html` edits that file, not `.qbento/`**: a local explicit capture/import path is a viable secondary workflow, but must run before any render that would overwrite that changed HTML. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [SYNC.md](docs/SYNC.md).
 
 ## Reproducibility boundary
 
