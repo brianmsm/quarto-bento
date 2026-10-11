@@ -6,6 +6,51 @@ import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
 import type { BentoDoc } from "../state/mod.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
 
+export const MAX_STUDIO_BODY_BYTES = 25_000_000;
+
+// A missing or understated Content-Length must not bypass the byte limit.
+// Return null before retaining an excess chunk, and stop reading its stream.
+export async function readStudioBody(req: Request): Promise<string | null> {
+  const declaredLength = req.headers.get("content-length");
+  if (
+    declaredLength !== null && /^\d+$/.test(declaredLength) &&
+    Number(declaredLength) > MAX_STUDIO_BODY_BYTES
+  ) {
+    await req.body?.cancel().catch(() => {});
+    return null;
+  }
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  let body = new Uint8Array(0);
+  let bytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const nextBytes = bytes + value.byteLength;
+      if (nextBytes > MAX_STUDIO_BODY_BYTES) {
+        await reader.cancel().catch(() => {});
+        return null;
+      }
+      if (nextBytes > body.byteLength) {
+        const expanded = new Uint8Array(
+          Math.min(
+            MAX_STUDIO_BODY_BYTES,
+            Math.max(nextBytes, body.byteLength * 2, 65_536),
+          ),
+        );
+        expanded.set(body.subarray(0, bytes));
+        body = expanded;
+      }
+      body.set(value, bytes);
+      bytes = nextBytes;
+    }
+    return new TextDecoder().decode(body.subarray(0, bytes));
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function startStudio(source: string, port = 0) {
   const token = crypto.randomUUID() + crypto.randomUUID();
   const shell = await Deno.readTextFile(
@@ -103,8 +148,8 @@ export async function startStudio(source: string, port = 0) {
           if (
             req.headers.get("content-type") !== "application/json"
           ) return respond('{"error":"JSON required"}', 415);
-          const text = await req.text();
-          if (text.length > 25_000_000) {
+          const text = await readStudioBody(req);
+          if (text === null) {
             return respond(
               '{"error":"Document too large"}',
               413,
@@ -133,8 +178,8 @@ export async function startStudio(source: string, port = 0) {
           if (req.headers.get("content-type") !== "application/json") {
             return respond('{"error":"JSON required"}', 415);
           }
-          const text = await req.text();
-          if (text.length > 25_000_000) {
+          const text = await readStudioBody(req);
+          if (text === null) {
             return respond('{"error":"Plan too large"}', 413);
           }
           return respond(
@@ -159,8 +204,8 @@ export async function startStudio(source: string, port = 0) {
           if (req.headers.get("content-type") !== "application/json") {
             return respond('{"error":"JSON required"}', 415);
           }
-          const text = await req.text();
-          if (text.length > 25_000_000) {
+          const text = await readStudioBody(req);
+          if (text === null) {
             return respond('{"error":"Plan too large"}', 413);
           }
           const { plan, choices } = JSON.parse(text);
