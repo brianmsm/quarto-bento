@@ -221,6 +221,6 @@ export async function markEmitted(
   }
   const state = clone(input);
   state.emitted = clone(document);
-  state.output = { path, sha256: await sha256(html) };
+  state.output = { ...input.output, path, sha256: await sha256(html) };
   return state;
 }

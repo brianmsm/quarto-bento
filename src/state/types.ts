@@ -62,6 +62,19 @@ export interface Change {
   source?: Value;
   reason?: string;
 }
+export interface PublicationReceipt {
+  version: 1;
+  generation: string;
+  docId: string;
+  publishedDocSha256: string;
+}
+export interface OutputReceipt {
+  path: string;
+  sha256: string;
+  generation?: string;
+  publishedDocSha256?: string;
+  captureConsumed?: boolean;
+}
 export interface ProjectState {
   schemaVersion: 1;
   revision: number;
@@ -74,7 +87,7 @@ export interface ProjectState {
   elementOrders: { slideId: string; ids: string[] }[];
   bentoOnly: { slideId: string; element: BentoElement }[];
   pending: Change[];
-  output?: { path: string; sha256: string };
+  output?: OutputReceipt;
 }
 export class StateError extends Error {
   constructor(public code: string, message: string, public details?: unknown) {
