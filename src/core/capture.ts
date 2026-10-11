@@ -1,4 +1,5 @@
 import { extractDocument } from "../render/html.ts";
+import { assertProjectDocument } from "../render/validate.ts";
 import {
   type BentoDoc,
   canonical,
@@ -66,6 +67,7 @@ export async function preparePublication(
   html: string,
 ): Promise<{ html: string; receipt: PublicationReceipt }> {
   validateDoc(doc);
+  assertProjectDocument(doc);
   const parsed = extractDocument(html) as unknown as BentoDoc;
   validateDoc(parsed);
   if (!equal(doc, parsed)) {
@@ -168,6 +170,7 @@ export async function verifyCapture(
   }
   const doc = extractDocument(html) as unknown as BentoDoc;
   validateDoc(doc);
+  assertProjectDocument(doc);
   if (doc.docId !== receipt.docId) {
     fail(
       "UNRELATED_DOCUMENT",

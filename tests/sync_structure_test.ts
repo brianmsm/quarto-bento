@@ -211,7 +211,9 @@ Deno.test({
       body.y = 255;
       const decoration = {
         id: "created-arrow",
-        type: "arrow",
+        type: "shape",
+        shape: "arrow",
+        fill: "#156f65",
         x: 77,
         y: 99,
         w: 100,

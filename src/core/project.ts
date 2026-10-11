@@ -1,6 +1,10 @@
 import { basename, dirname, resolve } from "node:path";
 import { executeQuarto } from "../render/quarto.ts";
-import { projectAst } from "../render/project.ts";
+import {
+  assertSupportedExecutionSource,
+  projectAst,
+  validateProjectionOrigins,
+} from "../render/project.ts";
 import { spliceDocument } from "../render/html.ts";
 import {
   consumeCapture,
@@ -31,6 +35,7 @@ import {
 } from "../bridge/isolation.ts";
 import type { Ast, BentoDoc as RenderDoc } from "../render/types.ts";
 import { syncDirectory, writeDurable } from "./io.ts";
+import { assertProjectDocument } from "../render/validate.ts";
 
 export function projectPaths(source: string) {
   source = resolve(source);
@@ -142,6 +147,7 @@ export async function projectProjection(
   const paths = projectPaths(source);
   const text = await Deno.readTextFile(paths.source),
     mapping = scanSource(text);
+  assertSupportedExecutionSource(mapping);
   if (executed && mapping.hash !== executed.sourceHash) {
     throw new Error(
       "SOURCE_CHANGED: QMD differs from the executed source snapshot",
@@ -154,10 +160,13 @@ export async function projectProjection(
       "SOURCE_CHANGED: QMD changed during execution; render aborted",
     );
   }
-  const projected = await projectAst(
-    ast,
-    state?.docId ?? crypto.randomUUID(),
-    executed?.assetDirectories ?? [build, paths.directory],
+  const projected = validateProjectionOrigins(
+    mapping,
+    await projectAst(
+      ast,
+      state?.docId ?? crypto.randomUUID(),
+      executed?.assetDirectories ?? [build, paths.directory],
+    ),
   );
   const generated = prepareIsolatedDocument(
     projected.document,
@@ -406,6 +415,7 @@ export async function saveProject(
   doc: BentoDoc,
   revision: number,
 ) {
+  assertProjectDocument(doc);
   return await withProject(source, async (paths, store) => {
     const state = await store.load();
     if (!state) throw new Error("NO_BASELINE: render first");
