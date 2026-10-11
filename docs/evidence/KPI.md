@@ -84,9 +84,14 @@ height as the pinned native renderer. It measures both the inner CSS box and DOM
 `Range` rectangles: very small line heights can make a CSS box much shorter than
 the font bounds. The returned preferred height adds symmetric vertical slack
 plus four pixels for rounding, and width includes the horizontal union and
-scroll width. These are browser text/layout bounds, not a claim about arbitrary
-painted effects or rotated ink. No cloud, font download, environment manager or
-runtime installation is performed.
+scroll width. Omitted native line height uses CSS `normal` and a real same-style
+single-line probe; omitted font family comes from the composed theme. Actual
+pinned DOM tests also establish the inherited 16 px size, normal weight and
+start alignment. Explicit breaks and conservative `Range` fragment counts still
+detect multiple lines when a zero or very small saved line height collapses the
+CSS box to zero. These are browser text/layout bounds, not a claim about
+arbitrary painted effects or rotated ink. No cloud, font download, environment
+manager or runtime installation is performed.
 
 A taller outer box cannot move a glyph protruding above top-aligned text, below
 bottom-aligned text, or separate overlapping lines. Initial KPI text with those
@@ -122,12 +127,16 @@ regressions passed **3 tests, 0 failures** in 11 seconds. The canonical example
 rendered with zero pending edits and no diagnostics. These are local execution
 receipts; native visual acceptance remains separate.
 
-The glyph-overhang follow-up's focused command passed **14 tests, 0 failures**
-in **1 minute 31 seconds**. Type checking, focused lint and format checks
-passed. The shared helper fix is `4405da4`; its four measurement tests also
-passed independently in two seconds. On this browser/font environment, the 300
-px Arial `A` regression returns a 3 px line box, 167/166 px top/bottom overhang
-and a 341 px preferred height (including symmetric slack and rounding).
+The final glyph-overhang/defaults follow-up's focused command passed **15 tests,
+0 failures** in **1 minute 38 seconds**. Type checking, focused lint and format
+checks passed. Shared helper commits are `4405da4` and `72e70b8`; the final five
+measurement tests also passed separately in two seconds. Independent review
+matched helper bounds to actual pinned native top/bottom/centered/alignment-
+omitted DOM and confirmed saved collapsed-line diagnostics through core,
+preserving exact text, box, typography, pending edits and QMD. On this
+browser/font environment, the 300 px Arial `A` regression returns a 3 px line
+box, 167/166 px top/bottom overhang and a 341 px preferred height (including
+symmetric slack and rounding).
 
 The focused tests prove:
 
@@ -142,8 +151,11 @@ The focused tests prove:
   `Range` font rectangles extend over 336 px. The helper returns that overhang;
   initial top/bottom-aligned roles refuse without replacing previous output or
   state. Centered multiline overhang also refuses. Centered single-line text
-  receives sufficient symmetric space. Saved extreme native metrics retain their
-  exact box, content and pending edits while emitting a diagnostic.
+  receives sufficient symmetric space. Saved extreme native metrics, including
+  omitted vertical alignment and centered multiline line heights of zero or
+  `0.00001`, retain their exact box, content and pending edits while emitting a
+  diagnostic. Omitted native typography is compared with actual pinned DOM,
+  including a composed-document font family rather than a guessed fallback.
 - A real R inline value changes from `20.00` to `200.00` after CSV changes while
   saved value/label geometry, typography, background and `docId` survive.
 - A counter increments once per actual `qbento render` and once for an installed

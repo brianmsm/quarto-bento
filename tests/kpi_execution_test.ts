@@ -436,6 +436,7 @@ Deno.test("KPI glyph overhang refuses initial anchored typography and diagnoses 
     label.lineHeight = .01;
     label.w = 264;
     label.h = 124;
+    delete label.valign; // Pinned native default is top when this field is absent.
     const saved = await saveProject(source, edited, first.state.revision),
       retained = await renderProject(source);
     assert(
@@ -448,10 +449,46 @@ Deno.test("KPI glyph overhang refuses initial anchored typography and diagnoses 
     )!;
     assert(
       kept.html === "A" && kept.h === 124 && kept.lineHeight === .01 &&
-        kept.fontSize === 300 &&
+        kept.fontSize === 300 && !Object.hasOwn(kept, "valign") &&
         retained.state.pending.length === saved.pending.length,
     );
     assert(await Deno.readTextFile(source) === original);
+    let previous = retained.state;
+    for (const lineHeight of [.00001, 0]) {
+      const collapsed = structuredClone(previous.emitted);
+      const collapsedLabel = collapsed.slides[0].elements.find((el) =>
+        el.id === label.id
+      )!;
+      collapsedLabel.html = "A<br>B";
+      collapsedLabel.fontSize = 100;
+      collapsedLabel.lineHeight = lineHeight;
+      collapsedLabel.valign = "middle";
+      collapsedLabel.h = 116;
+      const savedCollapsed = await saveProject(
+        source,
+        collapsed,
+        previous.revision,
+      );
+      const rerendered = await renderProject(source);
+      assert(
+        rerendered.diagnostics.some((diagnostic) =>
+          diagnostic.code === "KPI_CONTENT_OVERFLOW" &&
+          diagnostic.elementId === label.id
+        ),
+      );
+      const keptCollapsed = rerendered.state.emitted.slides[0].elements.find((
+        el,
+      ) => el.id === label.id)!;
+      assert(
+        keptCollapsed.html === "A<br>B" && keptCollapsed.fontSize === 100 &&
+          keptCollapsed.lineHeight === lineHeight &&
+          keptCollapsed.valign === "middle" &&
+          keptCollapsed.h === 116 &&
+          rerendered.state.pending.length === savedCollapsed.pending.length,
+      );
+      assert(await Deno.readTextFile(source) === original);
+      previous = rerendered.state;
+    }
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
