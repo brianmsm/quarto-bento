@@ -244,10 +244,16 @@ A wrapper around an executable `{r}` chunk refuses, preserving the distinction
 between displayed source and execution outputs. Unknown components, unsupported
 content, conflicting ownership and layouts with the wrong child count refuse
 explicitly. Component composition is closed to adapted native text, code,
-image and decorative rectangle types. Tables/charts/embeds or raw native SVG
-objects inside a component currently refuse `COMPONENT_CONTENT_LAYOUT_UNSUPPORTED`
-until their internal metrics have a measured layout adapter; SVG figures
-projected as images remain supported.
+image, plain table and decorative rectangle types. Tables are projected at the
+final slot width with their native font/padding and complete row height; their
+boxes are never shrunk independently of internal metrics. An identified table
+wrapper can be a card child or layout child, including a card within a layout.
+Card headings/paragraphs may be separate siblings of that wrapper. A table
+wrapper containing extra semantic siblings refuses `COMPONENT_TABLE_SUBTREE`;
+move those siblings into separate card children. Charts/embeds or raw native
+SVG objects still refuse `COMPONENT_CONTENT_LAYOUT_UNSUPPORTED`; SVG figures
+projected as images remain supported. See
+[composed table evidence](evidence/COMPOSED-TABLES.md).
 
 ```markdown
 ## Resultados {#resultados}
@@ -292,8 +298,8 @@ Missing values, a meaningful category header that the pinned renderer cannot
 display, excessive precision or ambiguous provenance refuse explicitly. Chart
 options remain semantic: native option edits become pending changes or computed
 conflicts; they cannot freeze old data as visual overrides. Reverse chart-data
-sync remains unsupported. Tables and charts inside card/layout components still
-refuse until their internal sizing is adapted.
+sync remains unsupported. Plain tables support bounded card/layout composition;
+native charts inside components still refuse until their internal sizing is adapted.
 
 ### Displayed code (implemented subset)
 
