@@ -75,3 +75,45 @@ separate headless review establishes native DOM and screenshot evidence. Native
 foreground editor interaction and macOS/Windows acceptance remain separate
 validation layers. This slice does not claim a universal graph layout, arbitrary
 HTML conversion or a full product release.
+
+## Integrated Studio acceptance on Linux
+
+At runtime `9e8d8d8` (documentation HEAD `bf2be2e`), an independent copy of
+`examples/source-graphs` completed real native editor interaction in headless
+Chromium. Headless execution avoided stealing desktop focus; the pinned Bento
+editor, DOM and controls were used rather than a simulated canvas.
+
+- Native text editing changed `Modelo B` to `Modelo alternativo` and the timeline
+  milestone `Datos` to `Datos locales`. The milestone label's native Y position
+  changed to 300 through the inspector. Save and reopen retained both pending
+  labels and geometry while QMD remained byte-identical.
+- Studio review displayed the two exact source changes. Explicit Apply and
+  Recalculate produced revision 6 with no pending edits. The entire native deck
+  equalled the saved pre-sync document, including the timeline label's position.
+  QMD differed only in those two authored labels; its R producer was unchanged.
+- Changing the CSV to 100, 25, 150 and recalculating produced revision 7, no
+  pending edits, and a new SVG. All three graph/timeline slides remained exactly
+  equal; the figure's non-content fields also remained equal. `docId` stayed
+  `46c96ff4-bdc1-470b-97c8-493b632c3082` throughout.
+- Dragging a connector endpoint in this pinned upstream editor deletes its
+  native binding; it does not rebind to the node under the pointer. Save retained
+  this pending edit, and review refused to remove the required source endpoint
+  with Apply disabled. Native Undo restored the connection before continuing.
+  A dedicated explicit Studio relationship selector is in progress; this receipt
+  does not claim that native dragging changes source relationships.
+
+The coordinator visually inspected the initial fork, refusal, exact review,
+recomputed fork/timeline and changed-data figure. The labels and attached arrows
+were readable; the deliberately moved timeline label retained its offset inside
+its node. Local artifacts are `output/playwright/graphs-native-*.png` and
+`output/verification/graphs-native/receipt.json`. Source SHA-256 after sync:
+`3d0dd2522e196538b87227f50e9a6fc57805562a6652ad4f480a0c321e2efca9`.
+
+Integration checks passed **19/19** graph execution, KPI and plain-QMD tests,
+**2/2** new graph/identity tests and **5/5** Studio graph/plain/serialized-Apply
+client tests. The graph/identity regression first reproduced the incompatible
+technical-wrapper flow signature, then passed with strict transparent-wrapper
+recognition. Independent review repeated the integration cases and checked 14
+wrapper variants, retaining guards for geometry, typography, media, computed
+content, extra bytes and invalid identities. These focused receipts precede the
+final complete-suite and package qualification.

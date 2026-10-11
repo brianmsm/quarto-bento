@@ -68,8 +68,10 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 The post-suite audit's plain-QMD identity and confirmed source-element deletion
 cases are now integrated, independently reviewed and demonstrated through native
 Studio. Source-authored KPI projection and changed-data recomputation are also
-integrated. Meaningful Studio-created card/KPI synchronization and source
-diagrams/timelines remain in isolated implementation/review branches. See the
+integrated. Source diagrams/timelines now have independently reviewed integration
+and native label/design/sync/recompute evidence. Meaningful Studio-created
+card/KPI synchronization and an explicit diagram relationship selector remain
+in implementation/review branches. See the
 [functional acceptance checklist](ACCEPTANCE_GAPS.md). The prior full suite
 below predates these additions; their current evidence is focused, not a new
 complete suite result.
@@ -103,6 +105,12 @@ complete suite result.
   sandbox. The server listens only on `127.0.0.1`.
 
 ## Recent integrated verification
+
+- At `9e8d8d8`, source diagrams/timelines passed 19 combined graph/KPI/plain
+  tests, 2 graph/identity regressions and 5 Studio client tests. Native label
+  editing, save/reopen, reviewed sync and changed-data execution preserved
+  `docId` and exact graph design. Detached endpoints refuse safely; the explicit
+  relation selector is the remaining UI follow-up. [Graph evidence](evidence/GRAPHS.md).
 
 - At `be98fc1`, 22 focused plain-QMD/deletion/client tests passed with zero
   failures. Independent mixed testing covered CRLF, reviewed identities,

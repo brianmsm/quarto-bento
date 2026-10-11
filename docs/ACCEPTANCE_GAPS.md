@@ -69,11 +69,13 @@ edits, failed publication/recovery, native Studio controls and integrated tests.
 
 The [target component vocabulary](AUTHORING.md) includes `.bento-diagram` and
 `.bento-timeline`. Their bounded adapters and explicit source node/edge or
-lexical milestone structures are implemented in an isolated branch under
-independent review. They are not yet integrated in main. Relationship source
-patches must be visible in Studio before approval, and saved native geometry
-must retain its separate authority. Native DOM/visual evidence for the branch is
-available; final integration and native edit/sync acceptance remain.
+lexical milestone structures are integrated and independently reviewed. Studio
+displays exact relationship patches and the complete proposed QMD. Native
+label edit/save/reopen/sync and changed-data recomputation retained the complete
+graph/timeline design; see [graph evidence](evidence/GRAPHS.md). The pinned editor
+detaches a dragged endpoint rather than rebinding it. This is safely refused on
+sync; an explicit Studio relationship selector is being implemented to make
+valid endpoint changes directly accessible. Its final acceptance remains.
 
 ## Integrated verification still required
 
