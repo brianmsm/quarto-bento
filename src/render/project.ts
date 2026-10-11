@@ -1,6 +1,8 @@
 import { projectKpi } from "./kpi.ts";
 import { kpiSource } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
+import { projectGraph, validateGraphOrigin } from "./graphs.ts";
+import { sourceGraphs } from "../source/graphs.ts";
 import {
   collectRichTableCandidates,
   type RichTableSnapshot,
@@ -484,6 +486,30 @@ export async function projectAst(
           continue;
         }
         if (
+          declaration.component === "diagram" ||
+          declaration.component === "timeline"
+        ) {
+          if (!source || computed || inComponent || parentId) {
+            throw new DesignError(
+              "UNMAPPED_GRAPH_SOURCE",
+              "Declare original graphs directly under a slide, outside execution and other components.",
+            );
+          }
+          if (!slide) startSlide("qb-introduction");
+          const projected = await projectGraph(source, node, {
+            x: 80,
+            y,
+            w: 1120,
+            h: Math.min(470, 680 - y),
+          }, defaults);
+          for (const element of projected.elements) {
+            add(element, projected.origins[element.id]);
+          }
+          Object.assign(result.design![slide!.id] ??= {}, projected.fields);
+          y = projected.frame.y + projected.frame.h + 20;
+          continue;
+        }
+        if (
           declaration.component === "card" || declaration.component === "layout"
         ) {
           if (
@@ -945,6 +971,7 @@ export function assertSupportedExecutionSource(source: SourceDocument): void {
       );
     }
   }
+  sourceGraphs(source);
   for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
     if (
       /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
@@ -1022,6 +1049,11 @@ export function validateProjectionOrigins(
       let candidates = original.sourceId
         ? source.blocks.filter((b) => b.id === original.sourceId)
         : [];
+      if (original.graph) {
+        validateGraphOrigin(source, original, element, slideId);
+        origins[slideId][elementId] = original;
+        continue;
+      }
       if (original.designOnly) {
         const container = candidates[0];
         if (

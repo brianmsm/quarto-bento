@@ -6,6 +6,13 @@ import {
 } from "../render/inline.ts";
 export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
 import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
+import { graphSyncRequest, preflightGraphSync } from "./graph-sync.ts";
+import {
+  applyGraphEndpoints,
+  type GraphEndpointPreview,
+  type GraphEndpointRequest,
+  previewGraphEndpoints,
+} from "../source/graphs.ts";
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { basename, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
@@ -140,6 +147,7 @@ export interface SyncPlan {
   patch: PatchPreview;
   attributes?: AttributePreview;
   notes?: NotesPreview;
+  graphs?: GraphEndpointPreview;
   structure?: StructurePreview;
   identities?: IdentityPreview;
   annotations: AnnotationPreview;
@@ -720,6 +728,7 @@ async function buildPlan(
     creationChangeIds: string[] = [];
   const attributeRequests: AttributeRequest[] = [];
   const notesRequests: NotesRequest[] = [];
+  const graphRequests: GraphEndpointRequest[] = [];
   const textRequests: {
     blockId: string;
     expected: string;
@@ -746,6 +755,20 @@ async function buildPlan(
       )
     ) continue;
     if (change.kind === "field") {
+      const graphRequest = graphSyncRequest(text, state, change);
+      if (graphRequest) {
+        graphRequests.push(graphRequest);
+        changes.push({
+          changeId: change.id,
+          target: change.target,
+          blockId: graphRequest.edgeId,
+          kind: "graph-endpoint",
+          before: graphRequest.expected,
+          after: graphRequest.nodeId,
+          html: "",
+        });
+        continue;
+      }
       const key = targetKey(change.target);
       if (
         change.path.length === 1 &&
@@ -1175,7 +1198,11 @@ async function buildPlan(
   const structure = operations.length
     ? previewStructure(scanSource(attributeResult), operations)
     : undefined;
-  const semanticResult = structure?.result ?? attributeResult;
+  const structureResult = structure?.result ?? attributeResult;
+  const graphs = graphRequests.length
+    ? previewGraphEndpoints(scanSource(structureResult), graphRequests)
+    : undefined;
+  const semanticResult = graphs?.result ?? structureResult;
   const designRegistry = await annotationRegistry(
     projectPaths(source).directory,
   );
@@ -1292,6 +1319,7 @@ async function buildPlan(
       });
     }
   }
+  await preflightGraphSync(state, text, result);
   const unsigned = {
     version: 1 as const,
     source,
@@ -1306,6 +1334,7 @@ async function buildPlan(
     patch,
     ...(attributes ? { attributes } : {}),
     ...(notes ? { notes } : {}),
+    ...(graphs ? { graphs } : {}),
     ...(structure ? { structure } : {}),
     ...(identities ? { identities, identityBindings } : {}),
     annotations,
@@ -1441,7 +1470,10 @@ export async function applySync(
     const structureResult = verified.structure
       ? applyStructure(attributeResult, verified.structure)
       : attributeResult;
-    const result = applyAnnotations(structureResult, verified.annotations);
+    const graphResult = verified.graphs
+      ? applyGraphEndpoints(structureResult, verified.graphs)
+      : structureResult;
+    const result = applyAnnotations(graphResult, verified.annotations);
     if (result === text && !verified.selectedChangeIds.length) {
       fail(
         "NO_SOURCE_CHANGES",

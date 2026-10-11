@@ -1,5 +1,6 @@
 import { kpiReadabilityDiagnostics } from "../render/kpi.ts";
 import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
+import { assertGraphTypography } from "../render/graphs.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
 import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
@@ -327,6 +328,7 @@ export async function projectProjection(
         ...(origin.producer ? { producer: origin.producer } : {}),
         source: {
           hash: mapping.hash,
+          ...(origin.graph ? { graph: origin.graph } : {}),
           ...(origin.richTable ? { richTable: origin.richTable } : {}),
           ...(declaration ? { design } : {}),
           ...(block
@@ -445,6 +447,10 @@ async function render(source: string, executed?: ExecutedRender) {
     }
     if (!state) state = createState(generated, provenance, projected.ownership);
     const composed = compose(state, generated, provenance, projected.ownership);
+    await assertGraphTypography(
+      composed.document as unknown as RenderDoc,
+      composed.state.provenance,
+    );
     state = composed.state;
     const kpiDiagnostics = await kpiReadabilityDiagnostics(
       projected.mapping,

@@ -22,6 +22,7 @@ import {
   targetKey,
   validateDoc,
 } from "./json.ts";
+import { assertGraphDocument, graphRelationshipPath } from "./graphs.ts";
 
 const semanticFields = new Set([
   "html",
@@ -57,6 +58,9 @@ function semantic(
   target: Target,
   path: string[],
 ): boolean {
+  if (graphRelationshipPath(state.provenance[targetKey(target)], path)) {
+    return true;
+  }
   if (
     state.ownership[targetKey(target)]?.some((p) =>
       p === path.join("/") || p === path[0] ||
@@ -134,6 +138,10 @@ export function captureEdits(
 ): ProjectState {
   validateState(input);
   validateDoc(edited);
+  assertGraphDocument(edited, input.provenance, {
+    capture: true,
+    baseline: input.emitted,
+  });
   if (input.docId !== edited.docId) {
     throw new StateError(
       "UNRELATED_DOCUMENT",
@@ -672,6 +680,11 @@ export function compose(
     );
   }
   validateDoc(doc);
+  assertGraphDocument(doc, state.provenance, {
+    strict: options.strict,
+    baseline: input.emitted,
+    pending: state.pending,
+  });
   state.generatedBaseline = clone(generated);
   state.emitted = clone(doc);
   return { state, document: doc, changes: clone(state.pending) };

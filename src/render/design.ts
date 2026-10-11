@@ -4,7 +4,17 @@ export type PandocAttr = [string, string[], [string, string][]];
 export type DesignProperties = Record<string, string | number>;
 export interface DesignDeclaration {
   sourceId: string;
-  component?: "card" | "layout" | "code" | "chart" | "kpi";
+  component?:
+    | "card"
+    | "layout"
+    | "code"
+    | "chart"
+    | "kpi"
+    | "diagram"
+    | "timeline"
+    | "node"
+    | "edge"
+    | "milestone";
   chartKind?: "bar" | "line";
   layout?: string;
   properties: DesignProperties;
@@ -167,7 +177,13 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
     else if (components[0] === "bento-code") result.component = "code";
     else if (components[0] === "bento-chart") result.component = "chart";
     else if (components[0] === "bento-kpi") result.component = "kpi";
-    else throw new DesignError("UNSUPPORTED_COMPONENT", components[0]);
+    else if (components[0] === "bento-diagram") result.component = "diagram";
+    else if (components[0] === "bento-timeline") result.component = "timeline";
+    else if (components[0] === "bento-node") result.component = "node";
+    else if (components[0] === "bento-edge") result.component = "edge";
+    else if (components[0] === "bento-milestone") {
+      result.component = "milestone";
+    } else throw new DesignError("UNSUPPORTED_COMPONENT", components[0]);
   }
   const seen = new Set<string>();
   for (const [key, value] of attr[2]) {
@@ -178,6 +194,15 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
         throw new DesignError(
           "KPI_SLOT_ROLE",
           "bento-role belongs to a plain KPI child and must be label, value or detail.",
+        );
+      }
+      continue;
+    }
+    if ((key === "from" || key === "to") && result.component === "edge") {
+      if (!/^[A-Za-z][\w:.-]{0,159}$/.test(value)) {
+        throw new DesignError(
+          "INVALID_GRAPH_ENDPOINT",
+          "Endpoint values require literal source node identities.",
         );
       }
       continue;
@@ -246,7 +271,18 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
     !value || typeof value.sourceId !== "string" || !value.properties ||
     !value.bindings ||
     value.component &&
-      !["card", "layout", "code", "chart", "kpi"].includes(value.component)
+      ![
+        "card",
+        "layout",
+        "code",
+        "chart",
+        "kpi",
+        "diagram",
+        "timeline",
+        "node",
+        "edge",
+        "milestone",
+      ].includes(value.component)
   ) {
     throw new DesignError(
       "INVALID_DECLARATION",

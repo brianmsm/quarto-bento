@@ -39,6 +39,8 @@ export interface Origin {
   producer?: string;
   /** A generated design-only background verified against an original card or KPI div. */
   designOnly?: true;
+  /** Exact bounded source graph role/relationship receipt, verified before persistence. */
+  graph?: Json;
   /** Stable content receipt from a fresh, source-checked static table capture. */
   richTable?: Json;
 }
