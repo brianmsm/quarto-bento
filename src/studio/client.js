@@ -96,7 +96,17 @@ $("save").onclick = async () => {
 };
 function showPatches(plan) {
   $("patches").replaceChildren();
-  for (const patch of plan.patch.patches) {
+  for (
+    const patch of [
+      ...plan.patch.patches,
+      ...plan.changes.filter((change) => change.kind === "visual-attribute")
+        .map((change) => ({
+          blockId: `${change.blockId} · atributo visual`,
+          expected: change.before,
+          replacement: change.after,
+        })),
+    ]
+  ) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       before = document.createElement("pre"),
@@ -143,10 +153,11 @@ $("review").onclick = async () => {
         );
       }
       showPatches(syncPlan);
-      const hasChanges = syncPlan.patch.patches.length || syncPlan.structure;
+      const hasChanges = syncPlan.patch.patches.length ||
+        syncPlan.attributes?.patches.length || syncPlan.structure;
       $("sync-note").textContent = hasChanges
         ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
-        : "No hay cambios de texto compatibles pendientes de sincronización.";
+        : "No hay cambios compatibles pendientes de sincronización.";
       $("apply").disabled = !hasChanges;
     } catch (error) {
       $("sync-note").textContent = error.message;

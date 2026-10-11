@@ -192,8 +192,8 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
       result.properties[native] = validateDesignValue(key, value);
       result.bindings[native] = key;
     } else if (
-      key.startsWith("bento-") && key !== "bento-title-id" ||
-      result.component && key !== "bento-title-id"
+      (key.startsWith("bento-") || result.component) &&
+      !["bento-title-id", "bento-element-id"].includes(key)
     ) {
       throw new DesignError("UNSUPPORTED_DESIGN_ATTRIBUTE", key);
     }

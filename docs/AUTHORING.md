@@ -1,6 +1,6 @@
 # QMD authoring and visual annotations
 
-**Status:** syntax described here is an **intended Quarto-Bento contract**, not an implemented extension. Standard Pandoc/Quarto fenced div syntax underlies the examples; component-specific semantics are ours.
+**Status:** this document describes the **intended Quarto-Bento contract**. Direct-object visual attributes on identified headings/single-object fenced divs now have integrated [projection and sync evidence](evidence/DESIGN.md). The component vocabulary and annotation levels below remain incomplete. Standard Pandoc/Quarto fenced div syntax underlies the examples; component-specific semantics are ours.
 
 ## Three modes
 

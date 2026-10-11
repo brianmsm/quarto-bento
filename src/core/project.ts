@@ -14,6 +14,8 @@ import {
   verifyCapture,
 } from "./capture.ts";
 import { hashSource, scanSource } from "../source/mod.ts";
+import { sourceDesignAttribute } from "../source/attributes.ts";
+import { validateDesignValue } from "../render/design.ts";
 import {
   assertOutputUnchanged,
   type BentoDoc,
@@ -21,7 +23,9 @@ import {
   compose,
   createState,
   equal,
+  type JsonObject,
   markEmitted,
+  type OwnershipMap,
   type ProjectState,
   type ProvenanceMap,
   sha256,
@@ -172,16 +176,46 @@ export async function projectProjection(
   const generated = prepareIsolatedDocument(
     projected.document,
   ) as unknown as BentoDoc;
-  const provenance: ProvenanceMap = {};
+  const provenance: ProvenanceMap = {}, ownership: OwnershipMap = {};
   for (const [slideId, els] of Object.entries(projected.origins)) {
     for (const [elementId, origin] of Object.entries(els)) {
       const block = mapping.blocks.find((b) => b.id === origin.sourceId);
+      const declaration = projected.design?.[slideId]?.[elementId];
+      const design: JsonObject = {};
+      if (declaration) {
+        ownership[targetKey({ slideId, elementId })] = declaration.ownedPaths;
+        const element = generated.slides.find((s) => s.id === slideId)!.elements
+          .find((e) => e.id === elementId)!;
+        for (const [field, binding] of Object.entries(declaration.bindings)) {
+          const value = sourceDesignAttribute(
+            mapping,
+            binding.sourceId,
+            binding.attribute,
+          );
+          if (
+            !equal(
+              validateDesignValue(binding.attribute, value),
+              element[field],
+            )
+          ) {
+            throw new Error(
+              "UNMAPPED_DESIGN: executed visual attribute differs from its original source declaration",
+            );
+          }
+          design[field] = {
+            blockId: binding.sourceId,
+            attribute: binding.attribute,
+            value,
+          };
+        }
+      }
       provenance[targetKey({ slideId, elementId })] = {
         origin: block?.origin === "computed" ? "computed" : origin.origin,
         ...(origin.sourceId ? { semanticId: origin.sourceId } : {}),
         ...(origin.producer ? { producer: origin.producer } : {}),
         source: {
           hash: mapping.hash,
+          ...(declaration ? { design } : {}),
           ...(block
             ? {
               inlineCodec: INLINE_CODEC_VERSION,
@@ -206,6 +240,7 @@ export async function projectProjection(
   return {
     document: generated,
     provenance,
+    ownership,
     sourceHash: mapping.hash,
     diagnostics: projected.diagnostics,
   };
@@ -269,8 +304,8 @@ async function render(source: string, executed?: ExecutedRender) {
     if (state) {
       assertProjectionIdentity(state, provenance, projected.sourceHash);
     }
-    if (!state) state = createState(generated, provenance);
-    const composed = compose(state, generated, provenance);
+    if (!state) state = createState(generated, provenance, projected.ownership);
+    const composed = compose(state, generated, provenance, projected.ownership);
     state = composed.state;
     const shell = await Deno.readTextFile(
       new URL("../../vendor/bento/shell.html", import.meta.url),

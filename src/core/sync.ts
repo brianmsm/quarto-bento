@@ -29,6 +29,16 @@ import {
   scanSource,
 } from "../source/mod.ts";
 import type { PatchPreview, SourceBlock } from "../source/mod.ts";
+import {
+  applyAttributePatches,
+  previewAttributePatches,
+  sourceDesignAttribute,
+} from "../source/attributes.ts";
+import type {
+  AttributePreview,
+  AttributeRequest,
+} from "../source/attributes.ts";
+import { validateDesignValue } from "../render/design.ts";
 import { applyStructure, previewStructure } from "../source/structure.ts";
 import type {
   StructureOperation,
@@ -76,6 +86,7 @@ export interface SyncPlan {
   excludedChangeIds: string[];
   changes: SyncItem[];
   patch: PatchPreview;
+  attributes?: AttributePreview;
   structure?: StructurePreview;
   result: string;
   resultHash: string;
@@ -339,6 +350,7 @@ function buildPlan(
     normalizations: SyncNormalization[] = [],
     operations: StructureOperation[] = [],
     creationChangeIds: string[] = [];
+  const attributeRequests: AttributeRequest[] = [];
   const textRequests: {
     blockId: string;
     expected: string;
@@ -356,6 +368,68 @@ function buildPlan(
   // Existing text edits first, then source creation/deletion, finally the requested final order.
   for (const change of selected) {
     if (change.kind === "field") {
+      const key = targetKey(change.target);
+      if (
+        change.path.length === 1 &&
+        state.ownership[key]?.includes(change.path[0])
+      ) {
+        const design = state.provenance[key]?.source?.design;
+        const binding =
+          design && !Array.isArray(design) && typeof design === "object"
+            ? design[change.path[0]]
+            : undefined;
+        if (
+          !binding || typeof binding !== "object" || Array.isArray(binding) ||
+          typeof binding.blockId !== "string" ||
+          typeof binding.attribute !== "string" ||
+          typeof binding.value !== "string"
+        ) {
+          fail(
+            "UNMAPPED_DESIGN",
+            "This source-owned field has no independent inverse mapping. Edit its parent declaration in QMD or keep the source value.",
+          );
+        }
+        if (
+          !change.after.present ||
+          !["string", "number"].includes(typeof change.after.value)
+        ) {
+          fail(
+            "UNSUPPORTED_SYNC",
+            "A declared visual attribute needs a supported explicit value.",
+          );
+        }
+        const expected = sourceDesignAttribute(
+          scanSource(text),
+          binding.blockId,
+          binding.attribute,
+        );
+        if (expected !== binding.value) {
+          fail(
+            "SOURCE_CONFLICT",
+            "The same visual attribute changed in QMD; compare with QMD and resolve it before syncing.",
+          );
+        }
+        const value = validateDesignValue(
+          binding.attribute,
+          change.after.value as string | number,
+        );
+        attributeRequests.push({
+          blockId: binding.blockId,
+          attribute: binding.attribute,
+          expected,
+          value,
+        });
+        changes.push({
+          changeId: change.id,
+          target: change.target,
+          blockId: binding.blockId,
+          kind: "visual-attribute",
+          before: `${binding.attribute}=${expected}`,
+          after: `${binding.attribute}=${value}`,
+          html: "",
+        });
+        continue;
+      }
       if (
         canonical(change.path) !== canonical(["html"]) ||
         !change.after.present || typeof change.after.value !== "string"
@@ -501,10 +575,14 @@ function buildPlan(
     });
   }
   const patch = previewPatches(scanSource(text), textRequests);
-  const structure = operations.length
-    ? previewStructure(scanSource(patch.result), operations)
+  const attributes = attributeRequests.length
+    ? previewAttributePatches(scanSource(patch.result), attributeRequests)
     : undefined;
-  const result = structure?.result ?? patch.result;
+  const attributeResult = attributes?.result ?? patch.result;
+  const structure = operations.length
+    ? previewStructure(scanSource(attributeResult), operations)
+    : undefined;
+  const result = structure?.result ?? attributeResult;
   const unsigned = {
     version: 1 as const,
     source,
@@ -517,6 +595,7 @@ function buildPlan(
     ) => p.id),
     changes,
     patch,
+    ...(attributes ? { attributes } : {}),
     ...(structure ? { structure } : {}),
     result,
     resultHash: hashSource(result),
@@ -626,9 +705,12 @@ export async function applySync(
       );
     }
     const textResult = applyPatches(text, verified.patch);
-    const result = verified.structure
-      ? applyStructure(textResult, verified.structure)
+    const attributeResult = verified.attributes
+      ? applyAttributePatches(textResult, verified.attributes)
       : textResult;
+    const result = verified.structure
+      ? applyStructure(attributeResult, verified.structure)
+      : attributeResult;
     if (
       result !== verified.result || hashSource(result) !== verified.resultHash
     ) {

@@ -1,6 +1,11 @@
 import type { SourceDocument } from "../source/mod.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { renderInline as inline } from "./inline.ts";
+import {
+  applyElementDesign,
+  DesignError,
+  parseDesignAttributes,
+} from "./design.ts";
 import type {
   Ast,
   BentoDoc,
@@ -91,7 +96,12 @@ export async function projectAst(
     },
     slides: [],
   };
-  const result: Projection = { document, origins: {}, diagnostics: [] };
+  const result: Projection = {
+    document,
+    origins: {},
+    diagnostics: [],
+    design: {},
+  };
   let slide: Slide | undefined;
   let y = 166;
   let counter = 0;
@@ -141,6 +151,47 @@ export async function projectAst(
       lineHeight: 1.25,
     }, origin);
     if (!heading) y += h + 20;
+  }
+  function design(attr: Attr, elements: Element[]) {
+    const declaration = parseDesignAttributes(attr);
+    if (declaration.component) {
+      throw new DesignError(
+        "COMPONENT_INTEGRATION_PENDING",
+        "Use a directly mapped single-object wrapper until component projection is integrated.",
+      );
+    }
+    if (!Object.keys(declaration.properties).length) return;
+    if (!declaration.sourceId || elements.length !== 1 || !slide) {
+      throw new DesignError(
+        "AMBIGUOUS_DESIGN_TARGET",
+        "Explicit QMD fields need one object and a stable source #id.",
+      );
+    }
+    const element = elements[0],
+      applied = applyElementDesign(element, declaration);
+    const fields = (result.design![slide.id] ??= {});
+    const previous = fields[element.id] ?? { ownedPaths: [], bindings: {} };
+    if (
+      applied.ownedPaths.some((field) => previous.ownedPaths.includes(field))
+    ) {
+      throw new DesignError(
+        "AMBIGUOUS_DESIGN_OWNERSHIP",
+        "Several source declarations own the same visual field.",
+      );
+    }
+    fields[element.id] = {
+      ownedPaths: [...previous.ownedPaths, ...applied.ownedPaths],
+      bindings: {
+        ...previous.bindings,
+        ...Object.fromEntries(
+          Object.entries(applied.bindings).map((
+            [field, attribute],
+          ) => [field, { sourceId: declaration.sourceId, attribute }]),
+        ),
+      },
+    };
+    slide.elements[slide.elements.findIndex((e) => e.id === element.id)] =
+      applied.element;
   }
   async function figure(node: Node, computed: boolean, parentId?: string) {
     const [attr, , target] = node.c as [Attr, Node[], [string, string]];
@@ -201,8 +252,10 @@ export async function projectAst(
               ...(computed && parentId ? { producer: parentId } : {}),
             },
           );}
+        design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
         const isComputed = computed ||
           attr[1].some((c) => c === "cell" || c.startsWith("cell-output"));
         const nativeId = attr[2].find(([name]) => name === "bento-element-id")
@@ -249,6 +302,12 @@ export async function projectAst(
             await figure(img, isComputed, attr[0]);
           }
         } else await walk(children, isComputed, attr[0] || parentId);
+        design(
+          attr,
+          slide && (!beforeSlide || slide === beforeSlide)
+            ? slide.elements.slice(beforeCount)
+            : [],
+        );
       } else if (node.t === "Para" || node.t === "Plain") {
         const content = node.c as Node[];
         const imgs = images(content);

@@ -32,7 +32,7 @@ Full product acceptance and public v1 release remain pending. See
 | New/order/hide/restore/delete slides safely | New slide/text/order and explicit safe deletion implemented; computed producer ordering/deletion protected. Native new-slide/order/save/reopen/sync tested live; repeated template IDs have an independent real-Quarto regression; hide/restore/delete UI needs further work. [Structural sync](evidence/SYNC-STRUCTURE.md). |
 | Authored text/math/displayed code/notes synchronization | Plain/bold/italic/strikeout/web-link/inline-code text round-trip tested, including live native editing. [Inline](evidence/INLINE.md). Math/displayed-code/notes still pending. |
 | Computed provenance and explicit detach | Executed origins verified against original source; generated as-is content refuses ambiguous provenance. Explicit reconciliation supports restore/detach; broader fixtures remain. |
-| QMD visual attributes + annotation levels | Bounded attribute patch/design primitives tested; projector ownership and annotations are not integrated. |
+| QMD visual attributes + annotation levels | Direct-object QMD fields apply to projection, stay source-owned and sync through bounded patches; conflict and native UI checks pass. Components and annotation levels still pending. [Design](evidence/DESIGN.md). |
 | Components, layouts, themes, animation/morph | Pending full supported projections and retention checks. |
 | Charts and simple tables; faithful rich fallback | Pending adapters and conversion diagnostics. |
 | Plotly/htmlwidgets + isolated offline Presenter | Pending supported fixture, static fallback and isolation checks. |

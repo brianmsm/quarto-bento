@@ -139,6 +139,38 @@ function asAttr(content: string, parsed: Token[]): PandocAttr {
   }
   return [id, classes, attributes];
 }
+/** Read exact original values only from supported, stable source declarations. */
+export function sourceDesignAttribute(
+  doc: SourceDocument,
+  blockId: string,
+  attribute: string,
+): string {
+  const blocks = doc.blocks.filter((b) => b.id === blockId);
+  if (
+    blocks.length !== 1 || !blocks[0].stable ||
+    !["heading", "div", "code"].includes(blocks[0].kind)
+  ) {
+    throw new SourceError(
+      "unmapped",
+      "Visual attributes need an identified source declaration.",
+    );
+  }
+  const line = blocks[0].raw.split(/\r?\n/)[0];
+  const content = /\{([^{}]*)\}[ \t]*$/.exec(line)?.[1];
+  if (content === undefined) {
+    throw new SourceError("unmapped", "Missing original attribute block.");
+  }
+  const parsed = tokens(content), attr = asAttr(content, parsed);
+  parseDesignAttributes(attr);
+  const values = attr[2].filter(([key]) => key === attribute);
+  if (values.length !== 1 || !nativeDesignField(attribute)) {
+    throw new SourceError(
+      "unmapped",
+      "Missing or ambiguous original visual attribute.",
+    );
+  }
+  return values[0][1];
+}
 function splice(text: string, patches: SourcePatch[]): string {
   let bytes = encoder.encode(text);
   for (

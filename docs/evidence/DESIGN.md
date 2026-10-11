@@ -1,8 +1,8 @@
 # Source-side design helpers: measured contract
 
-This slice implements helpers for source attributes and native component projection.
-It does not by itself wire the CLI, Studio or complete projector: those callers must
-use the returned ownership and bindings as described below. Evidence uses Bento
+Directly mapped visual attributes are integrated into projection, durable state,
+conflict review, CLI sync and Studio. Component/layout helpers described below
+remain separate primitives; their group projection is not yet connected. Evidence uses Bento
 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`, the vendored native schema, and
 actual Quarto **1.10.19** execution.
 
@@ -108,3 +108,47 @@ R/SVG figure. These establish helper/static/execution behavior; end-to-end Studi
 controls and browser visual checks remain integration work. The complete component
 vocabulary in `AUTHORING.md` remains the target rather than a claim that every
 component is implemented here.
+
+## Integrated direct-object attributes
+
+Identified headings and fenced divs that project exactly one native element
+apply explicit geometry/style fields and retain source-field ownership. A named
+wrapper around one computed figure owns its visual attributes; the producing
+chunk continues to own the computed content. For example:
+
+```markdown
+## Title {#slide font-size="38"}
+
+::: {#body x="84" color="teal"}
+Authored text.
+:::
+```
+
+The executed AST declaration is checked against the exact original source
+attribute before creating an inverse binding. Several declarations claiming one
+field, multiple-element wrappers, missing stable identities and incompatible
+values refuse. Unknown components are also explicit errors until integrated.
+Fields not declared in QMD remain sparse visual overrides.
+
+Sync plans apply text patches, then bounded attribute patches, then any structural
+operations, and verify the complete final bytes before the existing recoverable
+transaction publishes them. Source attribute edits that diverge from the saved
+baseline must be resolved explicitly. Introducing source ownership over an old
+visual override similarly produces a recoverable conflict. Studio names the
+attribute and displays before/after values before enabling Apply.
+
+Four integration/negative tests cover combined text/attribute UTF-8/CRLF patches,
+tampering, conflict review, introduced ownership, multi-object ambiguity and a
+computed R/SVG figure whose wrapper position syncs without modifying its producer.
+The integrated suite passed **171 tests, 0 failures** on Linux. The subsequent
+UI-only Apply-button correction was retested live.
+
+Live Chromium proof used a temporary project with `x="84"`. Changing X to 220
+in the native property panel, saving and restarting Studio retained the pending
+attribute and left QMD unchanged. The review displayed `body · atributo visual`,
+`x=84` and `x=220`; applying changed only that original value. Recalculate returned
+to a clean project with native X=220. Screenshot inspected:
+`output/playwright/native-source-attribute-review.png` (ignored local artifact).
+An initial UI check caught that an attribute-only plan did not enable Apply;
+that condition now includes attribute patches and the full workflow passed after
+a fresh server restart.

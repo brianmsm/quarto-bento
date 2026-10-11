@@ -39,6 +39,13 @@ export interface Projection {
   document: BentoDoc;
   origins: Record<string, Record<string, Origin>>;
   diagnostics: Diagnostic[];
+  design?: Record<
+    string,
+    Record<string, {
+      ownedPaths: string[];
+      bindings: Record<string, { sourceId: string; attribute: string }>;
+    }>
+  >;
 }
 // Pandoc JSON is validated by individual handlers; unknown nodes fail explicitly.
 export interface Node {
