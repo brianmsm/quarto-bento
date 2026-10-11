@@ -154,3 +154,90 @@ to confirm the bug and was not claimed as directly observed.
 Suggested acceptance for a correction: editing is explicitly blocked during the
 render operation, or every post-start edit is captured/reconciled before iframe
 replacement; canceling any navigation must leave a functioning save bridge.
+
+## Retest: recalculation fix and explicit text synchronization
+
+A fresh server process loaded the `a271e4e` correction (root was at `fd0182e`
+when this test started). The fixture retained `Sys.sleep(8)` solely to exercise
+a long-running render.
+
+During `Recalculando…`, fresh observations were:
+
+- iframe `inert === true`;
+- busy overlay visible;
+- Guardar proyecto, Revisar cambios and Recalcular all disabled;
+- Tab, Meta+Z and keyboard typing did not alter the native paragraph;
+- a real pointer click into that native paragraph was blocked;
+- after computation, iframe inert became false and the overlay disappeared;
+- no stale native navigation dialog interrupted the managed reload;
+- Guardar proyecto worked afterwards and showed `Proyecto guardado`.
+
+This closes the reproduced P1 ordinary user-interaction race described above. It
+does not claim protection against a user executing arbitrary developer-console
+JavaScript while the editor is locked.
+
+The actual source synchronization UI was also exercised:
+
+1. Edit native source-backed paragraph to `Verified source sync from Studio.`.
+2. Click Revisar cambios, which saves pending edits and opens the modal.
+3. Inspect the visible prior and proposed text. Before applying, source QMD
+   still had exactly the same SHA-256 as a pre-review copy:
+   `578b5861af424d547f13e5814197530adb9f562cf50c3fa32f411da1fe9a19ae`.
+4. Click `Aplicar estos cambios a QMD`.
+5. Verify a one-line source diff, then close the modal and Recalcular.
+
+The complete source diff was:
+
+```diff
+ ::: {#finding}
+-The figure updates when the data change.
++Verified source sync from Studio.
+ :::
+```
+
+After render, Studio showed `Proyecto abierto`, pending count 0, the approved
+text, the same shape and `docId`, and unchanged figure x 210 / w 740 / h 360 /
+elevated shadow. Save and preview did not modify QMD; only explicit apply did.
+
+Visually inspected review screenshot:
+`/tmp/.playwright-cli/page-2026-10-11T01-30-17-946Z.png`.
+
+## Retest: stale-tab and delayed-frame initialization safety
+
+A further server restart loaded the embedded `__qbentoSnapshot` revision fix.
+Root was `65f039f20d9ddebfb1d15b45641941fb96d5c7bc` when the completed test was
+recorded. Source hashes of the tested files:
+
+- `src/studio/server.ts`:
+  `88b25513d4b867dc3cfc97d71c17097ebe19e0de0a3625e930f59a1aede59541`
+- `src/studio/client.js`:
+  `b511dcf73572f7655cf3969840a78a4016c04adf606534e5b89e5ba6eb12a417`
+
+Two independent browser sessions opened revision 12. Native edits in the old
+session read `Old tab unsaved wording.`; native edits in the new session read
+`New tab durable wording.`. Saving the new session produced durable revision 13.
+Clicking Guardar proyecto in the old session displayed
+`Reload the project before saving newer edits`. The old text stayed visible, the
+new session retained its own text, and a read-only state inspection confirmed
+revision 13 still held the newer text with one pending edit.
+
+The more specific **initialization race** was tested separately, because
+ordinary stale-tab checks would not exercise the previously identified boot
+race:
+
+1. In a second real page, intercept `/deck` with Playwright routing.
+2. Fetch the actual server response at revision 13, hold those exact HTML bytes
+   before fulfilling the route, and let the parent page wait for editor boot.
+3. In the already-loaded first page, use native text editing to enter
+   `Newer save while other iframe boots.` and click Guardar proyecto.
+4. Release the held revision-13 `/deck` HTML and allow the delayed editor to
+   boot.
+5. Verify its embedded snapshot still says revision 13 and its initial text is
+   the revision-13 text. Edit it natively to `Delayed iframe must refuse.` and
+   click Guardar proyecto.
+
+Result: the delayed page refused the save visibly with the same stale-revision
+message. It retained `Delayed iframe must refuse.` on screen; the other page
+retained `Newer save while other iframe boots.`. No old document was silently
+paired with the newer server revision. Routing delayed delivery only; neither
+response bytes nor native model edits were synthesized or replaced by the test.
