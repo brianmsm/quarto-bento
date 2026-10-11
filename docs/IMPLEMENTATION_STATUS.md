@@ -10,8 +10,8 @@ Full product acceptance and public v1 release remain pending. See
 - Root documentation preserved in Git before code changes (`e7f3f46`).
 - Quarto 1.10.19, Deno 2.9.6, R 4.6.1 on Linux.
 - Bento revision and bundled shell digest: `vendor/bento/pin.json`.
-- Five isolated managed worktrees: source mapping, Bento bridge, project state,
-  Quarto extension/design, and pinned document contract validation.
+- Isolated managed worktrees separate source mapping, bridge/state, Quarto
+  integration, document validation, Studio hardening, math, notes and packaging.
 - Core choices: TypeScript/Deno; no runtime package or computation environment management.
 - Each implementation commit must carry suitable tests or measured evidence. Integration and
   browser validation are separate gates; unit tests alone do not establish a slice.
@@ -36,11 +36,11 @@ Full product acceptance and public v1 release remain pending. See
 | Components, layouts, themes, animation/morph | Pending full supported projections and retention checks. |
 | Charts and simple tables; faithful rich fallback | Pending adapters and conversion diagnostics. |
 | Plotly/htmlwidgets + isolated offline Presenter | Pending supported fixture, static fallback and isolation checks. |
-| Bento standalone/PDF | Upstream shell vendored; offline/edit/PDF visual proof pending. |
-| Structured CLI/API + ordinary Quarto custom format | JSON CLI render/capture/status/diff/sync/recover/edit/init/doctor, guarded project hooks and single-execution test implemented. Packaging and remaining actions pending. |
+| Bento standalone/PDF | Static three-slide standalone opens, edits, downloads and reopens with networking disabled; native print yields visually inspected PDF with changed-data SVG and retained design. Browser harness on Linux; OS dialogs and widgets remain pending. [Offline/PDF](evidence/OFFLINE-PDF.md). |
+| Structured CLI/API + ordinary Quarto custom format | JSON CLI render/capture/status/diff/sync/recover/edit/init/doctor/validate, guarded hooks and single-execution test implemented, including spaces/quotes in project paths. Portable development packaging exists; remaining actions/native platforms pending. |
 | Rebuild from clean clone without generated HTML | Relocated rebuild from QMD, CSV and two state files preserves pending text, native design/docId and changed-data SVG. [First slice](evidence/FIRST-SLICE.md). |
 | Offline / hostile data / paths / local server security | Initial safe script splicing/local asset checks; complete audit pending. |
-| Linux/macOS/Windows packaging and native evidence | Linux development only; packaging/CI/native other-OS proof pending. |
+| Linux/macOS/Windows packaging and native evidence | Portable development directory, offline launchers and SHA256 inventory implemented; Linux relocation/clean-cache execution tested. Native other-OS proof and release packaging remain pending. [Packaging](PACKAGING.md). |
 | Accurate end-user docs + public release scope | Pending implementation docs; public v1 boundary not frozen. |
 
 ## Known limits under active implementation
@@ -55,7 +55,7 @@ Full product acceptance and public v1 release remain pending. See
   Displayed code preserves content and source-owned typography; executable echoes
   retain computed provenance and cannot reverse-write their producer.
   Native charts/tables, notes/math round-trip, components, widgets,
-  Presenter/PDF and cross-platform packaging remain separate incomplete gates.
+  Presenter/widgets and cross-platform native packaging remain separate incomplete gates.
 - Capture permits one accepted capture per published generation and refuses
   older HTML after newer Studio edits. Re-render before editing another native
   copy; arbitrary independent copies are not automatically reconciled.

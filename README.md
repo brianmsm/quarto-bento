@@ -31,18 +31,25 @@ deno task qbento status fixtures/basic/presentation.qmd
 deno task test
 ```
 
+To build a portable development directory with launchers and the pinned offline
+runtime, run `deno task package /absolute/path/to/new-directory`. See
+[packaging instructions and platform evidence](docs/PACKAGING.md). This requires
+installed Deno/Quarto and does not install computation environments.
+
 `edit` prints a loopback Studio URL. Open that address in a browser. **Guardar
 proyecto** saves durable visual and pending semantic edits to `.qbento/` without
 changing QMD. Native Bento's own Save still saves a standalone HTML file.
 Capture native local edits explicitly with `deno task qbento capture path.qmd
 [edited-copy.html]` before regeneration. A changed uncaptured output is refused.
 
-Currently demonstrated projection: explicit slide headings, text in identified
-fenced divs, and R-generated SVG figures. Unknown conversions refuse rather than
+Currently demonstrated projection: explicit slide headings, supported rich text
+in identified fenced divs, displayed code, and R-generated SVG figures.
+Unknown conversions refuse rather than
 invent a result. Studio supports text/structural review and fresh conflict resolution. The guarded
 `qbento-html` extension executes Quarto once per render (verified on Linux).
-Broader semantic/content adapters, PDF/Presenter and cross-platform packaging
-remain in progress. The implementation ledger is
+The static standalone/PDF workflow has [offline browser evidence](docs/evidence/OFFLINE-PDF.md).
+Broader semantic/content adapters, enhanced Presenter and native cross-platform
+validation remain in progress. The implementation ledger is
 the authority for acceptance evidence; the target documentation below remains
 the intended product contract.
 
