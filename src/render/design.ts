@@ -446,12 +446,17 @@ function placed(elements: Element[], frame: Frame): Element[] {
     throw new DesignError("INVALID_ELEMENT_FRAME", "empty group bounds");
   }
   // Uniform fit retains aspect ratio and relative positioning within a semantic child.
-  const scale = Math.min(1, frame.w / width, frame.h / height);
-  if (scale < 1 && original.some((element) => element.type === "table")) {
-    throw new DesignError(
-      "COMPONENT_CONTENT_OVERFLOW",
-      "A native table must fit its final frame without scaling its box; use a wider or taller component.",
-    );
+  let scale = Math.min(1, frame.w / width, frame.h / height);
+  if (original.some((element) => element.type === "table")) {
+    if (width > frame.w + .01 || height > frame.h + .01) {
+      throw new DesignError(
+        "COMPONENT_CONTENT_OVERFLOW",
+        "A native table must fit its final frame without scaling its box; use a wider or taller component.",
+      );
+    }
+    // Coordinate subtraction can exceed an exact slot by floating-point dust.
+    // Accept that tolerance as translation, never as a near-one table scale.
+    scale = 1;
   }
   return original.map((e) => {
     const fitted: Element = {

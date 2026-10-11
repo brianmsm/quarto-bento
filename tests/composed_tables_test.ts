@@ -361,3 +361,36 @@ Deno.test("explicit composed table geometry remains source-owned and pending edi
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("fractional layout slots translate native tables without roundoff scaling", () => {
+  const table: Element = {
+    id: "a",
+    type: "table",
+    x: 104.2,
+    y: 166,
+    w: 100.1,
+    h: 168,
+    header: false,
+    columns: [{ w: 1 }],
+    rows: [{ cells: [{ html: "A", align: "left" }] }],
+    style: { fontSize: 18, cellPadX: 16, cellPadY: 11, borderWidth: 1 },
+  };
+  for (const columns of [2, 3]) {
+    const projected = applyComponentDesign(
+      Array.from(
+        { length: columns },
+        (_, i) => [{ ...table, id: `table-${i}` }],
+      ),
+      parseDesignAttributes(["grid", ["bento-layout"], [[
+        "bento-layout-name",
+        "fractional",
+      ], ["w", String(columns * 100.1 + (columns - 1) * 32)]]]),
+      { layouts: { fractional: { columns, gap: 32, padding: 0 } } },
+    );
+    for (const moved of projected.elements) {
+      for (const field of ["w", "h", "style", "rows", "columns"]) {
+        eq(moved[field], table[field]);
+      }
+    }
+  }
+});
