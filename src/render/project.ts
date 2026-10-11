@@ -49,12 +49,19 @@ function images(nodes: Node[]): Node[] {
   return result;
 }
 async function assetData(src: string, assetRoots: string[]): Promise<string> {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith("//")) {
+  // UNC and device paths must refuse before realPath can contact a share on Windows.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(src) || /^[/\\]{2}/.test(src)) {
     throw new Error("EXTERNAL_ASSET: local bundled image required");
   }
   for (const root of assetRoots) {
     try {
-      const actual = await Deno.realPath(resolve(root, src));
+      const candidate = resolve(root, src);
+      const lexical = relative(resolve(root), candidate);
+      if (
+        lexical === ".." || lexical.startsWith("../") ||
+        lexical.startsWith("..\\") || isAbsolute(lexical)
+      ) continue;
+      const actual = await Deno.realPath(candidate);
       const rel = relative(await Deno.realPath(root), actual);
       if (
         rel === ".." || rel.startsWith("../") || rel.startsWith("..\\") ||
