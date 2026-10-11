@@ -94,7 +94,9 @@ Deno.test({
       for (
         const [path, error] of [
           ["/api/save", "Document too large"],
+          ["/api/sync/preview", "Plan too large"],
           ["/api/sync/apply", "Plan too large"],
+          ["/api/slides/action", "Plan too large"],
           ["/api/reconcile/apply", "Plan too large"],
         ]
       ) {

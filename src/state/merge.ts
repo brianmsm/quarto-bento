@@ -67,7 +67,10 @@ function semantic(
 }
 function upsert(state: ProjectState, change: Change): void {
   const old = state.pending.find((p) => p.id === change.id);
-  if (old) change.before = old.before;
+  if (old) {
+    change.before = old.before;
+    if (old.restoreOrder) change.restoreOrder = clone(old.restoreOrder);
+  }
   state.pending = state.pending.filter((p) => p.id !== change.id);
   if (!equal(change.before, change.after)) state.pending.push(change);
 }
@@ -199,6 +202,12 @@ export function captureEdits(
         { present: false },
         "delete-slide",
       );
+      const deletion = state.pending.find((p) =>
+        p.kind === "delete-slide" && p.target.slideId === oldSlide.id
+      );
+      if (deletion) {
+        deletion.restoreOrder ??= state.emitted.slides.map((s) => s.id);
+      }
       continue;
     }
     if (
@@ -795,6 +804,11 @@ export function validateState(value: unknown): asserts value is ProjectState {
       !object(p) || typeof p.id !== "string" || !target(p.target) ||
       !path(p.path) || !fieldValue(p.before) || !fieldValue(p.after) ||
       (p.source !== undefined && !fieldValue(p.source)) ||
+      (p.restoreOrder !== undefined &&
+        (p.kind !== "delete-slide" || !Array.isArray(p.restoreOrder) ||
+          !p.restoreOrder.every((id) => typeof id === "string" && id) ||
+          new Set(p.restoreOrder).size !== p.restoreOrder.length ||
+          !p.target.slideId || !p.restoreOrder.includes(p.target.slideId))) ||
       ![
         "field",
         "create-slide",

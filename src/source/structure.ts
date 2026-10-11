@@ -75,6 +75,45 @@ function uniqueSlide(doc: SourceDocument, id: string): SourceSlide {
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+/** Check authored inline HTML links as well as Markdown references. */
+function hasHtmlReference(text: string, id: string): boolean {
+  for (
+    const tag of text.matchAll(/<[a-z](?:[^"'<>]|"[^"]*"|'[^']*')*>/gi)
+  ) {
+    for (
+      const attribute of tag[0].matchAll(
+        /\s([^\s"'<>/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g,
+      )
+    ) {
+      if (!["href", "xlink:href"].includes(attribute[1].toLowerCase())) {
+        continue;
+      }
+      const value = (attribute[2] ?? attribute[3] ?? attribute[4]).replace(
+        /&#(?:x([\da-f]+)|(\d+));?|&(num|colon|period|lowbar|hyphen);/gi,
+        (_, hex, decimal, named) => {
+          if (named) {
+            return ({
+              num: "#",
+              colon: ":",
+              period: ".",
+              lowbar: "_",
+              hyphen: "-",
+            } as Record<string, string>)[named.toLowerCase()];
+          }
+          const code = parseInt(hex ?? decimal, hex ? 16 : 10);
+          return code <= 0x10ffff ? String.fromCodePoint(code) : "\ufffd";
+        },
+      ).trim();
+      if (!value.startsWith("#")) continue;
+      try {
+        if (decodeURIComponent(value.slice(1)) === id) return true;
+      } catch {
+        // Invalid percent escapes cannot resolve to this source identity.
+      }
+    }
+  }
+  return false;
+}
 /** A immediately preceding technical marker travels with the heading it identifies. */
 function sectionSpans(doc: SourceDocument): Map<string, Span> {
   const starts = doc.slides.map((slide) => {
@@ -302,9 +341,9 @@ function validateStep(
       for (const block of members.filter((b) => b.explicitId)) {
         const id = escapeRegex(block.explicitId!);
         if (
-          new RegExp(`(?:@${id}(?![\\w:.-])|\\]\\(\\s*#${id}(?:\\s|\\)))`).test(
-            rest,
-          )
+          new RegExp(
+            `(?:@${id}(?:\\.(?![\\w:.-])|(?![\\w:.-]))|\\]\\(\\s*#${id}(?:\\s|\\)))`,
+          ).test(rest) || hasHtmlReference(rest, block.explicitId!)
         ) {
           fail(
             "shared-reference",

@@ -56,6 +56,49 @@ Deno.test("reordering authored and single computed slides preserves section byte
   );
   eq(scanSource(result).slides.map((s) => s.id), ["two", "one"]);
 });
+Deno.test("deleting a referenced slide protects citation punctuation and inline HTML links", () => {
+  for (
+    const reference of [
+      "See @a.",
+      "See @a,",
+      "See [slide](#a).",
+      'Open <a href="#a">the target</a>.',
+      "Open <a href='#a'>the target</a>.",
+      "Open <a href=#a>the target</a>.",
+      'Open <a HREF="&#35;%61">the target</a>.',
+      'Open <a href="&num;&#x61;">the target</a>.',
+      'Open <a xlink:href="#a">the target</a>.',
+      'Open <a title="Look > here" href="#a">the target</a>.',
+    ]
+  ) {
+    const source = `## A {#a}\n\nText.\n\n## B {#b}\n\n${reference}\n`;
+    fails(() =>
+      previewStructure(scanSource(source), [{
+        type: "delete-slide",
+        id: "a",
+        confirmed: true,
+      }]), "shared-reference");
+  }
+  for (
+    const body of [
+      "See @a.b.",
+      'The API attribute is data-href="#a".',
+      '<a data-href="#a">Metadata</a>.',
+      '<a href="#a-long">Another target</a>.',
+      '<a title="Example href=#a">Metadata</a>.',
+    ]
+  ) {
+    const source = `## A {#a}\n\nText.\n\n## B {#b}\n\n${body}\n`;
+    eq(
+      previewStructure(scanSource(source), [{
+        type: "delete-slide",
+        id: "a",
+        confirmed: true,
+      }]).result,
+      `## B {#b}\n\n${body}\n`,
+    );
+  }
+});
 Deno.test("reordering multiple executable producers refuses changed relative execution order", () => {
   const source =
     "## A {#a}\n\n```{r}\n#| label: setup\nx=1\n```\n\n## B {#b}\n\n```{r}\n#| label: output\nprint(x)\n```\n\n";

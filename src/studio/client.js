@@ -1,6 +1,6 @@
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
-let state, bridge, syncPlan, reconcilePlan, busy = false;
+let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
     method: body === undefined ? "GET" : "POST",
@@ -24,7 +24,7 @@ function setBusy(value) {
   busy = value;
   $("busy").hidden = !value;
   $("editor").inert = value;
-  for (const id of ["save", "review", "reconcile", "render"]) {
+  for (const id of ["save", "slides", "review", "reconcile", "render"]) {
     $(id).disabled = value;
   }
   if (value) {
@@ -124,6 +124,23 @@ function showPatches(plan) {
     $("patches").append(section);
   }
   if (plan.structure) {
+    for (const step of plan.structure.steps) {
+      for (const edit of step.edits) {
+        const section = document.createElement("section"),
+          title = document.createElement("h3"),
+          before = document.createElement("pre"),
+          after = document.createElement("pre");
+        title.textContent = step.operation.type === "delete-slide"
+          ? `Eliminar ${step.operation.id} del QMD`
+          : `Estructura · ${step.operation.type}`;
+        before.textContent = edit.expected;
+        before.className = "before";
+        after.textContent = edit.replacement || "Se elimina este fragmento";
+        after.className = "after";
+        section.append(title, before, after);
+        $("patches").append(section);
+      }
+    }
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
@@ -131,6 +148,43 @@ function showPatches(plan) {
     result.textContent = plan.result;
     section.append(title, result);
     $("patches").append(section);
+  }
+}
+async function prepareSyncPreview() {
+  const generation = ++previewGeneration;
+  syncPlan = undefined;
+  $("apply").disabled = true;
+  $("patches").replaceChildren();
+  const boxes = [...$("delete-confirmations").querySelectorAll("input")];
+  if (boxes.some((box) => !box.checked)) {
+    $("sync-note").textContent =
+      "Confirma las eliminaciones para preparar la propuesta, o restáuralas desde Diapositivas.";
+    return;
+  }
+  $("sync-note").textContent = "Preparando los cambios propuestos…";
+  try {
+    const plan = await api("sync/preview", {
+      confirmedDeleteIds: boxes.map((box) => box.dataset.change),
+    });
+    if (generation !== previewGeneration) return;
+    if (plan.stateRevision !== state.revision) {
+      throw new Error(
+        "El proyecto cambió mientras se preparaba la revisión. Recarga antes de sincronizar.",
+      );
+    }
+    syncPlan = plan;
+    showPatches(syncPlan);
+    const hasChanges = syncPlan.patch.patches.length ||
+      syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
+      syncPlan.structure;
+    $("sync-note").textContent = hasChanges
+      ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
+      : "No hay cambios compatibles pendientes de sincronización.";
+    $("apply").disabled = !hasChanges;
+  } catch (error) {
+    if (generation === previewGeneration) {
+      $("sync-note").textContent = error.message;
+    }
   }
 }
 $("review").onclick = async () => {
@@ -146,33 +200,39 @@ $("review").onclick = async () => {
     syncPlan = undefined;
     $("apply").disabled = true;
     $("patches").replaceChildren();
+    $("delete-confirmations").replaceChildren();
+    for (
+      const change of saved.pending.filter((item) =>
+        item.kind === "delete-slide"
+      )
+    ) {
+      const label = document.createElement("label"),
+        checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.dataset.change = change.id;
+      checkbox.onchange = prepareSyncPreview;
+      label.append(
+        checkbox,
+        document.createTextNode(
+          ` Confirmo eliminar la diapositiva ${change.target.slideId} y su contenido del QMD`,
+        ),
+      );
+      $("delete-confirmations").append(label);
+    }
     showChanges($("changes"), saved.pending.map((change) => ({ change })));
     $("review-dialog").showModal();
-    try {
-      syncPlan = await api("sync/preview", {});
-      if (syncPlan.stateRevision !== state.revision) {
-        syncPlan = undefined;
-        throw new Error(
-          "El proyecto cambió mientras se preparaba la revisión. Recarga antes de sincronizar.",
-        );
-      }
-      showPatches(syncPlan);
-      const hasChanges = syncPlan.patch.patches.length ||
-        syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
-        syncPlan.structure;
-      $("sync-note").textContent = hasChanges
-        ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
-        : "No hay cambios compatibles pendientes de sincronización.";
-      $("apply").disabled = !hasChanges;
-    } catch (error) {
-      $("sync-note").textContent = error.message;
-    }
+    await prepareSyncPreview();
   } catch (error) {
     showError(error);
   }
 };
 $("apply").onclick = async () => {
   if (!syncPlan) return;
+  if (
+    [...$("delete-confirmations").querySelectorAll("input")].some((box) =>
+      !box.checked
+    )
+  ) return;
   $("apply").disabled = true;
   try {
     const receipt = await api("sync/apply", syncPlan);
@@ -186,6 +246,114 @@ $("apply").onclick = async () => {
   }
 };
 $("close").onclick = () => $("review-dialog").close();
+$("review-dialog").addEventListener("close", () => {
+  previewGeneration++;
+  syncPlan = undefined;
+});
+function reloadEditor() {
+  $("editor").contentWindow.__qbentoManagedReload = true;
+  $("editor").src = "/deck?revision=" + Date.now();
+}
+async function runSlideAction(action, slideId) {
+  if (busy) return;
+  setBusy(true);
+  $("busy").textContent = "Guardando cambios de diapositivas…";
+  try {
+    await bridge.save();
+    const receipt = await api("slides/action", {
+      action,
+      slideId,
+      revision: state.revision,
+    });
+    state.revision = receipt.revision;
+    $("slides-dialog").close();
+    reloadEditor();
+  } catch (error) {
+    $("slides-note").textContent = error.message;
+    setBusy(false);
+  }
+}
+function slideLabel(slide) {
+  const title = slide.name || slide.title ||
+    slide.elements.find((element) => element.type === "text")?.html || "";
+  return `${slide.id}${
+    title ? " · " + String(title).replace(/<[^>]*>/g, " ") : ""
+  }`;
+}
+$("slides").onclick = async () => {
+  if (busy) return;
+  setBusy(true);
+  $("busy").textContent = "Guardando antes de revisar las diapositivas…";
+  try {
+    await bridge.save();
+    const saved = await api("state");
+    if (saved.revision !== state.revision) {
+      throw new Error(
+        "Otra pestaña cambió el proyecto. Recarga antes de cambiar diapositivas.",
+      );
+    }
+    $("slides-note").textContent = "";
+    $("slide-list").replaceChildren();
+    const row = (slide, description, actions) => {
+      const section = document.createElement("section"),
+        title = document.createElement("h3"),
+        detail = document.createElement("p");
+      title.textContent = slideLabel(slide);
+      detail.textContent = description;
+      section.append(title, detail);
+      for (const [action, text, disabled] of actions) {
+        const button = document.createElement("button");
+        button.textContent = text;
+        button.disabled = !!disabled;
+        button.onclick = () => runSlideAction(action, slide.id);
+        section.append(button);
+      }
+      $("slide-list").append(section);
+    };
+    for (const slide of saved.emitted.slides) {
+      const sourced = saved.generatedBaseline.slides.some((item) =>
+        item.id === slide.id
+      );
+      row(
+        slide,
+        (slide.hidden ? "Oculta" : "Visible") +
+          (!sourced ? " · Nueva: sincroniza antes de eliminarla de QMD." : ""),
+        [
+          [
+            slide.hidden ? "show" : "hide",
+            slide.hidden ? "Mostrar diapositiva" : "Ocultar diapositiva",
+          ],
+          [
+            "delete",
+            "Marcar para eliminar",
+            !sourced || saved.emitted.slides.length === 1,
+          ],
+        ],
+      );
+    }
+    for (
+      const change of saved.pending.filter((item) =>
+        item.kind === "delete-slide"
+      )
+    ) {
+      if (change.before.present && change.before.value?.elements) {
+        row(
+          change.before.value,
+          "Eliminación pendiente · QMD conservado hasta sincronizar.",
+          [
+            ["restore", "Restaurar diapositiva"],
+          ],
+        );
+      }
+    }
+    $("slides-dialog").showModal();
+  } catch (error) {
+    showError(error);
+  } finally {
+    setBusy(false);
+  }
+};
+$("slides-close").onclick = () => $("slides-dialog").close();
 function describeValue(value) {
   if (!value?.present) return "No existe";
   return typeof value.value === "string"
