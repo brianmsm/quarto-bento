@@ -49,6 +49,21 @@ import {
   sourceNotes,
 } from "../source/notes.ts";
 import { validateDesignValue } from "../render/design.ts";
+import {
+  type AnnotationDiagnostic,
+  type AnnotationPreview,
+  applyAnnotations,
+  previewAnnotations,
+} from "../source/annotations.ts";
+import {
+  annotationIdentityDiagnostics,
+  type AnnotationRegistry,
+  annotationRegistry,
+  annotationRequests,
+  type AnnotationSummary,
+  originalAnnotationLevel,
+  registryEqual,
+} from "./annotations.ts";
 import { applyStructure, previewStructure } from "../source/structure.ts";
 import type {
   StructureOperation,
@@ -99,6 +114,8 @@ export interface SyncPlan {
   attributes?: AttributePreview;
   notes?: NotesPreview;
   structure?: StructurePreview;
+  annotations: AnnotationPreview;
+  designRegistry: AnnotationRegistry;
   result: string;
   resultHash: string;
   confirmedDeleteIds: string[];
@@ -121,6 +138,7 @@ export interface SyncReceipt {
   receiptPath: string;
   renderNeeded: true;
   pendingRetained: true;
+  annotations: AnnotationSummary;
 }
 function fail(code: string, message: string): never {
   throw new StateError(code, message);
@@ -346,16 +364,15 @@ function assertMappedDisplayMath(html: string): void {
     );
   }
 }
-function buildPlan(
+async function buildPlan(
   source: string,
   text: string,
   state: ProjectState,
   selectedChangeIds?: string[],
   options: SyncOptions = {},
-): SyncPlan {
+): Promise<SyncPlan> {
   const ids = selectedChangeIds ?? state.pending.map((p) => p.id),
     confirmedDeleteIds = options.confirmedDeleteIds ?? [];
-  if (!ids.length) fail("NO_PENDING_CHANGES", "No pending changes selected.");
   if (
     new Set(ids).size !== ids.length ||
     confirmedDeleteIds.some((id) => !ids.includes(id))
@@ -518,7 +535,9 @@ function buildPlan(
       ) {
         fail(
           "UNSUPPORTED_SYNC",
-          `Change ${change.id} is not a supported authored text or displayed-code edit.`,
+          `Field ${
+            change.path.join(".")
+          } on change ${change.id} cannot synchronize safely for this object. Pending edits are retained; edit the original QMD or explicitly resolve or detach this change.`,
         );
       }
       if (
@@ -695,7 +714,69 @@ function buildPlan(
   const structure = operations.length
     ? previewStructure(scanSource(attributeResult), operations)
     : undefined;
-  const result = structure?.result ?? attributeResult;
+  const semanticResult = structure?.result ?? attributeResult;
+  const designRegistry = await annotationRegistry(
+    projectPaths(source).directory,
+  );
+  const level = await originalAnnotationLevel(text);
+  const annotationDocument = scanSource(semanticResult);
+  const signalDiagnostics: AnnotationDiagnostic[] = [];
+  const requests = level === "none" ? [] : annotationRequests(
+    annotationDocument,
+    state,
+    ids,
+    designRegistry,
+    signalDiagnostics,
+  );
+  let annotations = previewAnnotations(
+    annotationDocument,
+    level,
+    requests,
+    signalDiagnostics,
+  );
+  if (annotations.patches.length) {
+    const blocked = annotationIdentityDiagnostics(annotationDocument, state);
+    if (blocked.length) {
+      annotations = previewAnnotations(
+        annotationDocument,
+        level,
+        requests,
+        [...signalDiagnostics, ...blocked],
+      );
+    }
+  }
+  if (
+    !ids.length && !annotations.patches.length &&
+    !annotations.diagnostics.length
+  ) {
+    fail(
+      "NO_PENDING_CHANGES",
+      "No pending changes or optional annotation updates selected.",
+    );
+  }
+  for (const [index, patch] of annotations.patches.entries()) {
+    changes.push({
+      changeId: `annotation:${patch.blockId}:${index}`,
+      target: { slideId: patch.blockId },
+      blockId: patch.blockId,
+      kind: "visual-annotation",
+      before: patch.expected,
+      after: patch.replacement,
+      html: "",
+    });
+  }
+  for (const [index, diagnostic] of annotations.diagnostics.entries()) {
+    changes.push({
+      changeId: `annotation-diagnostic:${index}`,
+      target: diagnostic.slideId ? { slideId: diagnostic.slideId } : {},
+      blockId: diagnostic.slideId ?? "annotations",
+      kind: "annotation-diagnostic",
+      before: "",
+      after: `${diagnostic.code}: ${diagnostic.message}`,
+      html: "",
+    });
+  }
+  const result = annotations.result;
   const unsigned = {
     version: 1 as const,
     source,
@@ -711,6 +792,8 @@ function buildPlan(
     ...(attributes ? { attributes } : {}),
     ...(notes ? { notes } : {}),
     ...(structure ? { structure } : {}),
+    annotations,
+    designRegistry,
     result,
     resultHash: hashSource(result),
     confirmedDeleteIds: [...confirmedDeleteIds],
@@ -805,7 +888,18 @@ export async function applySync(
     if (hashSource(text) !== plan.sourceHash) {
       fail("STALE_SOURCE", "QMD changed since preview; inspect a new plan.");
     }
-    const verified = buildPlan(
+    if (
+      !registryEqual(
+        await annotationRegistry(paths.directory),
+        plan.designRegistry,
+      )
+    ) {
+      fail(
+        "STALE_DESIGN_REGISTRY",
+        "External design registry changed since preview; inspect a new plan.",
+      );
+    }
+    const verified = await buildPlan(
       paths.source,
       text,
       state,
@@ -825,9 +919,16 @@ export async function applySync(
     const attributeResult = verified.attributes
       ? applyAttributePatches(notesResult, verified.attributes)
       : notesResult;
-    const result = verified.structure
+    const structureResult = verified.structure
       ? applyStructure(attributeResult, verified.structure)
       : attributeResult;
+    const result = applyAnnotations(structureResult, verified.annotations);
+    if (result === text && !verified.selectedChangeIds.length) {
+      fail(
+        "NO_SOURCE_CHANGES",
+        "No source patches are approved. Inspect the reviewed annotation diagnostics; no QMD change is approved by this plan.",
+      );
+    }
     if (
       result !== verified.result || hashSource(result) !== verified.resultHash
     ) {
@@ -836,6 +937,11 @@ export async function applySync(
         "Combined text and structure result differs from approved source.",
       );
     }
+    const annotationSummary: AnnotationSummary = {
+      level: verified.annotations.level,
+      patchCount: verified.annotations.patches.length,
+      diagnostics: clone(verified.annotations.diagnostics),
+    };
     const transactionId = crypto.randomUUID(),
       history = resolve(paths.stateDir, "history");
     await Deno.mkdir(history, { recursive: true });
@@ -901,6 +1007,7 @@ export async function applySync(
           stateRevision: state.revision,
           planHash: plan.planHash,
           selectedChangeIds: plan.selectedChangeIds,
+          annotations: annotationSummary,
           ...(needsApproval ? { approvalPath, approvalStaging } : {}),
         },
         null,
@@ -913,6 +1020,17 @@ export async function applySync(
       fail(
         "STALE_SOURCE",
         "QMD changed during preparation; inspect the retained transaction.",
+      );
+    }
+    if (
+      !registryEqual(
+        await annotationRegistry(paths.directory),
+        plan.designRegistry,
+      )
+    ) {
+      fail(
+        "STALE_DESIGN_REGISTRY",
+        "External design registry changed during preparation; inspect the retained transaction.",
       );
     }
     const freshState = await store.load();
@@ -988,6 +1106,7 @@ export async function applySync(
       receiptPath,
       renderNeeded: true,
       pendingRetained: true,
+      annotations: annotationSummary,
     };
     await durableWrite(receiptPath, JSON.stringify(receipt, null, 2) + "\n");
     await fsyncDirectory(history);

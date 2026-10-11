@@ -214,22 +214,65 @@ execution limits are documented in [notes evidence](evidence/NOTES.md).
 
 ## Configurable QMD annotations
 
-Proposed config (exact option parsing to verify). Quarto custom formats normally use a base-format suffix (such as `-html`); bare `format: bento` is **not assumed to work** merely because an extension is installed:
+The implemented setting is a **top-level scalar in the original QMD frontmatter**:
 
 ```yaml
-format:
-  qbento-html:   # provisional custom-format key; not an existing implementation
-    annotations:
-      visual: minimal  # none | minimal | detailed
+---
+title: Resultados
+qbento-annotations: minimal  # none | minimal | detailed
+---
 ```
 
-| Level | Informational traces placed in QMD *during sync* |
-|---|---|
-| `none` | No optional visual-only markers; retain any technical IDs and semantic blocks necessary for round-trip. |
-| `minimal` **(default)** | Lightweight per-slide signal, such as `## Resultados {#resultados .qbento-design}`, when there is external visual state. |
-| `detailed` | Additional opted-in component/layout/style declarations or references, without dumping entire BentoDoc geometry into Markdown. |
+`minimal` is the default when this key is absent. Plain or quoted keys/values are
+accepted. The setting is read from original YAML with Quarto's Pandoc metadata
+reader; source bodies, chunks, execution metadata and project hooks are not run
+by this configuration check. Duplicate declarations, unsupported levels,
+malformed YAML and non-scalar/indirect declarations refuse with an actionable
+configuration diagnostic. Nested `format: qbento-html: annotations: visual:` was
+an earlier design proposal and is **not an implemented setting**; `_quarto.yml`
+is not a source of this option in this first implementation.
 
-These levels govern **optional descriptive annotations**, not whether authored text is synchronized. The `.qbento-design` class is a project convention and may be removed/updated if visual state changes; `.qbento/` remains authoritative for its details. Saving a Studio visual change does not itself imply editing QMD: any new annotations are applied at a controlled sync.
+| Level | Informational traces placed in QMD *during approved sync* |
+|---|---|
+| `none` | Remove supported optional `.qbento-design` heading classes and descriptive reference comments; retain technical IDs, semantic blocks and source-owned visual attributes. |
+| `minimal` **(default)** | Add `.qbento-design` to an already identified slide heading when that slide has external visual state; remove it when that state is absent. |
+| `detailed` | The same class plus a controlled, one-line reference comment identifying the slide, sidecar paths and categories of external design; no geometry or source ownership declarations are copied. |
+
+For example, detailed sync can propose these exact fragments:
+
+```markdown
+## Resultados {#resultados .qbento-design}
+<!-- qbento-design: {"features":["overrides"],"references":[".qbento/state.json"],"slideId":"resultados","version":1} -->
+```
+
+External state includes retained visual overrides, decorations, stacking and
+native creation design. An active theme in the validated `.qbento/design.json`
+registry signals all original slides; a referenced registered layout signals
+its original slide. Unused registry entries do not produce traces. References
+point only to `.qbento/state.json` or `.qbento/design.json`; categories carry no
+style values and do not become source-owned properties.
+
+**Save and render never add or remove these traces.** Use the ordinary controlled
+sync preview/apply, including when there are no semantic pending changes. The
+preview exposes every annotation patch alongside semantic patches, and apply
+uses the same recoverable source/state transaction. A change to the original
+QMD, saved state or exact registry bytes invalidates the reviewed plan.
+
+Optional annotation updates require an existing explicit heading attribute ID
+such as `{#resultados}`. Technical `qb:*` markers are retained, but annotation
+sync never pins an identity implicitly. Unmapped slides, attributes outside the
+bounded source parser, or existing weak provenance that cannot safely survive a
+source hash change produce visible omission diagnostics. Compatible semantic
+sync remains available. Existing weak identities need an explicit, verified
+migration before optional traces can be enabled; simply adding an ID does not
+automatically authorize rebinding retained design.
+
+The reserved reference namespace is strict: malformed, conflicting, duplicated
+or misplaced `qbento-design` comments are preserved and refuse sync instead of
+being guessed or overwritten. Namespace-looking text inside YAML, literal code,
+chunks and display math remains literal. These levels govern **optional
+descriptive annotations**, not authored semantic synchronization. See the
+[annotation evidence](evidence/ANNOTATIONS.md) for verification and limits.
 
 ## Chunk annotations: unresolved exact syntax
 

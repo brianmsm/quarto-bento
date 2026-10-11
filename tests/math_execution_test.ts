@@ -36,7 +36,7 @@ const sourceText =
   '## Fórmula {#formula}\r\n\r\n::: {#equation font-size="28"}\r\n\r\n<!-- qb:eq-main -->\r\n$$\r\nx^2 + α\r\n$$\r\n\r\n:::\r\n\r\n## Tail {#tail}\r\n';
 Deno.test({
   name:
-    "real display math preserves pending native edits and styles, then syncs only the CRLF formula body",
+    "real display math preserves pending native edits and styles, then syncs the CRLF formula body and previews the optional design signal",
   ignore: !canRun,
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "qbento-math-loop-" });
@@ -91,7 +91,8 @@ Deno.test({
       eq(plan.normalizations.length, 1);
       eq(plan.normalizations[0].after.value, mathToNativeHtml(tex));
       const expected = sourceText.replace('font-size="28"', 'font-size="34"')
-        .replace("x^2 + α\r\n", tex + "\r\n");
+        .replace("x^2 + α\r\n", tex + "\r\n")
+        .replace("{#formula}", "{#formula .qbento-design}");
       eq(plan.result, expected);
       await applySync(source, plan);
       const final = await renderProject(source);

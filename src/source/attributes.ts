@@ -405,3 +405,9 @@ export function applyAttributePatches(
   }
   return verified.result;
 }
+
+/** Shared bounded original-source attribute syntax, with token offsets retained. */
+export {
+  asAttr as originalPandocAttributes,
+  tokens as originalAttributeTokens,
+};

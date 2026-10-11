@@ -128,7 +128,8 @@ Deno.test("two-column cards preserve internal headings, source text and sidecar 
     assert(
       plan.result ===
         original.replace("Literal β result.", "Updated literal β result.")
-          .replace('fill="#eefaff"', 'fill="#ffeeaa"'),
+          .replace('fill="#eefaff"', 'fill="#ffeeaa"')
+          .replace("{#results}", "{#results .qbento-design}"),
     );
     await applySync(source, plan);
     await Deno.writeTextFile(dir + "/data.csv", "value\n1\n20\n30\n");

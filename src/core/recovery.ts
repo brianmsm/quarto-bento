@@ -3,6 +3,10 @@ import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { projectPaths } from "./project.ts";
 import { validateSyncApproval } from "./sync.ts";
+import {
+  type AnnotationSummary,
+  validateAnnotationSummary,
+} from "./annotations.ts";
 import { extractDocument } from "../render/html.ts";
 import {
   canonical,
@@ -42,6 +46,7 @@ interface SyncJournal {
   selectedChangeIds: string[];
   approvalStaging?: string;
   approvalPath?: string;
+  annotations?: AnnotationSummary;
 }
 export interface RecoveryFile {
   path: string;
@@ -789,6 +794,7 @@ function validateSync(
       "Unsupported or malformed source sync transaction.",
     );
   }
+  if (j.annotations !== undefined) validateAnnotationSummary(j.annotations);
   const history = join(paths.stateDir, "history");
   if (
     j.source !== paths.source ||
@@ -835,6 +841,7 @@ function syncReceipt(j: SyncJournal) {
     receiptPath: j.receiptPath,
     renderNeeded: true,
     pendingRetained: true,
+    ...(j.annotations ? { annotations: clone(j.annotations) } : {}),
   };
 }
 async function inspectSync(

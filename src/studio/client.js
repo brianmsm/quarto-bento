@@ -101,6 +101,10 @@ function showPatches(plan) {
   for (
     const patch of [
       ...plan.patch.patches,
+      ...(plan.annotations?.patches ?? []).map((patch) => ({
+        ...patch,
+        blockId: `${patch.blockId} · anotación visual opcional`,
+      })),
       ...(plan.notes?.patches ?? []).map((patch) => ({
         ...patch,
         blockId: `${patch.blockId} · notas de orador`,
@@ -123,6 +127,15 @@ function showPatches(plan) {
     after.textContent = patch.replacement;
     after.className = "after";
     section.append(title, before, after);
+    $("patches").append(section);
+  }
+  for (const diagnostic of plan.annotations?.diagnostics ?? []) {
+    const section = document.createElement("section"),
+      title = document.createElement("h3"),
+      message = document.createElement("p");
+    title.textContent = diagnostic.code;
+    message.textContent = diagnostic.message;
+    section.append(title, message);
     $("patches").append(section);
   }
   if (plan.structure) {
@@ -178,9 +191,12 @@ async function prepareSyncPreview() {
     showPatches(syncPlan);
     const hasChanges = syncPlan.patch.patches.length ||
       syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
+      syncPlan.annotations?.patches.length ||
       syncPlan.structure;
     $("sync-note").textContent = hasChanges
       ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
+      : syncPlan.annotations?.diagnostics.length
+      ? "Las anotaciones opcionales se han omitido. Revisa los diagnósticos mostrados; el QMD se conserva."
       : "No hay cambios compatibles pendientes de sincronización.";
     $("apply").disabled = !hasChanges;
   } catch (error) {
@@ -240,8 +256,9 @@ $("apply").onclick = async () => {
     const receipt = await api("sync/apply", syncPlan);
     state.revision = receipt.revision;
     syncPlan = undefined;
-    $("sync-note").textContent =
-      "Cambios aplicados al QMD. Recalcula para actualizar la presentación.";
+    $("sync-note").textContent = receipt.annotations?.diagnostics.length
+      ? "Cambios semánticos aplicados al QMD; las anotaciones opcionales se han omitido por los diagnósticos revisados. Recalcula para actualizar la presentación."
+      : "Cambios aplicados al QMD. Recalcula para actualizar la presentación.";
     status("QMD sincronizado; listo para recalcular");
   } catch (error) {
     $("sync-note").textContent = error.message;

@@ -190,7 +190,7 @@ Deno.test({
         independent.replace(
           sourceNotes(scanSource(original), "speaker", "first").block.content,
           "Nueva β 😀\r\nSegunda línea\r\n\r\nMás contexto\r\n",
-        ),
+        ).replace("{#first}", "{#first .qbento-design}"),
       );
       const tampered = structuredClone(plan);
       tampered.notes!.patches[0].span.start = 0;

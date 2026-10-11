@@ -64,7 +64,8 @@ Deno.test({
       eq(plan.attributes!.patches.length, 2);
       eq(plan.patch.patches.length, 1);
       const expected = original.replace('font-size="38"', 'font-size="40"')
-        .replace("x=84", "x=122").replace("Texto β.", "Texto actualizado β.");
+        .replace("x=84", "x=122").replace("Texto β.", "Texto actualizado β.")
+        .replace('font-size="40"}', 'font-size="40" .qbento-design}');
       eq(plan.result, expected);
       const tampered = structuredClone(plan);
       tampered.attributes!.patches[0].replacement = "999";
@@ -124,7 +125,13 @@ Deno.test({
       eq(saved.pending[0].origin, "authored");
       const plan = await previewSync(source);
       eq(plan.changes[0].blockId, "plot-frame");
-      eq(plan.result, original.replace('x="210"', 'x="222"'));
+      eq(
+        plan.result,
+        original.replace('x="210"', 'x="222"').replace(
+          "{#results}",
+          "{#results .qbento-design}",
+        ),
+      );
       await applySync(source, plan);
       await Deno.writeTextFile(dir + "/data.csv", "value\n1\n2\n30\n");
       const final = await renderProject(source),
