@@ -10,3 +10,6 @@ output/
 **/.qbento/history/
 /fixtures/basic/.qbento/
 **/*.bento.html.pending-*
+**/*.qbento-stage.html
+**/.qbento/quarto-run.json
+**/.qbento/quarto-stage/

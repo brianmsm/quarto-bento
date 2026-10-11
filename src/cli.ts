@@ -4,6 +4,8 @@ import { applySync, previewSync } from "./core/sync.ts";
 import { recoverProject } from "./core/recovery.ts";
 import { extractDocument } from "./render/html.ts";
 import { startStudio } from "./studio/server.ts";
+import { installQuartoProject } from "./integration/install.ts";
+import { recoverQuartoRender } from "./integration/quarto.ts";
 const help = `qbento <command> <presentation.qmd> [arguments]
 
 render                 Execute Quarto and retain saved design
@@ -11,6 +13,8 @@ capture [edited.html]   Explicitly capture native local HTML edits
 status | diff          Inspect durable pending changes
 sync [--apply plan.json] Preview source changes or apply an inspected plan
 recover [inspect|finish|rollback] Inspect or explicitly recover an interrupted operation
+init [--extension-only] Install the offline Quarto integration without replacing existing configuration
+quarto-recover         Recover an interrupted ordinary Quarto invocation
 edit                   Start local Bento Studio
 validate <deck.html>   Validate the document envelope and stable IDs
 doctor                 Report available runtime versions
@@ -116,10 +120,34 @@ if (import.meta.main) {
       }
       case "edit": {
         if (!source) throw new Error("QMD path required");
-        await renderProject(source);
+        // Existing pending edits must remain accessible even when strict rendering refuses.
+        try {
+          await readProject(source);
+        } catch (error) {
+          if (
+            !(error instanceof Error) ||
+            !error.message.startsWith("NO_BASELINE:")
+          ) throw error;
+          await renderProject(source);
+        }
         const s = await startStudio(source);
         console.log(JSON.stringify({ url: s.url }));
         await s.finished;
+        break;
+      }
+      case "init": {
+        if (!source) throw new Error("QMD path required");
+        if (extra !== undefined && extra !== "--extension-only") {
+          throw new Error("Use init source.qmd [--extension-only]");
+        }
+        result = await installQuartoProject(source, {
+          configure: extra !== "--extension-only",
+        });
+        break;
+      }
+      case "quarto-recover": {
+        if (!source) throw new Error("QMD path required");
+        result = await recoverQuartoRender(source);
         break;
       }
       case "help":
