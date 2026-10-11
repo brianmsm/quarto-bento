@@ -92,3 +92,48 @@ Deno.test("native text measurement refuses unfaithful automatic math and documen
     assert(refused, html);
   }
 });
+
+Deno.test("native Range rectangles expose glyph overhang hidden by extreme CSS line boxes", async () => {
+  const result = await measureNativeText([
+    {
+      id: "glyph",
+      type: "text",
+      html: "A",
+      w: 264,
+      h: 124,
+      fontSize: 300,
+      fontFamily: "Arial",
+      fontWeight: 400,
+      lineHeight: .01,
+    },
+    {
+      id: "lines",
+      type: "text",
+      html: "A<br>B",
+      w: 264,
+      h: 124,
+      fontSize: 300,
+      fontFamily: "Arial",
+      fontWeight: 400,
+      lineHeight: .01,
+    },
+  ]);
+  assert(
+    result[0].lineBoxHeight === 3 && result[0].lineCount === 1,
+    JSON.stringify(result),
+  );
+  assert(
+    result[0].height >= 336 && result[0].overhangTop > 100 &&
+      result[0].overhangBottom > 100,
+    JSON.stringify(result),
+  );
+  assert(
+    result[0].width === 264 && result[0].overhangLeft === 0 &&
+      result[0].overhangRight === 0,
+    JSON.stringify(result),
+  );
+  assert(
+    result[1].lineCount === 2 && result[1].height > result[0].height,
+    JSON.stringify(result),
+  );
+});
