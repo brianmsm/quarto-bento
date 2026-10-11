@@ -77,8 +77,15 @@ export function renderInline(nodes: Node[]): string {
         }
         return `<code>${escapeHtml(code)}</code>`;
       }
-      case "Span":
-        return renderInline((node.c as [Attr, Node[]])[1]);
+      case "Span": {
+        const [attr, content] = node.c as [Attr, Node[]];
+        if (!plainAttributes(attr)) {
+          fail(
+            "Inline span identities, classes and styles need an explicit supported projection.",
+          );
+        }
+        return renderInline(content);
+      }
       case "Link": {
         const [attr, content, [href, title]] = node.c as [
           Attr,

@@ -106,9 +106,47 @@ Deno.test("inline conversion refuses unsafe links, extra attributes and unfaithf
     () => renderInline([{ t: "Code", c: [["id", [], []], "x"] }]),
     "UNSUPPORTED_HTML",
   );
+  eq(
+    renderInline([{
+      t: "Span",
+      c: [["", [], []], [{ t: "Str", c: "plain" }]],
+    }]),
+    "plain",
+  );
+  for (
+    const attr of [["id", [], []], ["", ["important"], []], ["", [], [[
+      "style",
+      "color:red",
+    ]]]]
+  ) {
+    await refuses(
+      () =>
+        renderInline([{ t: "Span", c: [attr, [{ t: "Str", c: "Warning" }]] }]),
+      "UNSUPPORTED_HTML",
+    );
+  }
 });
 const canRun =
   (await Deno.permissions.query({ name: "run" })).state === "granted";
+Deno.test({
+  name:
+    "attributed inline spans refuse real projection instead of silently losing source design",
+  ignore: !canRun,
+  fn: async () => {
+    const dir = await Deno.makeTempDir({ prefix: "qbento-inline-span-" });
+    try {
+      const source = dir + "/deck.qmd";
+      const text =
+        '## Slide {#slide}\n\n::: {#body}\n[Warning]{.important style="color:red"}\n:::\n';
+      await Deno.writeTextFile(source, text);
+      await refuses(() => renderProject(source), "UNSUPPORTED_HTML");
+      eq(await Deno.readTextFile(source), text);
+      await refuses(() => Deno.stat(dir + "/deck.bento.html"), "No such file");
+    } finally {
+      await Deno.remove(dir, { recursive: true });
+    }
+  },
+});
 Deno.test({
   name:
     "executed link/code/strikeout edit safely patches only the original paragraph and reopens cleanly",

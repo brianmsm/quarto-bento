@@ -25,6 +25,11 @@ conversion instead of losing bytes. Nested formatting, non-web links and link
 titles/extra attributes remain explicit unsupported cases. This is a supported
 subset, not arbitrary HTML-to-Markdown conversion.
 
+Independent review found that attributed inline spans were being flattened.
+Projection now refuses a span carrying an identity, class or style rather than
+silently discarding it. A real-Quarto regression checks that the failed render
+does not publish an incomplete deck and leaves its QMD unchanged.
+
 Live Chromium evidence used a separate temporary QMD and the real Studio/native
 editor. The rendered DOM contained `code`, the exact case-sensitive `a.href`, and
 `s` with computed `text-decoration-line: line-through`. The inspected screenshot
