@@ -48,14 +48,20 @@ Deno.test({
       eq(
         first.state
           .ownership[targetKey({ slideId: "slide", elementId: body.id })],
-        ["x", "color"],
+        ["x", "color", "themeRefs"],
       );
+      // Owning the reference map guards source attributes without emitting refs.
+      eq(body.themeRefs, undefined);
       body.x = 122;
       body.y = 211;
       body.html = "Texto actualizado β.";
       edited.slides[0].elements[0].fontSize = 40;
       const saved = await saveProject(source, edited, first.state.revision);
-      eq(saved.pending.length, 3);
+      eq(saved.pending.map((change) => change.path[0]).sort(), [
+        "fontSize",
+        "html",
+        "x",
+      ]);
       assert(
         saved.overrides.some((o) => o.fields.some((f) => f.path[0] === "y")),
       );

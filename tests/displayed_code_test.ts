@@ -21,7 +21,7 @@ const canRun =
   (await Deno.permissions.query({ name: "run" })).state === "granted";
 Deno.test({
   name:
-    "displayed code maps to native content and syncs exact code without execution or Markdown churn",
+    "displayed code syncs exact CRLF content and reviewed minimal annotation without execution",
   ignore: !canRun,
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "qbento-displayed-code-" });
@@ -45,9 +45,19 @@ Deno.test({
       const saved = await saveProject(source, edited, first.state.revision);
       eq(saved.pending.length, 2);
       const plan = await previewSync(source);
+      eq(plan.patch.patches.length, 1);
+      eq(plan.attributes!.patches.length, 1);
+      eq(plan.annotations.level, "minimal");
+      eq(plan.annotations.patches.length, 1);
+      eq(plan.annotations.patches[0].blockId, "example");
+      eq(plan.annotations.patches[0].replacement, " .qbento-design");
+      eq(plan.annotations.diagnostics, []);
       eq(
         plan.result,
-        original.replace('font-size="20"', 'font-size="22"').replace(
+        original.replace("{#example}", "{#example .qbento-design}").replace(
+          'font-size="20"',
+          'font-size="22"',
+        ).replace(
           "x <- 1\r\n",
           "x <- 2\r\n\r\n",
         ),

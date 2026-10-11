@@ -149,7 +149,7 @@ Deno.test({
 });
 Deno.test({
   name:
-    "executed link/code/strikeout edit safely patches only the original paragraph and reopens cleanly",
+    "executed link/code/strikeout edit syncs the original paragraph and reviewed minimal annotation then reopens cleanly",
   ignore: !canRun,
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "qbento-rich-inline-" });
@@ -170,16 +170,27 @@ Deno.test({
       edited.slides[0].elements[1].x = 222;
       await saveProject(source, edited, initial.state.revision);
       const plan = await previewSync(source);
-      eq(plan.changes.length, 1);
+      eq(plan.changes.length, 2);
+      eq(plan.patch.patches.length, 1);
+      eq(plan.annotations.level, "minimal");
+      eq(plan.annotations.patches.length, 1);
+      eq(plan.annotations.patches[0].blockId, "inline");
+      eq(plan.annotations.patches[0].replacement, " .qbento-design");
+      eq(plan.annotations.diagnostics, []);
+      const semantic = plan.changes.filter((change) =>
+        change.kind !== "visual-annotation"
+      );
+      eq(semantic.length, 1);
+      eq(semantic[0].blockId, "body/paragraph:1");
       eq(
-        plan.changes[0].after,
+        semantic[0].after,
         "Use `fit(y)` and [Guide](<https://example.org/Case?q=New&b=Two>), ~~old~~.",
       );
       eq(
         plan.result,
-        text.replace(
+        text.replace("{#inline}", "{#inline .qbento-design}").replace(
           "Use `fit(x)` and [Docs](https://example.org/Case?q=One&b=Two), ~~old~~.",
-          plan.changes[0].after,
+          semantic[0].after,
         ),
       );
       await applySync(source, plan);
