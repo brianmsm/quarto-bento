@@ -1,0 +1,20 @@
+title: Quarto Bento
+version: 0.1.0
+quarto-required: '>=1.10.19'
+contributes:
+  project:
+    project:
+      type: default
+      pre-render: pre.ts
+      post-render: post.ts
+    filters:
+      - guard.lua
+    format: qbento-html
+  formats:
+    html:
+      theme: none
+      output-ext: qbento-stage.html
+      fig-format: svg
+      filters:
+        - at: post-quarto
+          path: capture.lua
