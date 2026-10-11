@@ -96,6 +96,22 @@ su QMD. Marcarla para eliminar conserva una operación pendiente que puede
 restaurarse antes de sincronizar. Eliminar código productor, referencias u otros
 casos ambiguos puede ser rechazado con un diagnóstico.
 
+## Anotaciones y diseños reutilizables
+
+Las anotaciones informativas del QMD se controlan con
+`qbento-annotations: none|minimal|detailed` en su YAML inicial. El valor por
+defecto es `minimal`: señala las diapositivas con diseño adicional mediante la
+clase `.qbento-design`. `detailed` añade una referencia descriptiva al sidecar,
+sin copiar las coordenadas; `none` omite esas trazas opcionales. Cambiarlas
+forma parte de un plan revisado, nunca de un guardado o render implícito. Si
+añadirlas no es seguro para las identidades existentes, Studio explica la
+omisión.
+
+Los layouts con nombre y los temas básicos reutilizables se configuran en
+`.qbento/design.json`, siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
+Los cambios nativos del diseño se conservan en el estado del proyecto. Los
+atributos visuales declarados explícitamente en QMD mantienen su autoridad.
+
 ## Cambiar datos y reconstruir
 
 Modifica los datos de entrada y pulsa **Recalcular**, o ejecuta:
