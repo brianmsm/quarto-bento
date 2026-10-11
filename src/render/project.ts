@@ -22,7 +22,9 @@ import { renderInline as inline } from "./inline.ts";
 import { mathToNativeHtml } from "./math.ts";
 import {
   applyElementDesign,
+  componentFrames,
   DesignError,
+  type Frame,
   parseDesignAttributes,
 } from "./design.ts";
 import type {
@@ -145,6 +147,7 @@ export async function projectAst(
   let slide: Slide | undefined;
   let y = 166;
   let counter = 0;
+  let contentFrame: Frame | undefined;
   const tableSources = new Set<string>();
   function startSlide(id: string): Slide {
     if (document.slides.some((s) => s.id === id)) {
@@ -172,13 +175,13 @@ export async function projectAst(
     result.origins[slide!.id][el.id] = origin;
   }
   function text(id: string, html: string, heading: boolean, origin: Origin) {
-    const h = heading ? 90 : 90;
+    const h = contentFrame && !heading ? contentFrame.h : 90;
     add({
       id,
       type: "text",
-      x: 80,
+      x: contentFrame?.x ?? 80,
       y: heading ? 52 : y,
-      w: 1120,
+      w: contentFrame?.w ?? 1120,
       h,
       rotation: 0,
       opacity: 1,
@@ -262,10 +265,10 @@ export async function projectAst(
     add({
       id,
       type: "image",
-      x: 160,
+      x: contentFrame?.x ?? 160,
       y,
-      w: 880,
-      h: Math.min(400, 670 - y),
+      w: contentFrame?.w ?? 880,
+      h: contentFrame?.h ?? Math.min(400, 670 - y),
       rotation: 0,
       opacity: 1,
       src: await assetData(target[0], assetRoots),
@@ -283,16 +286,20 @@ export async function projectAst(
     parentId?: string,
     inComponent = false,
     groups?: Element[][],
+    frames?: Frame[],
   ) {
     let headingIndex = 0;
     let paragraphIndex = 0;
     let codeIndex = 0;
     let mathIndex = 0;
     let sourceMarker: string | undefined;
+    let slot = 0;
     for (const node of nodes) {
+      const previousFrame = contentFrame;
+      if (frames && node.t !== "RawBlock") contentFrame = frames[slot++];
       const groupSlide = slide, groupStart = slide?.elements.length ?? 0;
       // Child subtrees are measured independently before the component places them.
-      if (groups) y = 166;
+      if (groups) y = contentFrame?.y ?? 166;
       if (!["Para", "Plain", "RawBlock", "CodeBlock"].includes(node.t)) {
         sourceMarker = undefined;
       }
@@ -370,17 +377,81 @@ export async function projectAst(
           }
           const index = slide!.elements.length, componentY = y;
           const childGroups: Element[][] = [];
-          await walk(children, false, attr[0], true, childGroups);
-          const fields = (result.design![slide!.id] ??= {});
-          const component = projectComponent(
-            childGroups.filter((group) => group.length),
-            declaration,
+          const base = contentFrame ??
             {
               x: 80,
               y: componentY,
               w: 1120,
               h: Math.min(470, 680 - componentY),
-            },
+            };
+          const semantic = children.filter((child) => child.t !== "RawBlock");
+          // Measure simple text/code rows at their final width; images receive
+          // the remaining space. No layout rectangle is fitted a second time.
+          const frameWidth = Number(declaration.properties.w ?? base.w) - 48;
+          const lines = (html: string, size: number): number => {
+            const plain = html.replace(/<br\s*\/?>/gi, "\n").replace(
+              /<[^>]*>/g,
+              "",
+            );
+            return plain.split("\n").reduce(
+              (sum, row) =>
+                sum + Math.max(
+                  1,
+                  Math.ceil(
+                    [...row].reduce(
+                      (width, ch) =>
+                        width + (ch.codePointAt(0)! > 255 ? size : size * .65),
+                      0,
+                    ) / frameWidth,
+                  ),
+                ),
+              0,
+            );
+          };
+          const rowHeight = (child: Node): number => {
+            if (images([child]).length) return -1;
+            const explicitSize = Number(declaration.properties.fontSize);
+            if (child.t === "Header") {
+              const [, , content] = child.c as [number, Attr, Node[]];
+              const size = explicitSize || 32;
+              return lines(inline(content), size) * size * 1.25 + 4;
+            }
+            if (child.t === "Para" || child.t === "Plain") {
+              const size = explicitSize || 26;
+              return lines(inline(child.c as Node[]), size) * size * 1.25 + 5;
+            }
+            if (child.t === "CodeBlock") {
+              const size = explicitSize || 24;
+              return Math.max(
+                90,
+                ((child.c as [Attr, string])[1].split("\n").length + 1) * size *
+                  1.25,
+              );
+            }
+            return 90;
+          };
+          const placement = componentFrames(
+            declaration,
+            base,
+            semantic.length,
+            {},
+            declaration.component === "card"
+              ? semantic.map(rowHeight)
+              : undefined,
+          );
+          await walk(
+            children,
+            false,
+            attr[0],
+            true,
+            childGroups,
+            placement.children,
+          );
+          const fields = (result.design![slide!.id] ??= {});
+          const component = projectComponent(
+            childGroups.filter((group) => group.length),
+            declaration,
+            placement.frame,
             fields,
           );
           for (const id of component.decorativeIds) {
@@ -405,6 +476,7 @@ export async function projectAst(
           if (groups) {
             groups.push(slide!.elements.slice(groupStart));
           }
+          contentFrame = previousFrame;
           continue;
         }
         if (
@@ -646,17 +718,16 @@ export async function projectAst(
             "UNSUPPORTED_CODE_CLASSES: displayed code supports one language class plus native visual attributes",
           );
         }
-        const height = Math.min(
-          470,
-          Math.max(90, (content.split("\n").length + 1) * 30),
-        );
+        const height = contentFrame
+          ? Math.max(90, (content.split("\n").length + 1) * 30)
+          : Math.min(470, Math.max(90, (content.split("\n").length + 1) * 30));
         const element: Element = {
           id: sourceId ?? `qb-code-${++counter}`,
           type: "code",
           content,
-          x: 80,
+          x: contentFrame?.x ?? 80,
           y,
-          w: 1120,
+          w: contentFrame?.w ?? 1120,
           h: height,
           rotation: 0,
           opacity: 1,
@@ -702,6 +773,7 @@ export async function projectAst(
         }
         groups.push(slide?.elements.slice(groupStart) ?? []);
       }
+      contentFrame = previousFrame;
     }
   }
   await walk(ast.blocks);

@@ -1,5 +1,6 @@
 import {
   applyComponentDesign,
+  componentFrames,
   type DesignDeclaration,
   DesignError,
   type Frame,
@@ -15,6 +16,28 @@ export function projectComponent(
   frame: Frame,
   existing: Fields,
 ): { elements: Element[]; fields: Fields; decorativeIds: string[] } {
+  if (declaration.component === "layout") {
+    const slots = componentFrames(declaration, frame, groups.length).children;
+    groups.forEach((group, i) => {
+      const width = Math.max(...group.map((e) => Number(e.x) + Number(e.w))) -
+        Math.min(...group.map((e) => Number(e.x)));
+      const height = Math.max(...group.map((e) => Number(e.y) + Number(e.h))) -
+        Math.min(...group.map((e) => Number(e.y)));
+      if (width > slots[i].w + .01 || height > slots[i].h + .01) {
+        const owned = group.some((element) =>
+          existing[element.id]?.ownedPaths.some((field) =>
+            ["fontSize", "letterSpacing", "strokeWidth", "radius"].includes(
+              field,
+            )
+          )
+        );
+        throw new DesignError(
+          owned ? "COMPONENT_CHILD_DESIGN_SCALE" : "COMPONENT_CONTENT_OVERFLOW",
+          "Measured content exceeds its final layout slot; refusing unreadable automatic shrink.",
+        );
+      }
+    });
+  }
   const projected = applyComponentDesign(groups, declaration, { frame });
   const fields: Fields = {};
   const original = new Map(
@@ -49,6 +72,17 @@ export function projectComponent(
       }
       // A default card theme must not override explicitly authored child typography.
       element[field] = original.get(element.id)![field];
+    }
+    if (
+      element.type === "code" &&
+      Number(element.h) + 0.01 <
+        String(element.content).split("\n").length * Number(element.fontSize) *
+          Number(element.lineHeight ?? 1.25)
+    ) {
+      throw new DesignError(
+        "COMPONENT_CONTENT_OVERFLOW",
+        "Code typography exceeds its component box; use a taller frame or smaller explicit font.",
+      );
     }
     fields[element.id] = {
       ownedPaths: [

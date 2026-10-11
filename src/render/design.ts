@@ -400,7 +400,7 @@ function placed(elements: Element[], frame: Frame): Element[] {
     throw new DesignError("INVALID_ELEMENT_FRAME", "empty group bounds");
   }
   // Uniform fit retains aspect ratio and relative positioning within a semantic child.
-  const scale = Math.min(frame.w / width, frame.h / height);
+  const scale = Math.min(1, frame.w / width, frame.h / height);
   return original.map((e) => {
     const fitted: Element = {
       ...structuredClone(e),
@@ -418,6 +418,97 @@ function placed(elements: Element[], frame: Frame): Element[] {
     }
     return fitted;
   });
+}
+/** Resolve final slots before projecting children, so nested cards do not fit twice. */
+export function componentFrames(
+  declaration: DesignDeclaration,
+  base: Frame,
+  count: number,
+  defaults: DesignDefaults = {},
+  heights?: number[],
+): { frame: Frame; children: Frame[] } {
+  const clean = validateDesignDefaults(defaults);
+  declaration = checkedDeclaration(declaration);
+  const frame = { ...base };
+  for (const key of ["x", "y", "w", "h"] as const) {
+    if (declaration.properties[key] !== undefined) {
+      frame[key] = Number(declaration.properties[key]);
+    }
+  }
+  if (count < 1) throw new DesignError("EMPTY_COMPONENT", declaration.sourceId);
+  if (declaration.component === "layout") {
+    const layout = { ...builtinLayouts, ...clean.layouts }[declaration.layout!];
+    if (!layout) throw new DesignError("UNKNOWN_LAYOUT", declaration.layout!);
+    if (count !== layout.columns) {
+      throw new DesignError(
+        "LAYOUT_ARITY",
+        `${declaration.layout} expects ${layout.columns} semantic children`,
+      );
+    }
+    const w = (frame.w - 2 * layout.padding - (count - 1) * layout.gap) / count;
+    const h = frame.h - 2 * layout.padding;
+    if (w <= 0 || h <= 0) {
+      throw new DesignError(
+        "LAYOUT_OVERFLOW",
+        "gap/padding exceed layout dimensions",
+      );
+    }
+    return {
+      frame,
+      children: Array.from({ length: count }, (_, i) => ({
+        x: frame.x + layout.padding + i * (w + layout.gap),
+        y: frame.y + layout.padding,
+        w,
+        h,
+      })),
+    };
+  }
+  const padding = 24, gap = 16;
+  const h = (frame.h - 2 * padding - gap * (count - 1)) / count;
+  if (h <= 0 || frame.w <= 2 * padding) {
+    throw new DesignError("CARD_OVERFLOW", "card too small for its children");
+  }
+  if (heights) {
+    if (
+      heights.length !== count ||
+      heights.some((v) => !Number.isFinite(v) || v === 0 || v < -1)
+    ) throw new DesignError("CARD_CONTENT_MEASUREMENT", declaration.sourceId);
+    const available = frame.h - 2 * padding - gap * (count - 1);
+    const fixed = heights.reduce((sum, v) => sum + Math.max(0, v), 0);
+    const flexible = heights.filter((v) => v === -1).length;
+    if (fixed >= available && flexible || fixed > available) {
+      throw new DesignError(
+        "CARD_CONTENT_OVERFLOW",
+        "Content needs a taller card; refusing unreadable automatic shrink.",
+      );
+    }
+    let y = frame.y + padding;
+    return {
+      frame,
+      children: heights.map((preferred) => {
+        const height = preferred === -1
+          ? (available - fixed) / flexible
+          : preferred;
+        const child = {
+          x: frame.x + padding,
+          y,
+          w: frame.w - 2 * padding,
+          h: height,
+        };
+        y += height + gap;
+        return child;
+      }),
+    };
+  }
+  return {
+    frame,
+    children: Array.from({ length: count }, (_, i) => ({
+      x: frame.x + padding,
+      y: frame.y + padding + i * (h + gap),
+      w: frame.w - 2 * padding,
+      h,
+    })),
+  };
 }
 export interface ComponentProjection {
   elements: Element[];
@@ -549,16 +640,31 @@ export function applyComponentDesign(
     }
     result.elements.push(background);
     result.decorativeIds.push(background.id);
-    children.forEach((child, i) =>
+    const measured = children.map((child) =>
+      Math.max(...child.map((e) => Number(e.y) + Number(e.h))) -
+      Math.min(...child.map((e) => Number(e.y)))
+    );
+    const total = measured.reduce((sum, h) => sum + h, 0);
+    const available = frame.h - 2 * padding - gap * (children.length - 1);
+    if (total > available + .01) {
+      throw new DesignError(
+        "CARD_CONTENT_OVERFLOW",
+        "Measured child groups exceed the card height; use a taller frame or less content.",
+      );
+    }
+    const fit = 1;
+    let childY = frame.y + padding;
+    children.forEach((child, i) => {
       result.elements.push(
         ...placed(child, {
           x: frame.x + padding,
-          y: frame.y + padding + i * (height + gap),
+          y: childY,
           w: frame.w - 2 * padding,
-          h: height,
+          h: measured[i] * fit,
         }),
-      )
-    );
+      );
+      childY += measured[i] * fit + gap;
+    });
     if (
       Object.keys(declaration.properties).some((field) =>
         textFields.has(field)

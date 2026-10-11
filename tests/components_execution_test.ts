@@ -100,6 +100,10 @@ Deno.test("two-column cards preserve internal headings, source text and sidecar 
         headingProof.source.blockId === "left/heading:1",
     );
     const figure = elements.find((e) => e.id === "fig-values")!;
+    assert(left.w === 544 && left.h === 470 && right.h === 470);
+    assert(elements.find((e) => e.id === "left/heading:1")!.fontSize === 32);
+    assert(elements.find((e) => e.id === "left/paragraph:1")!.fontSize === 26);
+    assert(figure.w === 496 && Number(figure.h) >= 340);
     assert(
       first.state
         .provenance[targetKey({ slideId: "results", elementId: figure.id })]
@@ -286,7 +290,7 @@ Deno.test("legacy layout names refuse before computation in CLI and installed or
   }
 });
 
-Deno.test("layout code scales its pixel typography with the box and refuses explicitly authored child styles it cannot honor", async () => {
+Deno.test("layout projects code into the final slot, preserving readable metrics and refusing explicit child styles when a small frame forces fitting", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-layout-code-scale-" });
   try {
     const source = dir + "/deck.qmd";
@@ -300,11 +304,8 @@ Deno.test("layout code scales its pixel typography with the box and refuses expl
     const code = result.state.emitted.slides[0].elements.find((e) =>
       e.type === "code"
     )!;
-    const scale = Number(code.w) / 1120;
-    assert(Math.abs(Number(code.fontSize) - 24 * scale) < 1e-8);
-    assert(
-      Math.abs(Number(code.h) - 270 * scale) < 1e-8 && code.lineHeight === 1.25,
-    );
+    assert(code.w === 544 && code.fontSize === 24);
+    assert(code.h === 270 && code.lineHeight === 1.25);
     assert(
       Number(code.h) >= 8 * Number(code.fontSize) * Number(code.lineHeight),
     );
@@ -313,8 +314,66 @@ Deno.test("layout code scales its pixel typography with the box and refuses expl
       '{#shown .bento-code font-size="24"}',
     );
     await Deno.writeTextFile(source, invalid);
+    const owned = await renderProject(source);
+    assert(
+      owned.state.emitted.slides[0].elements.find((e) => e.type === "code")!
+        .fontSize === 24,
+    );
+    const small = invalid.replace(
+      'bento-layout-name="two-column"',
+      'bento-layout-name="two-column" h="180"',
+    );
+    await Deno.writeTextFile(source, small);
     await refuses(() => renderProject(source), "COMPONENT_CHILD_DESIGN_SCALE");
-    assert(await Deno.readTextFile(source) === invalid);
+    assert(await Deno.readTextFile(source) === small);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("card code rows retain all eight lines at native font size and excessive text refuses readable placement", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-card-readable-" });
+  try {
+    const source = `${dir}/deck.qmd`;
+    const content = Array.from({ length: 8 }, (_, i) => `print(${i})`).join(
+      "\n",
+    );
+    const original =
+      `## Code {#code}\n\n::::: {#grid .bento-layout bento-layout-name="two-column"}\n\n:::: {#left .bento-card}\n\n### Eight lines\n\n\`\`\`{.python}\n${content}\n\`\`\`\n\n::::\n\n::: {#right}\n\nReadable body.\n\n:::\n\n:::::\n`;
+    await Deno.writeTextFile(source, original);
+    const first = await renderProject(source);
+    const elements = first.state.emitted.slides[0].elements;
+    const code = elements.find((e) => e.type === "code")!;
+    assert(
+      code.fontSize === 24 && code.w === 496 && code.h === 270 &&
+        code.content === content,
+    );
+    assert(elements.find((e) => e.id === "left/heading:1")!.fontSize === 32);
+    const excessive = original.replace(
+      "Eight lines",
+      "A very long heading ".repeat(80),
+    );
+    await Deno.writeTextFile(source, excessive);
+    await refuses(() => renderProject(source), "CARD_CONTENT_OVERFLOW");
+    assert(await Deno.readTextFile(source) === excessive);
+    assert((await readProject(source)).revision === first.state.revision);
+    const nested = original.replace(
+      "### Eight lines\n\n```{.python}\n" + content + "\n```",
+      "::: {#nested}\n\n" + Array.from({ length: 18 }, (_, i) =>
+        `Paragraph ${i}: a long preserved source paragraph with enough words to wrap within the final column width.`)
+        .join("\n\n") +
+        "\n\n:::\n\nFinal sibling.",
+    );
+    await Deno.writeTextFile(source, nested);
+    await refuses(() =>
+      renderProject(source), "CARD_CONTENT_OVERFLOW");
+    const styled = original.replace(
+      "{#left .bento-card}",
+      '{#left .bento-card font-size="48"}',
+    );
+    await Deno.writeTextFile(source, styled);
+    await refuses(() =>
+      renderProject(source), "CARD_CONTENT_OVERFLOW");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

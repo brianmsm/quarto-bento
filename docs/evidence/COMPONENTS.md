@@ -2,8 +2,9 @@
 
 Validated on Linux with Deno 2.9.6, Quarto 1.10.19 and the existing pinned Bento
 1.2.6 shell. This evidence concerns source projection, durable state, bounded
-sync and actual Quarto recomputation. It does not establish native interaction,
-visual typography fidelity, custom registry persistence or platform completion.
+sync and actual Quarto recomputation. The follow-up below also checks two native
+editor fixtures visually and through DOM metrics. It does not establish custom
+registry persistence or platform completion.
 
 Run from a compatible checkout:
 
@@ -28,10 +29,12 @@ Seven focused component tests prove:
   language. Its native content/explicit wrapper x coordinate sync safely.
   Executable code wrappers, competing child geometry, unknown layout names and
   wrong column counts refuse.
-- Proportional fitting scales native code's pixel font size with its box while
-  retaining its unitless line-height ratio. Eight displayed lines fit the
-  computed box. An explicit child font-size declaration that parent placement
-  would change refuses rather than clipping or silently altering it.
+- Child projection now receives the final layout slot before composition. Nested
+  cards retain their full column height and normal native typography; short text
+  rows use estimated natural heights and a figure receives the remaining space.
+  Eight code lines retain a 24 px font instead of being reduced twice. Excessive
+  text refuses `CARD_CONTENT_OVERFLOW`; authored child style that constrained
+  fitting cannot retain refuses explicitly.
 - Legacy `layout="two-column"` refuses before computation in both core render
   and an installed ordinary Quarto pre-render hook. A producer that creates a
   file does not run; QMD remains byte-identical.
@@ -86,14 +89,29 @@ embeds and raw SVG objects) refuse `COMPONENT_CONTENT_LAYOUT_UNSUPPORTED` inside
 these components. Static computed SVG projected as an image remains supported.
 This prevents later projector branches from silently admitting clipped content.
 
-## Coordinator visual finding: default composition still open
+## Native readability follow-up
 
-The integrated two-column fixture with a literal heading/body card and an
-R-generated SVG card was rendered in native Chromium and visually inspected.
-`output/playwright/native-components-initial.png` shows that the card's content
-was proportionally reduced again when the completed card entered its column.
-The resulting text and figure were too small, despite fitting inside their
-boxes. This is an outstanding composition issue, not visual acceptance. The
-follow-up must lay out children in their final column frame and recheck both
-code lines and text/figure readability. The earlier safe-sync and provenance
-evidence remains valid within its stated scope.
+The coordinator inspected `output/playwright/native-components-initial.png`
+and found that proportional fitting still produced unusably small content: a card first projected at full slide width and then fitted into a
+column, shrinking both its height and all descendants. The implementation now
+resolves the final column/card slots before projecting children. Short heading
+and body rows retain 32 px and 26 px fonts, respectively; figures receive the
+remaining vertical space. Fitting never enlarges a text row automatically.
+
+Two fixtures were rendered with Quarto 1.10.19 and opened in the pinned native
+editor through Studio in Chromium. Screenshots were actually inspected at the
+editor's 59% zoom:
+
+- `output/playwright/components-frame-final.png`: two 544 × 470 px cards,
+  heading/body typography 32/26 px, and a 496 px wide computed R figure. The
+  figure fills the available space below its heading and its plot is legible.
+- `output/playwright/components-code-final.png`: a card containing a heading and
+  eight displayed code lines, all visible at font size 24 px. Editor and
+  thumbnail code boxes both have client/scroll height 270 px and `pre` height
+  240 px. The text and separate source identities are unchanged.
+
+These captures validate these concrete native editor fixtures. Arbitrary rich
+text, native template layouts, browser font substitutions and all possible card
+content are not universally measured. Long content which exceeds the bounded
+natural row estimate refuses before publication, preserving the previous state
+and source. Native tables/charts remain rejected in components.
