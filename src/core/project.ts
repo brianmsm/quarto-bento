@@ -1,3 +1,4 @@
+import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
 import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
@@ -567,7 +568,10 @@ async function render(source: string, executed?: ExecutedRender) {
     return {
       output: paths.output,
       state,
-      diagnostics: projected.diagnostics,
+      diagnostics: refreshOverflowDiagnostics(
+        composed.document as unknown as RenderDoc,
+        projected.diagnostics,
+      ),
       ...(widgetPublication
         ? {
           presenter: resolve(

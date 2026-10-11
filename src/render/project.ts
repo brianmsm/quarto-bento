@@ -1,3 +1,4 @@
+import { refreshOverflowDiagnostics } from "./diagnostics.ts";
 import {
   collectRichTableCandidates,
   type RichTableSnapshot,
@@ -891,17 +892,7 @@ export async function projectAst(
   if (!document.slides.length) {
     throw new Error("EMPTY_DECK: source contains no supported content");
   }
-  for (const s of document.slides) {
-    for (const el of s.elements) {
-      if (Number(el.y) + Number(el.h) > 720 || Number(el.h) <= 0) {
-        result.diagnostics.push({
-          code: "OVERFLOW",
-          message: `Element exceeds slide ${s.id}`,
-          elementId: el.id,
-        });
-      }
-    }
-  }
+  result.diagnostics = refreshOverflowDiagnostics(document, result.diagnostics);
   return result;
 }
 
