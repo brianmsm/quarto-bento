@@ -562,7 +562,7 @@ function buildPlan(
         title,
         body: body.join("\n\n"),
         titleElementId: texts[0].id,
-        bodyIds: texts.slice(1).map((e) => e.id),
+        bodyElementIds: texts.slice(1).map((e) => e.id),
       });
       creationChangeIds.push(change.id);
       const normalized = clone(slide);

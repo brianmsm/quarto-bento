@@ -107,7 +107,11 @@ Deno.test("combined text/create/order plan rescans source, preserves native IDs,
     eq(plan.creationChangeIds.length, 1);
     assert(plan.structure);
     assert(plan.result.includes('bento-title-id="native-title"'));
-    assert(plan.result.includes("<!-- qb:native-body -->"));
+    assert(
+      plan.result.includes(
+        '::: {#created-text-1 bento-element-id="native-body"}',
+      ),
+    );
     eq(scanSource(plan.result).slides.map((s) => s.id), ["created", "b", "a"]);
     assert(plan.result.includes("**Approved**."));
     eq(await Deno.readTextFile(f.source), f.text);
@@ -282,6 +286,61 @@ Deno.test({
         () => validateProjectionOrigins(scanSource(text), projected),
         "UNMAPPED_PROVENANCE",
       );
+    } finally {
+      await Deno.remove(dir, { recursive: true });
+    }
+  },
+});
+Deno.test({
+  name:
+    "two native template slides retain repeated visual IDs and synchronize their bodies independently",
+  ignore: !canRun,
+  fn: async () => {
+    const dir = await Deno.makeTempDir({ prefix: "qbento-repeated-native-" });
+    try {
+      const source = dir + "/deck.qmd";
+      const original =
+        "## Original {#original}\n\n::: {#original-body}\nOriginal body.\n:::\n";
+      await Deno.writeTextFile(source, original);
+      const initial = await renderProject(source);
+      const edited = structuredClone(initial.state.emitted);
+      const nativeSlides = ["first", "second"].map((id, index) => ({
+        ...edited.slides[0],
+        id,
+        elements: edited.slides[0].elements.map((e, i) => ({
+          ...e,
+          id: i === 0 ? "ltc-title" : "ltc-body",
+          html: i === 0 ? id : `${id} body.`,
+          x: 111 + index * 100,
+        })),
+      }));
+      edited.slides.push(...nativeSlides);
+      const saved = await saveProject(source, edited, initial.state.revision);
+      eq(saved.pending.filter((p) => p.kind === "create-slide").length, 2);
+      const plan = await previewSync(source);
+      eq(scanSource(plan.result).diagnostics, []);
+      await applySync(source, plan);
+      const rendered = await renderProject(source);
+      eq(rendered.state.pending.length, 0);
+      eq(rendered.state.emitted.slides.slice(1), nativeSlides);
+      const next = structuredClone(rendered.state.emitted);
+      next.slides[2].elements[1].html = "Only second changes.";
+      await saveProject(source, next, rendered.state.revision);
+      const second = await previewSync(source);
+      eq(second.changes.length, 1);
+      eq(second.changes[0].blockId, "second-text-1/paragraph:1");
+      assert(second.result.startsWith(original));
+      assert(second.result.includes("first body."));
+      assert(!second.result.includes("second body."));
+      await applySync(source, second);
+      const reopened = await renderProject(source);
+      eq(reopened.state.pending.length, 0);
+      eq(reopened.state.emitted.slides[1], nativeSlides[0]);
+      eq(
+        reopened.state.emitted.slides[2].elements[1].html,
+        "Only second changes.",
+      );
+      eq(reopened.state.emitted.slides[2].elements[1].x, 211);
     } finally {
       await Deno.remove(dir, { recursive: true });
     }

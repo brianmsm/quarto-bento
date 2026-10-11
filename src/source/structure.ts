@@ -9,6 +9,8 @@ export type StructureOperation =
     title: string;
     body: string;
     bodyIds?: string[];
+    /** Slide-local Bento IDs, distinct from globally unique QMD block IDs. */
+    bodyElementIds?: string[];
     titleElementId?: string;
     afterId?: string | null;
   }
@@ -193,9 +195,15 @@ function generatedSlide(
     );
   }
   bodyIds.forEach(assertIdentity);
+  const nativeIds = operation.bodyElementIds ?? bodyIds;
+  if (nativeIds.length !== bodyIds.length) {
+    fail("invalid-slide", "Each body paragraph needs one visual identity.");
+  }
+  nativeIds.forEach(assertIdentity);
   if (
     new Set([operation.id, ...bodyIds]).size !== bodyIds.length + 1 ||
-    (operation.titleElementId && bodyIds.includes(operation.titleElementId))
+    new Set(nativeIds).size !== nativeIds.length ||
+    (operation.titleElementId && nativeIds.includes(operation.titleElementId))
   ) fail("duplicate-id", "Created slide identities collide.");
   const titleAttribute = operation.titleElementId
     ? ` bento-title-id="${operation.titleElementId}"`
@@ -203,7 +211,11 @@ function generatedSlide(
   const pieces = [`## ${operation.title} {#${operation.id}${titleAttribute}}`];
   bodyDoc.blocks.forEach((block, index) =>
     pieces.push(
-      `<!-- qb:${bodyIds[index]} -->\n${block.content}`,
+      operation.bodyElementIds
+        ? `::: {#${bodyIds[index]} bento-element-id="${
+          nativeIds[index]
+        }"}\n${block.content}\n:::`
+        : `<!-- qb:${bodyIds[index]} -->\n${block.content}`,
     )
   );
   const result = (pieces.join("\n\n") + "\n\n").replace(/\n/g, doc.newline);

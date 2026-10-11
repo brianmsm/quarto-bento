@@ -337,3 +337,33 @@ Deno.test("created slide preserves explicitly supplied native title and paragrap
     "invalid-slide",
   );
 });
+Deno.test("native template visual IDs can repeat across slides without duplicate semantic IDs", () => {
+  const source = "## Original {#original}\n\nText.\n";
+  const operations: StructureOperation[] = ["first", "second"].map((id) => ({
+    type: "insert-slide",
+    id,
+    title: id,
+    titleElementId: "ltc-title",
+    body: `${id} body.`,
+    bodyElementIds: ["ltc-body"],
+  }));
+  const result = applyStructure(
+    source,
+    previewStructure(scanSource(source), operations),
+  );
+  const doc = scanSource(result);
+  eq(doc.diagnostics, []);
+  eq(doc.blocks.filter((b) => b.parentId).map((b) => b.id), [
+    "first-text-1/paragraph:1",
+    "second-text-1/paragraph:1",
+  ]);
+  eq(result.split('bento-element-id="ltc-body"').length - 1, 2);
+  fails(() =>
+    previewStructure(scanSource(source), [{
+      type: "insert-slide",
+      id: "bad",
+      title: "Bad",
+      body: "A.\n\nB.",
+      bodyElementIds: ["same", "same"],
+    }]), "duplicate-id");
+});

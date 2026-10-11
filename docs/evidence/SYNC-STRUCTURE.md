@@ -145,3 +145,19 @@ including two actual Quarto execution tests; lint passes. Parent
 `projectProjection` must call these helpers at its execution boundary; a
 standalone call to `projectAst` without the original-source validation is not
 proof of safe provenance.
+
+## Repeated native template IDs
+
+Native layouts reuse element IDs such as `ltc-title` and `ltc-body` on multiple
+slides. New semantic source blocks now receive slide-specific IDs, while a
+single-paragraph fenced div records `bento-element-id="ltc-body"`. Heading
+`bento-title-id` similarly preserves the native visual title identity. Existing
+source markers continue to work. A visual binding requires one authored paragraph;
+ambiguous containers or generated content refuse.
+
+A real Quarto integration test creates two slides with the same native title/body
+IDs, syncs and renders, and then edits only the second body. Both designs/visual
+IDs survive, source IDs are distinct, and the second patch changes only its own
+QMD paragraph. The 18 structural/source integration tests passed after this
+change. This proves the repeated-ID mapping; it does not broaden the supported
+new-slide content beyond the documented authored text and decorations.

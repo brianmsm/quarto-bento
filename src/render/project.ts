@@ -238,7 +238,28 @@ export async function projectAst(
         const [attr, children] = node.c as [Attr, Node[]];
         const isComputed = computed ||
           attr[1].some((c) => c === "cell" || c.startsWith("cell-output"));
-        if (attr[1].includes("notes")) {
+        const nativeId = attr[2].find(([name]) => name === "bento-element-id")
+          ?.[1];
+        if (nativeId !== undefined) {
+          if (!/^[A-Za-z][\w:.-]*$/.test(nativeId) || !attr[0]) {
+            throw new Error(
+              "INVALID_ID: bento-element-id needs safe visual and explicit source identities",
+            );
+          }
+          if (
+            isComputed || children.length !== 1 ||
+            !["Para", "Plain"].includes(children[0].t) ||
+            images(children).length
+          ) {
+            throw new Error(
+              "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored text paragraph",
+            );
+          }
+          text(nativeId, inline(children[0].c as Node[]), false, {
+            origin: "authored",
+            sourceId: `${attr[0]}/paragraph:1`,
+          });
+        } else if (attr[1].includes("notes")) {
           if (isComputed) {
             throw new Error(
               "COMPUTED_NOTES_UNSUPPORTED: generated speaker notes need explicit computed slide-property provenance; refusing authored classification",

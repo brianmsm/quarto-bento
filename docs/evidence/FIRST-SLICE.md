@@ -70,6 +70,6 @@ restart and stale-tab UI checks are recorded separately in
 This supports the first Linux workflow and reconstructed-project behavior under
 installed compatible dependencies. It does not establish native OS file-picker
 saving, other operating systems, all Markdown/Bento conversions, PDF, widgets or
-public release readiness. In particular, repeated element IDs in multiple
-native layout-created slides still need a dedicated semantic/visual identity
-test before broad structural compatibility is claimed.
+public release readiness. A subsequent [structural regression](SYNC-STRUCTURE.md) covers repeated native
+element IDs across multiple layout-created slides. Other native content types
+remain separate compatibility work.
