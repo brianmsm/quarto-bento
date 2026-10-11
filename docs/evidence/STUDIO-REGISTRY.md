@@ -175,3 +175,9 @@ with the pending count visible in Studio. The console contained only the
 existing favicon refusal and CSP-blocked upstream release checks. This proves
 the save/registry/recompute interaction with pending text; it does not claim
 native operating-system dialog or other-platform validation.
+
+The same Studio session then previewed and explicitly applied the authored text
+patch plus the optional `.qbento-design` heading class. The exact source diff
+contained those two changes only. A final **Recalcular** reached revision 5,
+zero pending changes and the same document identity. Neither the selected
+theme nor layout required copying coordinates into QMD.

@@ -113,3 +113,23 @@ full suite, hosted CI or native macOS/Windows claim is made by this slice. The
 peer registry implementation is a prerequisite; its reviewed file SHA-256 is
 `7ecaf8f8b6a4f2364b2dde1f64643b9ee5f4bd6f98fe80d80add6ad1a0ad3f7e`. It is
 deliberately excluded from this diagnostic commit.
+
+## Coordinator native acceptance
+
+At integrated `6225391`, the coordinator used a real Quarto-generated source-only
+fixture at `/tmp/qbento-missing-design-native-final/deck.qmd`, containing an
+identified slide with `.qbento-design` and no recovered visual state. Chromium
+headless displayed the actionable banner and native editor on opening, after
+**Recalcular**, and after a page reload. The control remained enabled after
+startup. The original QMD remained byte-identical, SHA-256
+`5b2d1be9175fae9d14d212ac61202ceaf0cb96cbc9bd10e973ccd16df79dbc02`;
+recalculation advanced revision 1 to 2, retained
+`docId=a4758376-9f2c-494a-b78d-f624f97e03b0` and left zero pending changes.
+
+Screenshots of the actual canvas and warning were inspected at 1280 × 720 and
+960 × 720: `output/playwright/missing-design-parent-initial.png`,
+`missing-design-parent-recalculated.png` and
+`missing-design-parent-reopened-960.png`. The wrapped header and warning remain
+above the editor, without overlap. Native canvas zoom adjusts to the available
+area. This is browser evidence on Linux; no desktop focus interaction or other
+operating-system validation occurred.

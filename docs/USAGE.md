@@ -107,6 +107,13 @@ forma parte de un plan revisado, nunca de un guardado o render implícito. Si
 añadirlas no es seguro para las identidades existentes, Studio explica la
 omisión.
 
+Si el QMD conserva una de esas trazas pero faltan los datos de diseño
+correspondientes, Studio muestra `MISSING_DESIGN` al abrir y recalcular. Puedes
+ver una presentación base, pero eso no recupera la apariencia original.
+Restaura los archivos indicados desde Git o una copia de seguridad, o revisa
+explícitamente una traza que ya no corresponda al proyecto. Guardar y renderizar
+no eliminan automáticamente la anotación del QMD.
+
 Abre **Diseños y temas** para añadir o cambiar layouts con nombre y temas
 básicos reutilizables. Selecciona el tema activo explícitamente. **Guardar
 diseños** actualiza `.qbento/design.json`; no cambia el QMD, el HTML ni ejecuta
@@ -215,6 +222,7 @@ proyecto Quarto existente.
 | Transacción interrumpida               | Ejecuta `recover deck.qmd inspect`, revisa el estado y elige explícitamente `finish` o `rollback` si el diagnóstico lo permite. Para el wrapper de Quarto, consulta también `quarto-recover`. |
 | Estado corrupto o identidad distinta   | Conserva los archivos y sus backups para investigar. Borrar `.qbento/` pierde el vínculo con el diseño y los cambios pendientes.                                                              |
 | `DESIGN_REGISTRY_RECOVERY_REQUIRED`    | Conserva el marcador y las versiones del registro. Sigue la [recuperación manual del registro](evidence/STUDIO-REGISTRY.md); el comando genérico `recover` no gestiona ese journal. |
+| `MISSING_DESIGN`                      | Restaura el diseño externo indicado desde Git o un backup. Generar una presentación base no demuestra que su apariencia anterior haya sido recuperada. |
 
 Los límites de contenido y las pruebas que todavía faltan se mantienen en el
 [registro de implementación](IMPLEMENTATION_STATUS.md).
