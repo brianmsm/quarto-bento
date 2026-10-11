@@ -1,11 +1,12 @@
 /** Read authored fragments with Pandoc only; never execute Quarto or infer output. */
 import type { SourceDocument } from "../source/mod.ts";
+import { renderList } from "./lists.ts";
 import { renderInline } from "./inline.ts";
 import type { Node } from "./types.ts";
 export interface SourceInlineProof {
   sourceHash: string;
   blockId: string;
-  kind: "heading" | "paragraph";
+  kind: "heading" | "paragraph" | "list";
   html: string;
   readerId?: string;
 }
@@ -14,7 +15,7 @@ export async function readSourceInline(
 ): Promise<ReadonlyMap<string, SourceInlineProof>> {
   const fragments = source.blocks.filter((block) =>
     block.origin === "authored" && block.editable &&
-    ["heading", "paragraph"].includes(block.kind)
+    ["heading", "paragraph", "list"].includes(block.kind)
   );
   const proofs = new Map<string, SourceInlineProof>();
   if (!fragments.length) return proofs;
@@ -83,6 +84,20 @@ export async function readSourceInline(
         blockId: block.id,
         kind: "paragraph",
         html: renderInline(node.c as Node[]),
+      });
+    } else if (
+      block.kind === "list" && ["BulletList", "OrderedList"].includes(node.t)
+    ) {
+      if (/^\s*(?:[-+*]|[0-9]+[.)])\s+\[[ xX]\](?:\s|$)/m.test(block.content)) {
+        throw new Error(
+          "UNSUPPORTED_LIST: task-list checkbox semantics need a dedicated native adapter",
+        );
+      }
+      proofs.set(block.id, {
+        sourceHash: source.hash,
+        blockId: block.id,
+        kind: "list",
+        html: renderList(node),
       });
     } else {
       throw new Error(

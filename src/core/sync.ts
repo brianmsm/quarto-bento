@@ -22,6 +22,7 @@ import {
   renderInline,
 } from "../render/inline.ts";
 export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
+import { LIST_CODEC_VERSION, parseNativeList } from "../render/lists.ts";
 import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
 import { graphSyncRequest, preflightGraphSync } from "./graph-sync.ts";
 import {
@@ -514,6 +515,12 @@ function chooseBlock(
       "This saved baseline predates faithful inline projection. Recalculate and review the source before syncing links or inline code.",
     );
   }
+  if (source.kind === "list" && source.listCodec !== LIST_CODEC_VERSION) {
+    fail(
+      "SOURCE_FORMAT_UNSUPPORTED",
+      "Recalculate before synchronizing a list without its verified codec baseline.",
+    );
+  }
   if (source.kind === "math" && source.mathCodec !== MATH_CODEC_VERSION) {
     fail(
       "SOURCE_FORMAT_UNSUPPORTED",
@@ -628,12 +635,12 @@ function identityAcquisition(
       binding.hash !== document.hash || proof.semanticId !== block.id ||
       block.content !== binding.content || block.kind !== binding.kind ||
       block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph"].includes(block.kind) ||
+      !["heading", "paragraph", "list"].includes(block.kind) ||
       element?.type !== "text" || typeof element.html !== "string"
     ) {
       fail(
         "AMBIGUOUS_IDENTITY",
-        "A source change needs exact weak authored heading/paragraph proofs from the unchanged executed baseline; pin unsupported or externally changed identities and recalculate before syncing. Pending edits are retained.",
+        "A source change needs exact weak authored heading/paragraph/list proofs from the unchanged executed baseline; pin unsupported or externally changed identities and recalculate before syncing. Pending edits are retained.",
       );
     }
     const title = block.kind === "heading" &&
@@ -1108,6 +1115,11 @@ async function buildPlan(
       if (!displayedCode && !displayedMath) {
         assertMappedDisplayMath(change.after.value);
       }
+      const displayedList =
+        state.provenance[targetKey(change.target)]?.source?.kind === "list";
+      const parsedList = displayedList
+        ? parseNativeList(change.after.value)
+        : undefined;
       const parsedMath = displayedMath
         ? parseNativeDisplayMath(change.after.value)
         : undefined;
@@ -1119,16 +1131,19 @@ async function buildPlan(
             ? ["code"]
             : displayedMath
             ? ["math"]
+            : displayedList
+            ? ["list"]
             : ["heading", "paragraph"],
         ),
         normalized = displayedCode
           ? change.after.value.replace(/\r\n|\r/g, "\n")
-          : parsedMath?.html ?? canonicalInlineHtml(change.after.value),
+          : parsedList?.html ?? parsedMath?.html ??
+            canonicalInlineHtml(change.after.value),
         after = displayedCode
           ? normalized + "\n"
           : parsedMath
           ? parsedMath.tex + "\n"
-          : inlineHtmlToMarkdown(change.after.value);
+          : parsedList?.markdown ?? inlineHtmlToMarkdown(change.after.value);
       textRequests.push({ blockId: block.id, expected, replacement: after });
       changes.push({
         changeId: change.id,
@@ -1385,6 +1400,19 @@ async function buildPlan(
       blockId: acquiredIds.get(request.blockId) ?? request.blockId,
     })),
   );
+  const listChanges = changes.filter((change) => change.kind === "list");
+  if (listChanges.length) {
+    const proofs = await readSourceInline(scanSource(patch.result));
+    for (const change of listChanges) {
+      const id = acquiredIds.get(change.blockId) ?? change.blockId;
+      if (proofs.get(id)?.html !== parseNativeList(change.html).html) {
+        fail(
+          "UNSUPPORTED_LIST",
+          "Edited list does not round-trip faithfully through the original-source Pandoc reader; pending edits are retained.",
+        );
+      }
+    }
+  }
   const notes = notesRequests.length
     ? previewNotes(scanSource(patch.result), notesRequests)
     : undefined;

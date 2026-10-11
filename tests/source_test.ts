@@ -160,7 +160,6 @@ Deno.test("displayed code and math edit inner bytes only", () => {
 Deno.test("unsupported Markdown, includes and unclosed containers are not editable", () => {
   for (
     const text of [
-      "- first\n- second\n",
       "> quote\n",
       "|a|b|\n|-|-|\n",
       "{{< include other.qmd >}}\n",

@@ -13,6 +13,7 @@ import {
   assertDesignRegistryUnchanged,
   loadDesignRegistry,
 } from "../render/registry.ts";
+import { LIST_CODEC_VERSION } from "../render/lists.ts";
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
 import { readSourceInline } from "../render/source-inline.ts";
 import { MATH_CODEC_VERSION } from "../render/math.ts";
@@ -342,6 +343,9 @@ export async function projectProjection(
           ...(block
             ? {
               inlineCodec: INLINE_CODEC_VERSION,
+              ...(block.kind === "list"
+                ? { listCodec: LIST_CODEC_VERSION }
+                : {}),
               ...(block.kind === "math"
                 ? { mathCodec: MATH_CODEC_VERSION }
                 : {}),

@@ -88,10 +88,10 @@ export function previewIdentities(
     const block = blocks[0];
     if (
       block.stable || block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph"].includes(block.kind)
+      !["heading", "paragraph", "list"].includes(block.kind)
     ) {
       fail(
-        "Only weak authored headings and paragraphs can acquire a verified identity.",
+        "Only weak authored headings, paragraphs and lists can acquire a verified identity.",
       );
     }
     if (block.parentId) {
@@ -130,12 +130,12 @@ export function previewIdentities(
       } else replacement = line + ` {#${request.sourceId}${native}}` + newline;
       newBlockId = request.sourceId;
     } else {
-      if (request.title) fail("A paragraph is not a slide title.");
+      if (request.title) fail("A body text block is not a slide title.");
       const newline = document.newline;
       const body = block.raw + (block.raw.endsWith("\n") ? "" : newline);
       replacement =
         `::: {#${request.sourceId} bento-element-id="${request.nativeId}"}${newline}${newline}${body}${newline}:::${newline}`;
-      newBlockId = `${request.sourceId}/paragraph:1`;
+      newBlockId = `${request.sourceId}/${block.kind}:1`;
     }
     patches.push({
       blockId: block.id,

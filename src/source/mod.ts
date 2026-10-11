@@ -8,6 +8,7 @@ export interface Span {
 export type BlockKind =
   | "heading"
   | "paragraph"
+  | "list"
   | "div"
   | "code"
   | "chunk"
@@ -441,10 +442,39 @@ export function scanSource(
       i++;
       continue;
     }
+    if (/^ {0,3}(?:[-+*] |[0-9]+[.)] )/.test(s)) {
+      const rootMarker = /^ {0,3}([-+*]|[0-9]+[.)]) /.exec(s)![1];
+      const ordered = /^[0-9]/.test(rootMarker);
+      const first = i++;
+      while (i < lines.length) {
+        if (!lines[i].text.trim()) {
+          let next = i + 1;
+          while (next < lines.length && !lines[next].text.trim()) next++;
+          if (
+            next >= lines.length ||
+            !/^(?: {2,}\S|\t| {0,3}(?:[-+*] |[0-9]+[.)] ))/.test(
+              lines[next].text,
+            )
+          ) break;
+          i = next;
+        }
+        const nextMarker = /^([-+*]|[0-9]+[.)]) /.exec(lines[i].text)?.[1];
+        if (nextMarker && /^[0-9]/.test(nextMarker) !== ordered) break;
+        if (
+          /^ {0,3}(?:#{1,6}\s|`{3,}|~{3,}|:{3,}|<!--|\$\$\s*$)/.test(
+            lines[i].text,
+          )
+        ) break;
+        i++;
+      }
+      add("list", first, i - 1);
+      continue;
+    }
     const first = i++;
     while (
       i < lines.length && lines[i].text.trim() &&
-      !/^ {0,3}(?:#{1,6}\s|`{3,}|~{3,}|:{3,}|<!--|\$\$\s*$)/.test(lines[i].text)
+      !/^ {0,3}(?:#{1,6}\s|`{3,}|~{3,}|:{3,}|<!--|\$\$\s*$|[-+*] |[0-9]+[.)] )/
+        .test(lines[i].text)
     ) i++;
     const raw = lines.slice(first, i).map((l) => l.text).join("\n");
     add(

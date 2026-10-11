@@ -32,6 +32,7 @@ import {
 } from "../source/table.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { renderInline as inline } from "./inline.ts";
+import { renderList } from "./lists.ts";
 import { mathToNativeHtml } from "./math.ts";
 import {
   applyElementDesign,
@@ -236,7 +237,20 @@ export async function projectAst(
     result.origins[slide!.id][el.id] = origin;
   }
   function text(id: string, html: string, heading: boolean, origin: Origin) {
-    const h = contentFrame && !heading ? contentFrame.h : 90;
+    // A list is one editable object, but its default box needs room for its
+    // item/paragraph lines. This is conservative initial layout, not font-ink
+    // measurement; explicit layout frames and saved geometry retain authority.
+    const listLines = /^<(ul|ol)>/.test(html)
+      ? html.replace(/<\/(?:li|p)>|<br>/g, "\n").replace(/<[^>]*>/g, "")
+        .split("\n").filter((line) => line.trim())
+        .reduce(
+          (sum, line) => sum + Math.max(1, Math.ceil(line.length / 55)),
+          0,
+        )
+      : 0;
+    const h = contentFrame && !heading
+      ? contentFrame.h
+      : Math.max(90, listLines * 40 + 20);
     add({
       id,
       type: "text",
@@ -350,7 +364,7 @@ export async function projectAst(
     frames?: Frame[],
   ) {
     let headingIndex = 0;
-    let paragraphIndex = 0;
+    let paragraphIndex = 0, listIndex = 0;
     let codeIndex = 0;
     let mathIndex = 0;
     let sourceMarker: string | undefined;
@@ -361,7 +375,10 @@ export async function projectAst(
       const groupSlide = slide, groupStart = slide?.elements.length ?? 0;
       // Child subtrees are measured independently before the component places them.
       if (groups) y = contentFrame?.y ?? 166;
-      if (!["Para", "Plain", "RawBlock", "CodeBlock"].includes(node.t)) {
+      if (
+        !["Para", "Plain", "RawBlock", "CodeBlock", "BulletList", "OrderedList"]
+          .includes(node.t)
+      ) {
         sourceMarker = undefined;
       }
       if (node.t === "Header") {
@@ -769,16 +786,24 @@ export async function projectAst(
           }
           if (
             isComputed || children.length !== 1 ||
-            !["Para", "Plain"].includes(children[0].t) ||
+            !["Para", "Plain", "BulletList", "OrderedList"].includes(
+              children[0].t,
+            ) ||
             images(children).length
           ) {
             throw new Error(
-              "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored text paragraph",
+              "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored paragraph, list or display equation",
             );
           }
           const content = children[0].c as Node[];
-          const formula = displayFormula(content);
-          if (formula !== undefined) {
+          const isList = ["BulletList", "OrderedList"].includes(children[0].t);
+          const formula = isList ? undefined : displayFormula(content);
+          if (isList) {
+            text(nativeId, renderList(children[0]), false, {
+              origin: "authored",
+              sourceId: `${attr[0]}/list:1`,
+            });
+          } else if (formula !== undefined) {
             math(nativeId, formula, {
               origin: "authored",
               sourceId: `${attr[0]}/math:1`,
@@ -865,6 +890,18 @@ export async function projectAst(
             ...(computed && parentId ? { producer: parentId } : {}),
           });
         }
+      } else if (["BulletList", "OrderedList"].includes(node.t)) {
+        const id = sourceMarker ??
+          (parentId
+            ? `${parentId}/list:${++listIndex}`
+            : `qb-list-${++counter}`);
+        const explicitMarker = sourceMarker;
+        sourceMarker = undefined;
+        text(id, renderList(node), false, {
+          origin: computed ? "computed" : "authored",
+          sourceId: explicitMarker ?? (parentId ? id : undefined),
+          ...(computed && parentId ? { producer: parentId } : {}),
+        });
       } else if (node.t === "Table") {
         if (!source || !parentId) {
           throw new Error(
@@ -1135,7 +1172,11 @@ export function validateProjectionOrigins(
       ) {
         // Only faithful original authored inline HTML can establish this
         // binding, uniquely within the same verified original slide.
-        const kind = original.sourceId ? "heading" : "paragraph";
+        const kind = /^<(ul|ol)>/.test(element.html)
+          ? "list"
+          : original.sourceId
+          ? "heading"
+          : "paragraph";
         candidates = source.blocks.filter((b) =>
           b.kind === kind && b.origin === "authored" && !b.stable &&
           !b.parentId && b.slideId === originalSlides.get(slideId) &&
@@ -1190,6 +1231,14 @@ export function validateProjectionOrigins(
       ) {
         throw new Error(
           "UNMAPPED_PROVENANCE: executed math differs from the exact authored source formula",
+        );
+      }
+      if (
+        block.kind === "list" && block.origin === "authored" &&
+        originalHtml(block) !== element.html
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: executed list differs from its exact authored source fragment",
         );
       }
       used.add(block.id);

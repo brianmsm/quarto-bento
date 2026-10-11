@@ -1,0 +1,47 @@
+---
+title: Listas editables
+engine: knitr
+qbento-annotations: none
+---
+
+## Lista normal
+
+- Resultado **principal**
+  - Subgrupo *A*
+  - Subgrupo B con `modelo`
+- Consulta la [fuente](https://example.org/resultados).
+
+## Pasos {#steps}
+
+::: {#procedure}
+
+1. Revisar datos.
+2. Ejecutar el análisis.
+3. Interpretar resultados.
+
+:::
+
+## Párrafos {#paragraphs}
+
+::: {#explanation}
+
+- Primera explicación.
+
+  Segundo párrafo con **énfasis**.
+
+  - Un detalle.
+  - Otro detalle.
+
+  Último párrafo.
+
+- Segunda explicación.
+
+:::
+
+## Resultado computado {#computed-slide}
+
+::: {#computed-result}
+
+- Total: `r sum(c(10, 20, 30))`.
+
+:::
