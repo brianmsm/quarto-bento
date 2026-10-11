@@ -3,7 +3,9 @@
 This slice implements original-QMD `.bento-kpi` components on the owner's Linux
 machine. It does not establish native creation of semantic KPIs, nested KPI
 composition, another operating system, or a release acceptance boundary. Native
-visual acceptance is a separate coordinator check.
+visual acceptance of label editing, changed-data recomputation and computed
+conflict restoration is recorded in the subsequent
+[integrated native receipt](PLAIN-KPI-NATIVE.md).
 
 ## Exact supported source contract
 

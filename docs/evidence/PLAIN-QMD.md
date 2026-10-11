@@ -3,8 +3,9 @@
 Local Linux execution and core-runtime evidence, 2026-10-11. The implementation
 starts at `0bf0d9c`, using Quarto 1.10.19, Deno 2.9.6 and the vendored Bento
 1.2.6 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`. This receipt
-establishes the source/runtime boundary; native browser acceptance is a separate
-integration check.
+establishes the source/runtime boundary. The subsequent integrated native
+edit/save/reopen/review/recalculate and changed-data checks are recorded in
+[plain-QMD and KPI native acceptance](PLAIN-KPI-NATIVE.md).
 
 ## Problem and resulting behavior
 
