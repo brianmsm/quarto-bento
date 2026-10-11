@@ -96,6 +96,7 @@ revision matches. Studio's slide actions send and require the same identity.
 | `element.patch` | `slideId`, `elementId`, `fields` | Assign supported top-level properties to one existing element.                      |
 | `slide.patch`   | `slideId`, `fields`              | Assign supported top-level properties to one existing slide.                        |
 | `slide.move`    | `slideId`, `afterId`             | Move after another existing slide; `null` means first. Moving after itself refuses. |
+| `slide.create`  | `slideId`, `afterId`, `slide`    | Insert a bounded authored native slide after an existing slide; `null` means first. |
 | `slide.hide`    | `slideId`                        | Hide visually using the existing reversible Studio action.                          |
 | `slide.show`    | `slideId`                        | Show using the same Studio action.                                                  |
 
@@ -125,10 +126,120 @@ that element's actual pinned type and have a valid native value. For example,
 refuses. Arrays and typed data such as table rows or chart options are assigned
 as complete property values and checked by the existing model validator. There
 are no generic JSON pointers, dotted paths, type/ID changes, replacements of
-slide/element arrays, creation, deletion or arbitrary code execution operations
-in this slice. Invalid numbers, prototype keys, non-JSON values and unknown
+slide/element arrays, source deletion or arbitrary code execution operations in
+this slice. Invalid numbers, prototype keys, non-JSON values and unknown
 request/operation properties refuse. Null is an ordinary value and must pass its
 property's schema; it does not mean delete a property.
+
+## Create an authored slide
+
+`slide.create` accepts a native slide with **1–50 elements**, including at least
+one text element. The first text is the heading; each later text is one authored
+body paragraph. Text uses the existing bounded inline codec: plain text,
+`b`/`strong`, `i`/`em`, `s`, inline `code`, explicit web links and `br` where
+the source grammar permits them. Decorations use native `type: "shape"`,
+including its `shape: "line"`, `"arrow"` and `"path"` subtypes, and remain in
+`.qbento/`. All native properties must pass the pinned model validator.
+
+Creation requires a source-backed execution baseline matching the entire current
+QMD. If source was edited or a sync was applied since that execution,
+`STALE_SOURCE` asks to recalculate before creating; it preserves saved pending
+edits. This conservative check also prevents creating relative to a saved slide
+that has already disappeared from the source. A baseline without source
+provenance requires authoring an identified QMD slide and rendering first.
+
+This complete request creates useful content without a browser. Replace the
+identity and revision with the latest `get` values, and choose fresh IDs:
+
+```json
+{
+  "version": 1,
+  "docId": "replace with the exact docId from get",
+  "expectedRevision": 12,
+  "operations": [
+    {
+      "op": "slide.create",
+      "slideId": "next-step",
+      "afterId": null,
+      "slide": {
+        "id": "next-step",
+        "background": "#eef5f0",
+        "elements": [
+          {
+            "id": "next-step-title",
+            "type": "text",
+            "html": "Next step",
+            "x": 80,
+            "y": 52,
+            "w": 1120,
+            "h": 90,
+            "fontSize": 42
+          },
+          {
+            "id": "next-step-body",
+            "type": "text",
+            "html": "Review the <b>results</b> together.",
+            "x": 80,
+            "y": 166,
+            "w": 1120,
+            "h": 90,
+            "fontSize": 26
+          },
+          {
+            "id": "next-step-arrow",
+            "type": "shape",
+            "shape": "arrow",
+            "fill": "#156f65",
+            "x": 80,
+            "y": 299,
+            "w": 100,
+            "h": 33
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+`slide.id` must equal `slideId` exactly; neither is normalized. Every new native
+ID must start with an ASCII letter and then contain only ASCII letters, digits,
+`_`, `:`, `.` or `-`, with a maximum of 200 characters. New IDs must be fresh
+against the live QMD, saved deck, retained generated baseline and pending
+creations. The check also reserves the future source body IDs `next-step-text-1`
+and `next-step-text-1/paragraph:1`. Removing a slide visually does not free its
+retained identity. Unlike targeting an existing element by its slide-scoped ID,
+this creation boundary conservatively requires fresh IDs across all retained
+native objects.
+
+`afterId` identifies a slide in the current in-memory deck, including a slide
+created earlier in the same batch; `null` inserts first. Later `element.patch`,
+`slide.patch` and `slide.move` operations can target the new slide. The final
+created content is checked again before saving, so a later unsupported field
+patch refuses the whole batch. Native order is saved immediately; source order
+changes only through explicit reviewed sync.
+
+The operation uses the existing structural source authoring grammar in memory
+before committing. Empty or multiline headings, unsupported rich body markup,
+display equations, nonempty notes or separate `slide.title` metadata require
+explicit QMD authoring. Notes/title may be omitted or set to the empty string.
+The structural scanner can conservatively refuse table-like text containing a
+pipe (`|`) even when it is intended as a literal paragraph. Images, tables,
+charts, executable producers and declared
+`origin`/`producer`/`provenance`/`source` metadata are outside this creation
+subset. Computed content continues to originate from Quarto execution.
+
+Saving produces a durable authored `create-slide` pending change without writing
+QMD or generated HTML. The live source hash used to check fresh IDs is rechecked
+under the same operation lock as the revision save; a source change at that
+boundary refuses with `STALE_SOURCE`. Reviewed sync converts the text to a
+heading and identified paragraph containers, with technical
+`bento-title-id`/`bento-element-id` attributes retaining the chosen native IDs.
+Its inspected plan may also include the configured optional design annotation.
+The next explicit render adopts the source-backed content and retains native
+geometry, background and decorations. Existing identity, execution-order and
+pending-edit guards still govern that render; pin anonymous source objects
+before structural changes if those guards require it.
 
 ## Save remains separate from source sync and render
 
@@ -162,14 +273,16 @@ and no success envelope. Error objects have `error`, `message` and optional
 `details`. Agent-specific codes include `AGENT_USAGE`, `AGENT_INVALID_REQUEST`,
 `AGENT_INVALID_TARGET`, `AGENT_TARGET_NOT_FOUND`, `AGENT_UNKNOWN_OPERATION`,
 `AGENT_UNKNOWN_FIELD`, `AGENT_INPUT_FILE`, `AGENT_INPUT_TOO_LARGE` and
-`AGENT_INVALID_JSON`. Existing errors retain their structured code, including
-`UNRELATED_DOCUMENT`, `STALE_REVISION`, `UNSAFE_KEY`, `BENTO_CONTRACT` and
-`UNCAPTURED_HTML_EDITS`; other core/I/O failures use the existing CLI fallback.
+`AGENT_INVALID_JSON`, `AGENT_ID_COLLISION` and `AGENT_UNSUPPORTED_CREATION`.
+Existing errors retain their structured code, including `UNRELATED_DOCUMENT`,
+`STALE_REVISION`, `UNSAFE_KEY`, `BENTO_CONTRACT` and `UNCAPTURED_HTML_EDITS`;
+creation also uses `STALE_SOURCE` and the existing source/inline grammar
+diagnostics. Other core/I/O failures use the existing CLI fallback.
 
 ```sh
-deno test --allow-read --allow-write --allow-env --allow-run tests/agent_test.ts
-deno check src/core/agent.ts src/cli.ts tests/agent_test.ts
-deno lint src/core/agent.ts src/cli.ts tests/agent_test.ts
+deno test --allow-read --allow-write --allow-env --allow-run tests/agent_test.ts tests/agent_create_test.ts
+deno check src/core/agent.ts src/core/project.ts src/cli.ts tests/agent_test.ts tests/agent_create_test.ts
+deno lint src/core/agent.ts src/core/project.ts src/cli.ts tests/agent_test.ts tests/agent_create_test.ts
 git diff --check
 ```
 
@@ -186,4 +299,5 @@ with another valid document at the same revision and verifies that field, hide
 and show operations refuse without changing it or either QMD. Studio's HTTP
 tests require document identity before its reversible slide actions. This is
 Linux runtime/core evidence; no new GUI or native-platform acceptance is
-claimed.
+claimed. The creation-specific CLI, atomicity, identity and source-lock evidence
+is recorded in [AGENT-CREATE.md](evidence/AGENT-CREATE.md).

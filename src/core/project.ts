@@ -612,6 +612,7 @@ export async function saveProject(
   source: string,
   doc: BentoDoc,
   revision: number,
+  expectedSourceHash?: string,
 ) {
   assertProjectDocument(doc);
   assertSourceThemeReferences(doc, {}, true);
@@ -625,6 +626,15 @@ export async function saveProject(
       );
     }
     await assertOutputUnchanged(state, paths.output);
+    if (
+      expectedSourceHash !== undefined &&
+      hashSource(await Deno.readTextFile(paths.source)) !== expectedSourceHash
+    ) {
+      throw new StateError(
+        "STALE_SOURCE",
+        "QMD changed after checking new identities; reload before saving.",
+      );
+    }
     if (equal(state.emitted, doc)) return state;
     return await store.save(captureEdits(state, doc));
   });
