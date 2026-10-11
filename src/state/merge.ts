@@ -1,4 +1,10 @@
 import {
+  captureComponentSnapshots,
+  componentOwns,
+  validateComponentCreations,
+  validateComponentProjections,
+} from "./components.ts";
+import {
   type BentoDoc,
   type BentoElement,
   type BentoSlide,
@@ -258,6 +264,7 @@ export function captureEdits(
     );
   }
   const state = clone(input);
+  captureComponentSnapshots(state, edited);
   function capture(
     target: Target,
     before: JsonObject,
@@ -456,7 +463,9 @@ export function captureEdits(
     }
   }
   state.pending = state.pending.filter((p) =>
-    !(p.kind.startsWith("create-") && !entity(edited, p.target)) &&
+    !(p.kind.startsWith("create-") && !entity(edited, p.target) &&
+      !(componentOwns(state, p.target) &&
+        !edited.slides.some((slide) => slide.id === p.target.slideId))) &&
     !(p.kind.startsWith("delete-") && entity(edited, p.target))
   );
   const beforeOrder = state.emitted.slides.map((s) => s.id),
@@ -615,6 +624,20 @@ export function compose(
   const deleted = state.pending.filter((p) =>
     p.kind === "delete-slide" && !entity(generated, p.target)
   );
+  if (
+    deleted.some((change) =>
+      state.componentCreations?.some((intent) =>
+        intent.slideId === change.target.slideId
+      ) || state.componentProjections?.some((record) =>
+        record.slideId === change.target.slideId
+      )
+    )
+  ) {
+    throw new StateError(
+      "COMPONENT_PARENT_APPROVAL_REQUIRED",
+      "A slide with pending components disappeared from QMD. Recover it or review its exact source deletion before retiring child content.",
+    );
+  }
   const underDeleted = (target: Target) =>
     deleted.some((p) =>
       p.target.slideId === target.slideId &&
@@ -967,6 +990,8 @@ export function validateState(value: unknown): asserts value is ProjectState {
     ) fail("Malformed or duplicate pending edit.");
     changeIds.add(p.id);
   }
+  validateComponentCreations(s.componentCreations, s.docId);
+  validateComponentProjections(s.componentProjections, s.componentCreations);
   if (s.widgets) {
     const w = s.widgets,
       digest = (v: unknown) =>

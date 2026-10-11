@@ -1,3 +1,20 @@
+import { loadDesignRegistry } from "../render/registry.ts";
+import {
+  assertCurrentComponentSource,
+  componentOperation,
+  projectAuthoredComponent,
+} from "./component-actions.ts";
+import { componentMarkdown } from "../source/component-insertion.ts";
+import {
+  type ComponentApproval,
+  prepareComponentApprovals,
+  validateComponentApprovals,
+} from "./component-sync.ts";
+import {
+  type ComponentCreation,
+  componentProblems,
+  type ComponentProjection,
+} from "../state/mod.ts";
 import {
   canonicalInlineHtml,
   INLINE_CODEC_VERSION,
@@ -114,6 +131,9 @@ export interface SyncApproval {
   expectedPending: Change[];
   creationChangeIds: string[];
   normalizations: SyncNormalization[];
+  componentApprovals?: ComponentApproval[];
+  componentRetirements?: ComponentCreation[];
+  componentProjectionRetirements?: ComponentProjection[];
   /** Exact post-apply state before any element deletion may retire retained edits. */
   deletionStateHash?: string;
   identityBindings?: SyncIdentityBinding[];
@@ -158,6 +178,9 @@ export interface SyncPlan {
   creationChangeIds: string[];
   normalizations: SyncNormalization[];
   identityBindings?: SyncIdentityBinding[];
+  componentApprovals?: ComponentApproval[];
+  componentRetirements?: ComponentCreation[];
+  componentProjectionRetirements?: ComponentProjection[];
   planHash: string;
 }
 export interface SyncReceipt {
@@ -267,6 +290,48 @@ export function validateSyncApproval(
       );
     }
   }
+  validateComponentApprovals(
+    a.componentApprovals,
+    a.componentRetirements,
+    a.docId,
+    a.componentProjectionRetirements,
+  );
+  if (
+    ((a.componentRetirements?.length ?? 0) +
+        (a.componentProjectionRetirements?.length ?? 0)) > 0 &&
+    (!a.deletionStateHash ||
+      [
+        ...a.componentRetirements ?? [],
+        ...a.componentProjectionRetirements ?? [],
+      ].some((intent) =>
+        !a.expectedPending.some((pending) =>
+          pending.kind === "delete-slide" &&
+          pending.target.slideId === intent.slideId
+        )
+      ))
+  ) {
+    fail(
+      "INVALID_APPROVAL",
+      "Pending components retire only under exact approved parent deletion.",
+    );
+  }
+  for (const approval of a.componentApprovals ?? []) {
+    if (
+      approval.intent.members.some((member) =>
+        !a.expectedPending.some((pending) =>
+          pending.kind === "create-element" &&
+          pending.target.slideId === approval.intent.slideId &&
+          pending.target.elementId === member.nativeId &&
+          a.creationChangeIds.includes(pending.id)
+        )
+      )
+    ) {
+      fail(
+        "INVALID_APPROVAL",
+        "Every component role must have its own approved pending creation.",
+      );
+    }
+  }
   const ids = a.expectedPending.map((p) => p?.id);
   if (
     ids.some((id) => typeof id !== "string") ||
@@ -328,7 +393,8 @@ export function prepareApprovedSync(
     p.kind === "delete-element"
   );
   if (
-    elementDeletions.length &&
+    (elementDeletions.length || a.componentRetirements?.length ||
+      a.componentProjectionRetirements?.length) &&
     hashSource(canonical(state)) !== a.deletionStateHash
   ) {
     fail(
@@ -408,7 +474,16 @@ export function prepareApprovedSync(
       order.ids = order.ids.filter((id) => id !== elementId);
     }
   }
-  return promoteCreated(prepared, generated, a.creationChangeIds);
+  const components = prepareComponentApprovals(
+    prepared,
+    generated,
+    sourceHash,
+    a.componentApprovals,
+    a.componentRetirements,
+    freshProvenance,
+    a.componentProjectionRetirements,
+  );
+  return promoteCreated(components, generated, a.creationChangeIds);
 }
 function chooseBlock(
   sourceText: string,
@@ -722,6 +797,89 @@ async function buildPlan(
       binding,
     ) => [binding.blockId, binding.newBlockId]) ?? [],
   );
+  const componentApprovals: ComponentApproval[] = [],
+    componentRetirements: ComponentCreation[] = [];
+  const componentProjectionRetirements = (state.componentProjections ?? [])
+    .filter((record) =>
+      selected.some((pending) =>
+        pending.kind === "delete-slide" &&
+        pending.target.slideId === record.slideId
+      )
+    ).map((record) => clone(record));
+  const componentChangeIds = new Set<string>();
+  for (const intent of state.componentCreations ?? []) {
+    const memberChanges = state.pending.filter((pending) =>
+      pending.kind === "create-element" &&
+      pending.target.slideId === intent.slideId &&
+      intent.members.some((member) =>
+        member.nativeId === pending.target.elementId
+      )
+    );
+    const selectedMembers = memberChanges.filter((pending) =>
+      ids.includes(pending.id)
+    );
+    const parentDelete = selected.some((pending) =>
+      pending.kind === "delete-slide" &&
+      pending.target.slideId === intent.slideId
+    );
+    if (parentDelete) {
+      componentRetirements.push(clone(intent));
+      memberChanges.forEach((pending) => componentChangeIds.add(pending.id));
+      continue;
+    }
+    if (!selectedMembers.length && selectedChangeIds !== undefined) continue;
+    const problems = componentProblems(state, intent);
+    if (problems.length) {
+      fail(
+        "COMPONENT_INCOMPLETE",
+        problems.join(" ") +
+          " Abre Añadir componente para restaurar miembros ausentes o descartar la creación pendiente.",
+      );
+    }
+    if (selectedMembers.length !== intent.members.length) {
+      fail(
+        "PARTIAL_COMPONENT_SELECTION",
+        "Review all fields of a pending component together; a partial source acquisition is not approved.",
+      );
+    }
+    const mapping = scanSource(text);
+    assertCurrentComponentSource(state, mapping);
+    for (const pending of memberChanges) {
+      assertTextCreationSource(state, mapping, pending, acquiredIds);
+    }
+    const operation = componentOperation(intent, state.emitted);
+    previewStructure(scanSource(identityResult), [operation]);
+    const registry = await loadDesignRegistry(projectPaths(source).directory);
+    const projection = await projectAuthoredComponent(
+      operation,
+      state.docId,
+      registry.defaults,
+      new Map([[intent.id, clone(intent.projectionFrame)]]),
+      {
+        elements: new Map(
+          intent.members.map((
+            member,
+          ) => [member.nativeId, clone(member.snapshot)]),
+        ),
+        resources: state
+          .emitted as unknown as import("../render/types.ts").BentoDoc,
+      },
+    );
+    for (const member of intent.members) {
+      const expected = canonicalInlineHtml(String(member.snapshot.html));
+      if (
+        projection.find((element) => element.id === member.nativeId)?.html !==
+          expected
+      ) {
+        fail(
+          "COMPONENT_FRAGMENT_UNSUPPORTED",
+          "The component text changes when parsed; author unsupported constructs explicitly in QMD. Pending edits remain retained.",
+        );
+      }
+    }
+    componentApprovals.push({ version: 1, intent: clone(intent), operation });
+    memberChanges.forEach((pending) => componentChangeIds.add(pending.id));
+  }
   const changes: SyncItem[] = [],
     normalizations: SyncNormalization[] = [],
     operations: StructureOperation[] = [],
@@ -743,8 +901,48 @@ async function buildPlan(
       });
     }
   };
+  for (const approval of componentApprovals) {
+    operations.push(approval.operation);
+    for (const member of approval.intent.members) {
+      const change = selected.find((pending) =>
+        pending.target.slideId === approval.intent.slideId &&
+        pending.target.elementId === member.nativeId
+      )!;
+      creationChangeIds.push(change.id);
+      addNormalization(change, {
+        present: true,
+        value: {
+          ...clone(change.after.value as Record<string, never>),
+          html: canonicalInlineHtml(String(member.snapshot.html)),
+        },
+      });
+    }
+    changes.push({
+      changeId: `component:${approval.intent.id}`,
+      target: { slideId: approval.intent.slideId },
+      blockId: approval.intent.id,
+      kind: "create-component",
+      before: "",
+      after: componentMarkdown(approval.operation),
+      html: "",
+    });
+  }
+  for (const intent of componentRetirements) {
+    changes.push({
+      changeId: `component-retirement:${intent.id}`,
+      target: { slideId: intent.slideId },
+      blockId: intent.id,
+      kind: "retire-pending-component",
+      before: intent.members.map((member) =>
+        `${member.role}: ${member.snapshot.html}`
+      ).join("\n"),
+      after: "Se descarta con la eliminación de su diapositiva aprobada.",
+      html: "",
+    });
+  }
   // Existing text edits first, then source creation/deletion, finally the requested final order.
   for (const change of selected) {
+    if (componentChangeIds.has(change.id)) continue;
     // Deletion retires this object's whole pending content after fresh execution;
     // never publish an intermediate text/attribute edit to the source being removed.
     if (
@@ -1344,6 +1542,11 @@ async function buildPlan(
     confirmedDeleteIds: [...confirmedDeleteIds],
     creationChangeIds,
     normalizations,
+    ...(componentApprovals.length ? { componentApprovals } : {}),
+    ...(componentRetirements.length ? { componentRetirements } : {}),
+    ...(componentProjectionRetirements.length
+      ? { componentProjectionRetirements }
+      : {}),
   };
   return { ...unsigned, planHash: hashSource(canonical(unsigned)) };
 }
@@ -1516,7 +1719,9 @@ export async function applySync(
     const needsApproval = verified.creationChangeIds.length > 0 ||
       verified.normalizations.length > 0 ||
       verified.confirmedDeleteIds.length > 0 ||
-      (verified.identityBindings?.length ?? 0) > 0;
+      (verified.identityBindings?.length ?? 0) > 0 ||
+      (verified.componentRetirements?.length ?? 0) > 0 ||
+      (verified.componentProjectionRetirements?.length ?? 0) > 0;
     const approvalPath = resolve(paths.stateDir, "sync-approved.json"),
       approvalStaging = resolve(history, `sync-approval-${transactionId}.json`);
     if (needsApproval) {
@@ -1531,11 +1736,26 @@ export async function applySync(
         ),
         creationChangeIds: verified.creationChangeIds,
         normalizations: verified.normalizations,
-        ...(verified.selectedChangeIds.some((id) =>
-            state.pending.some((p) =>
-              p.id === id && p.kind === "delete-element"
-            )
-          )
+        ...(verified.componentApprovals
+          ? { componentApprovals: clone(verified.componentApprovals) }
+          : {}),
+        ...(verified.componentRetirements
+          ? { componentRetirements: clone(verified.componentRetirements) }
+          : {}),
+        ...(verified.componentProjectionRetirements
+          ? {
+            componentProjectionRetirements: clone(
+              verified.componentProjectionRetirements,
+            ),
+          }
+          : {}),
+        ...((verified.componentRetirements?.length ||
+            verified.componentProjectionRetirements?.length ||
+            verified.selectedChangeIds.some((id) =>
+              state.pending.some((p) =>
+                p.id === id && p.kind === "delete-element"
+              )
+            ))
           ? {
             deletionStateHash: hashSource(
               canonical({ ...clone(state), revision: state.revision + 1 }),

@@ -1,3 +1,4 @@
+import { attachComponentEditor } from "/components.js";
 import { attachGraphRelations } from "/relations.js";
 import { attachRegistryEditor } from "/registry.js";
 import { createBentoBridge } from "/bridge.js";
@@ -26,6 +27,7 @@ async function api(path, body) {
       "reconcile/apply",
       "slides/action",
       "graphs/relations",
+      "components/action",
     ].includes(path)
   ) {
     void refreshDiagnostics();
@@ -95,6 +97,7 @@ function setBusy(value) {
       "save",
       "slides",
       "relations",
+      "components",
       "designs",
       "review",
       "reconcile",
@@ -708,6 +711,25 @@ attachGraphRelations({
     }
   },
   reloadEditor,
+});
+
+attachComponentEditor({
+  api,
+  getState: () => state,
+  setBusy,
+  showError,
+  saveBefore: async () => {
+    await bridge.save();
+    if (bridge.dirty) {
+      throw new Error(
+        "Hay cambios nuevos sin guardar; vuelve a abrir Añadir componente.",
+      );
+    }
+  },
+  reloadEditor: () => {
+    $("editor").contentWindow.__qbentoManagedReload = true;
+    $("editor").src = "/deck?revision=" + Date.now();
+  },
 });
 
 void refreshDiagnostics();

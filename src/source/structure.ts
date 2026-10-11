@@ -1,3 +1,8 @@
+import {
+  type ComponentInsertion,
+  generatedComponent,
+  verifyComponentInsertion,
+} from "./component-insertion.ts";
 /** Explicit, review-only structural operations over original QMD source sections. */
 import { hashSource, scanSource, sliceBytes, SourceError } from "./mod.ts";
 import type { SourceBlock, SourceDocument, SourceSlide, Span } from "./mod.ts";
@@ -8,6 +13,7 @@ import {
 } from "./deletion.ts";
 
 export type StructureOperation =
+  | ComponentInsertion
   | {
     type: "insert-slide";
     id: string;
@@ -300,9 +306,12 @@ function validateStep(
         replacement: prefix + section,
       }];
     }
+    case "insert-component":
     case "insert-text": {
       const slide = uniqueSlide(doc, operation.slideId);
-      const section = generatedText(doc, operation);
+      const section = operation.type === "insert-component"
+        ? generatedComponent(doc, operation)
+        : generatedText(doc, operation);
       const offset = spans.get(slide.id)!.end;
       const before = sliceBytes(doc.text, { start: 0, end: offset });
       const prefix = before && !/(?:\r?\n){2}$/.test(before)
@@ -443,6 +452,9 @@ function verifyResult(
       );
     }
     sameProducerOrder(before, after);
+  } else if (operation.type === "insert-component") {
+    verifyComponentInsertion(before, after, operation);
+    sameProducerOrder(before, after, true);
   } else if (operation.type === "insert-text") {
     const added = after.blocks.filter((block) =>
       block.id === operation.id || block.parentId === operation.id

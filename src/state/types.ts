@@ -94,6 +94,38 @@ export interface WidgetPublication {
     receipt: JsonObject;
   }[];
 }
+/** Immutable measured creation frame; native decoration geometry is a separate overlay. */
+export interface ComponentFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+/** Approved source component bootstrap, retained independently from its native background. */
+export interface ComponentProjection {
+  version: 1;
+  id: string;
+  kind: "card" | "kpi";
+  slideId: string;
+  frame: ComponentFrame;
+}
+/** Explicit authored component intent; snapshots keep removed members recoverable. */
+export interface ComponentCreation {
+  version: 1;
+  id: string;
+  kind: "card" | "kpi";
+  slideId: string;
+  backgroundId: string;
+  backgroundSnapshot: BentoElement;
+  projectionFrame: ComponentFrame;
+  restoreOrder: string[];
+  members: {
+    role: "title" | "body" | "label" | "value" | "detail";
+    sourceId: string;
+    nativeId: string;
+    snapshot: BentoElement;
+  }[];
+}
 export interface ProjectState {
   schemaVersion: 1;
   revision: number;
@@ -106,6 +138,8 @@ export interface ProjectState {
   elementOrders: { slideId: string; ids: string[] }[];
   bentoOnly: { slideId: string; element: BentoElement }[];
   pending: Change[];
+  componentCreations?: ComponentCreation[];
+  componentProjections?: ComponentProjection[];
   output?: OutputReceipt;
   widgets?: WidgetPublication;
 }

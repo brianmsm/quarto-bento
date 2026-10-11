@@ -97,6 +97,7 @@ async function client() {
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
+    "attachComponentEditor",
     `${
       shipped.replace(/^import [^\n]+\n/gm, "")
     }\nreturn { prepareSyncPreview };`,
@@ -160,6 +161,7 @@ async function client() {
       bridges.push(bridge);
       return bridge;
     },
+    () => {},
     () => {},
     () => {},
   );

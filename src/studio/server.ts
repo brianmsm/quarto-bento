@@ -1,4 +1,8 @@
 import {
+  applyComponentAction,
+  type ComponentRequest,
+} from "../core/component-actions.ts";
+import {
   readProjectRegistry,
   saveProjectRegistry,
 } from "../core/design-registry.ts";
@@ -90,6 +94,9 @@ export async function startStudio(source: string, port = 0) {
   const relationsClient = await Deno.readTextFile(
     new URL("./relations.js", import.meta.url),
   );
+  const componentClient = await Deno.readTextFile(
+    new URL("./components.js", import.meta.url),
+  );
   const template = await Deno.readTextFile(
     new URL("./index.html", import.meta.url),
   );
@@ -164,6 +171,9 @@ export async function startStudio(source: string, port = 0) {
         if (
           req.method === "GET" && url.pathname === "/client.js"
         ) return respond(client, 200, "text/javascript");
+        if (req.method === "GET" && url.pathname === "/components.js") {
+          return respond(componentClient, 200, "text/javascript");
+        }
         if (req.method === "GET" && url.pathname === "/registry.js") {
           return respond(registryClient, 200, "text/javascript");
         }
@@ -282,6 +292,27 @@ export async function startStudio(source: string, port = 0) {
               confirmedDeleteIds,
             }),
           ));
+        }
+        if (
+          req.method === "POST" && url.pathname === "/api/components/action"
+        ) {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(req, 65536);
+          if (text === null) {
+            return respond('{"error":"Component too large"}', 413);
+          }
+          const state = await applyComponentAction(
+            source,
+            JSON.parse(text) as ComponentRequest,
+          );
+          return respond(
+            JSON.stringify({
+              revision: state.revision,
+              pending: state.pending.length,
+            }),
+          );
         }
         if (req.method === "POST" && url.pathname === "/api/slides/action") {
           if (req.headers.get("content-type") !== "application/json") {

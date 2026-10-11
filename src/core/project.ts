@@ -1,3 +1,8 @@
+import {
+  preserveRescuedKpiGeometry,
+  retainedKpiAppearances,
+} from "./kpi-appearance.ts";
+import { retainedComponentFrames } from "./component-frames.ts";
 import { kpiReadabilityDiagnostics } from "../render/kpi.ts";
 import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
 import { assertGraphTypography } from "../render/graphs.ts";
@@ -266,6 +271,7 @@ export async function projectProjection(
   await assertDesignRegistryUnchanged(paths.directory, registry.hash);
   const widgets = await prepareWidgets(ast, mapping);
   const richTables = await prepareRichTables(ast, mapping);
+  const kpiAppearances = retainedKpiAppearances(state, mapping);
   const projected = validateProjectionOrigins(
     mapping,
     await projectAst(
@@ -276,6 +282,8 @@ export async function projectProjection(
       widgets.projections,
       registry.defaults,
       richTables,
+      retainedComponentFrames(state, mapping),
+      kpiAppearances,
     ),
     await readSourceInline(mapping),
   );
@@ -383,6 +391,8 @@ export async function projectProjection(
     ],
     widgets,
     mapping,
+    kpiAppearances,
+    kpiAppearanceRescues: projected.kpiAppearanceRescues ?? [],
   };
 }
 export function assertProjectionIdentity(
@@ -446,6 +456,12 @@ async function render(source: string, executed?: ExecutedRender) {
       assertProjectionIdentity(state, provenance, projected.sourceHash);
     }
     if (!state) state = createState(generated, provenance, projected.ownership);
+    preserveRescuedKpiGeometry(
+      state,
+      projected.kpiAppearances,
+      projected.kpiAppearanceRescues,
+      projected.ownership,
+    );
     const composed = compose(state, generated, provenance, projected.ownership);
     await assertGraphTypography(
       composed.document as unknown as RenderDoc,
@@ -675,7 +691,12 @@ export async function readProjectDiagnostics(
   const state = await new StateStore(paths.stateDir).load();
   const registry = await loadDesignRegistry(paths.directory);
   const mapping = scanSource(await Deno.readTextFile(paths.source));
-  return missingDesignDiagnostics(mapping, state, registry);
+  const designDiagnostics = missingDesignDiagnostics(mapping, state, registry);
+  if (!state) return designDiagnostics;
+  const { pendingComponentDiagnostics } = await import(
+    "./component-actions.ts"
+  );
+  return [...designDiagnostics, ...pendingComponentDiagnostics(state)];
 }
 
 export async function readProjectPresenter(

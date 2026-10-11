@@ -49,6 +49,7 @@ export interface Projection {
   origins: Record<string, Record<string, Origin>>;
   diagnostics: Diagnostic[];
   notes?: Record<string, { sourceId: string; codec: number }>;
+  kpiAppearanceRescues?: { slideId: string; elementIds: string[] }[];
   design?: Record<
     string,
     Record<string, {

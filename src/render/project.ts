@@ -1,4 +1,4 @@
-import { projectKpi } from "./kpi.ts";
+import { type KpiAppearance, projectKpi } from "./kpi.ts";
 import { kpiSource } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
 import { projectGraph, validateGraphOrigin } from "./graphs.ts";
@@ -145,6 +145,8 @@ export async function projectAst(
   widgets: ReadonlyMap<string, WidgetProjection> = new Map(),
   defaults: DesignDefaults = {},
   richTables: ReadonlyMap<string, RichTableSnapshot> = new Map(),
+  retainedFrames: ReadonlyMap<string, Frame> = new Map(),
+  kpiAppearances: ReadonlyMap<string, KpiAppearance> = new Map(),
 ): Promise<Projection> {
   const expectedRichTables = new Map(
     source
@@ -469,12 +471,27 @@ export async function projectAst(
             );
           }
           if (!slide) startSlide("qb-introduction");
-          const component = await projectKpi(source, attr, children, {
-            x: 80,
-            y,
-            w: 1120,
-            h: Math.min(470, 680 - y),
-          }, defaults);
+          const component = await projectKpi(
+            source,
+            attr,
+            children,
+            retainedFrames.get(attr[0]) ?? {
+              x: 80,
+              y,
+              w: 1120,
+              h: Math.min(470, 680 - y),
+            },
+            defaults,
+            kpiAppearances.get(slide!.id),
+          );
+          if (component.appearanceRescued) {
+            (result.kpiAppearanceRescues ??= []).push({
+              slideId: slide!.id,
+              elementIds: component.elements.filter((element) =>
+                element.type === "text"
+              ).map((element) => element.id),
+            });
+          }
           for (const element of component.elements) {
             add(element, component.origins[element.id]);
           }
@@ -535,7 +552,7 @@ export async function projectAst(
           }
           const index = slide!.elements.length, componentY = y;
           const childGroups: Element[][] = [];
-          const base = contentFrame ??
+          const base = retainedFrames.get(attr[0]) ?? contentFrame ??
             {
               x: 80,
               y: componentY,

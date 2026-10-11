@@ -46,6 +46,7 @@ async function client() {
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
+    "attachComponentEditor",
     `${code}\nreturn { connect, refreshDiagnostics };`,
   );
   const callbacks = run(
@@ -64,6 +65,7 @@ async function client() {
     },
     { qbentoToken: "local", addEventListener() {} },
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
+    () => {},
     () => {},
     () => {},
   );

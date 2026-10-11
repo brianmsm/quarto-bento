@@ -124,6 +124,32 @@
       padding: 6px;
       min-width: 0;
     }
+    #component-fields {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    #component-fields label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #component-fields input,
+    #component-fields textarea {
+      font: inherit;
+      padding: 8px;
+    }
+    #component-fields textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    #component-pending section {
+      border-top: 1px solid #cbd9d6;
+      margin-top: 16px;
+    }
+    #component-pending button {
+      margin: 0 8px 8px 0;
+    }
     #registry-note {
       min-height: 2em;
     }
@@ -171,7 +197,7 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="relations" disabled>Relaciones</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="components" disabled>Añadir componente</button><button id="relations" disabled>Relaciones</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
     <section id="project-diagnostics" hidden role="status" aria-live="polite"
       aria-labelledby="diagnostic-title">
       <h2 id="diagnostic-title">Avisos del proyecto</h2>
@@ -202,6 +228,20 @@
     </dialog>
     <dialog
       id="reconcile-dialog"><h2>Comparar QMD y Bento</h2><p>La comparación ejecuta el QMD. Elige cómo resolver cada diferencia; las demás seguirán pendientes. Estas decisiones guardan el proyecto. Escribir el QMD requiere después revisar y aplicar la sincronización.</p><p id="reconcile-note" role="status"></p><div id="reconcile-changes"></div><button id="resolve" disabled>Guardar decisiones</button> <button id="resolve-close">Cerrar</button></dialog>
+    <dialog id="component-dialog" aria-labelledby="component-title">
+      <h2 id="component-title">Añadir componente</h2>
+      <p>Crea una tarjeta o un indicador con campos escritos. Se guarda en el proyecto; Revisar cambios permite insertar después su contenido completo en QMD. Puedes editar y diseñar los objetos en Bento.</p>
+      <p>El valor del indicador es texto escrito. Para un valor calculado, escribe su expresión en QMD.</p>
+      <form id="component-form">
+        <p><label for="component-slide">Diapositiva</label> <select id="component-slide" required></select></p>
+        <p><label for="component-kind">Componente</label> <select id="component-kind"><option value="card">Tarjeta</option><option value="kpi">Indicador</option></select></p>
+        <div id="component-fields"></div>
+        <p id="component-note" role="status" aria-live="polite"></p>
+        <button id="component-create" type="submit">Crear componente</button> <button id="component-close" type="button">Cerrar</button>
+      </form>
+      <h3 id="component-pending-title" hidden>Componentes pendientes</h3>
+      <div id="component-pending"></div>
+    </dialog>
     <dialog id="registry-dialog" aria-labelledby="registry-title">
       <h2 id="registry-title">Layouts y temas del proyecto</h2>
       <p>Guardar diseños actualiza el registro del proyecto; no cambia QMD ni ejecuta cálculos. Recalcular aplica los valores seleccionados y conserva tu diseño guardado y los cambios pendientes.</p>
