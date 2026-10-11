@@ -38,6 +38,15 @@ import type {
   AttributePreview,
   AttributeRequest,
 } from "../source/attributes.ts";
+import {
+  applyNotes,
+  normalizeNotesText,
+  NOTES_CODEC_VERSION,
+  type NotesPreview,
+  type NotesRequest,
+  previewNotes,
+  sourceNotes,
+} from "../source/notes.ts";
 import { validateDesignValue } from "../render/design.ts";
 import { applyStructure, previewStructure } from "../source/structure.ts";
 import type {
@@ -87,6 +96,7 @@ export interface SyncPlan {
   changes: SyncItem[];
   patch: PatchPreview;
   attributes?: AttributePreview;
+  notes?: NotesPreview;
   structure?: StructurePreview;
   result: string;
   resultHash: string;
@@ -353,6 +363,7 @@ function buildPlan(
     operations: StructureOperation[] = [],
     creationChangeIds: string[] = [];
   const attributeRequests: AttributeRequest[] = [];
+  const notesRequests: NotesRequest[] = [];
   const textRequests: {
     blockId: string;
     expected: string;
@@ -430,6 +441,59 @@ function buildPlan(
           after: `${binding.attribute}=${value}`,
           html: "",
         });
+        continue;
+      }
+      if (
+        canonical(change.path) === canonical(["notes"]) &&
+        !change.target.elementId && change.target.slideId
+      ) {
+        const provenance = state.provenance[key], baseline = provenance?.source;
+        if (
+          change.origin !== "authored" || provenance?.origin !== "authored" ||
+          baseline?.kind !== "notes" ||
+          baseline.notesCodec !== NOTES_CODEC_VERSION ||
+          typeof baseline.blockId !== "string" ||
+          typeof baseline.content !== "string"
+        ) {
+          fail(
+            "UNMAPPED_NOTES",
+            "These notes have no verified existing QMD notes block. Author an identified .notes div and recalculate before syncing.",
+          );
+        }
+        if (!change.after.present || typeof change.after.value !== "string") {
+          fail(
+            "UNSUPPORTED_SYNC",
+            "Clear notes with an empty string; removing the notes property is unsupported.",
+          );
+        }
+        const { block } = sourceNotes(
+          scanSource(text),
+          baseline.blockId,
+          change.target.slideId,
+        );
+        if (block.content !== baseline.content) {
+          fail(
+            "SOURCE_CONFLICT",
+            "QMD independently changed the same speaker notes; compare and resolve before syncing.",
+          );
+        }
+        const normalized = normalizeNotesText(change.after.value);
+        notesRequests.push({
+          blockId: block.id,
+          slideId: change.target.slideId,
+          expected: block.content,
+          text: normalized,
+        });
+        changes.push({
+          changeId: change.id,
+          target: change.target,
+          blockId: block.id,
+          kind: "notes",
+          before: block.content,
+          after: normalized,
+          html: "",
+        });
+        addNormalization(change, { present: true, value: normalized });
         continue;
       }
       const displayedCode = canonical(change.path) === canonical(["content"]);
@@ -588,10 +652,14 @@ function buildPlan(
     });
   }
   const patch = previewPatches(scanSource(text), textRequests);
-  const attributes = attributeRequests.length
-    ? previewAttributePatches(scanSource(patch.result), attributeRequests)
+  const notes = notesRequests.length
+    ? previewNotes(scanSource(patch.result), notesRequests)
     : undefined;
-  const attributeResult = attributes?.result ?? patch.result;
+  const notesResult = notes?.result ?? patch.result;
+  const attributes = attributeRequests.length
+    ? previewAttributePatches(scanSource(notesResult), attributeRequests)
+    : undefined;
+  const attributeResult = attributes?.result ?? notesResult;
   const structure = operations.length
     ? previewStructure(scanSource(attributeResult), operations)
     : undefined;
@@ -609,6 +677,7 @@ function buildPlan(
     changes,
     patch,
     ...(attributes ? { attributes } : {}),
+    ...(notes ? { notes } : {}),
     ...(structure ? { structure } : {}),
     result,
     resultHash: hashSource(result),
@@ -718,9 +787,12 @@ export async function applySync(
       );
     }
     const textResult = applyPatches(text, verified.patch);
-    const attributeResult = verified.attributes
-      ? applyAttributePatches(textResult, verified.attributes)
+    const notesResult = verified.notes
+      ? applyNotes(textResult, verified.notes)
       : textResult;
+    const attributeResult = verified.attributes
+      ? applyAttributePatches(notesResult, verified.attributes)
+      : notesResult;
     const result = verified.structure
       ? applyStructure(attributeResult, verified.structure)
       : attributeResult;

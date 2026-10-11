@@ -99,6 +99,10 @@ function showPatches(plan) {
   for (
     const patch of [
       ...plan.patch.patches,
+      ...(plan.notes?.patches ?? []).map((patch) => ({
+        ...patch,
+        blockId: `${patch.blockId} · notas de orador`,
+      })),
       ...plan.changes.filter((change) => change.kind === "visual-attribute")
         .map((change) => ({
           blockId: `${change.blockId} · atributo visual`,
@@ -154,7 +158,8 @@ $("review").onclick = async () => {
       }
       showPatches(syncPlan);
       const hasChanges = syncPlan.patch.patches.length ||
-        syncPlan.attributes?.patches.length || syncPlan.structure;
+        syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
+        syncPlan.structure;
       $("sync-note").textContent = hasChanges
         ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
         : "No hay cambios compatibles pendientes de sincronización.";

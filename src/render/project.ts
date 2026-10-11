@@ -1,4 +1,9 @@
 import type { SourceDocument } from "../source/mod.ts";
+import {
+  NOTES_CODEC_VERSION,
+  renderPlainNotes,
+  sourceNotes,
+} from "../source/notes.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { renderInline as inline } from "./inline.ts";
 import {
@@ -286,6 +291,11 @@ export async function projectAst(
         const nativeId = attr[2].find(([name]) => name === "bento-element-id")
           ?.[1];
         if (nativeId !== undefined) {
+          if (attr[1].includes("notes")) {
+            throw new Error(
+              "UNSUPPORTED_NOTES: native element bindings do not apply to slide notes",
+            );
+          }
           if (!/^[A-Za-z][\w:.-]*$/.test(nativeId) || !attr[0]) {
             throw new Error(
               "INVALID_ID: bento-element-id needs safe visual and explicit source identities",
@@ -310,16 +320,33 @@ export async function projectAst(
               "COMPUTED_NOTES_UNSUPPORTED: generated speaker notes need explicit computed slide-property provenance; refusing authored classification",
             );
           }
-          if (children.some((node) => node.t !== "Para")) {
+          const original = source && slide && attr[0]
+            ? sourceNotes(source, attr[0], slide.id)
+            : undefined;
+          const plain = renderPlainNotes(children);
+          if (
+            !slide || !attr[0] || attr[1].length !== 1 || attr[2].length ||
+            parentId
+          ) {
             throw new Error(
-              "UNSUPPORTED_NOTES: speaker notes currently support paragraphs only; refusing to drop other source blocks",
+              "UNMAPPED_NOTES: use a single top-level identified .notes div under an explicit slide",
             );
           }
-          if (!slide) startSlide("qb-introduction");
-          slide!.notes = [
-            slide!.notes,
-            ...children.map((n) => inline(n.c as Node[])),
-          ].filter(Boolean).join("\n");
+          if (result.notes?.[slide.id]) {
+            throw new Error("AMBIGUOUS_NOTES: use one notes block per slide");
+          }
+          if (original) {
+            if (original.text !== plain) {
+              throw new Error(
+                "UNSUPPORTED_NOTES: executed notes differ from literal original plain text; transformations and computed content need an explicit adapter",
+              );
+            }
+          }
+          slide.notes = plain;
+          (result.notes ??= {})[slide.id] = {
+            sourceId: attr[0],
+            codec: NOTES_CODEC_VERSION,
+          };
         } else if (
           attr[1].includes("quarto-float") && images(children).length
         ) {
@@ -521,6 +548,17 @@ export function validateProjectionOrigins(
         sourceId: block.id,
         origin: block.origin,
       };
+    }
+  }
+  for (const [slideId, binding] of Object.entries(projection.notes ?? {})) {
+    const original = sourceNotes(source, binding.sourceId, slideId);
+    const slide = projection.document.slides.find((s) => s.id === slideId);
+    if (
+      binding.codec !== NOTES_CODEC_VERSION || slide?.notes !== original.text
+    ) {
+      throw new Error(
+        "UNMAPPED_NOTES: speaker notes lack verified original plain-text provenance",
+      );
     }
   }
   return { ...projection, origins };

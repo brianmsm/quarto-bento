@@ -39,6 +39,7 @@ export interface Projection {
   document: BentoDoc;
   origins: Record<string, Record<string, Origin>>;
   diagnostics: Diagnostic[];
+  notes?: Record<string, { sourceId: string; codec: number }>;
   design?: Record<
     string,
     Record<string, {

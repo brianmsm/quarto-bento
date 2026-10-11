@@ -14,6 +14,7 @@ import {
   verifyCapture,
 } from "./capture.ts";
 import { hashSource, scanSource } from "../source/mod.ts";
+import { NOTES_CODEC_VERSION, sourceNotes } from "../source/notes.ts";
 import { sourceDesignAttribute } from "../source/attributes.ts";
 import { validateDesignValue } from "../render/design.ts";
 import {
@@ -237,6 +238,21 @@ export async function projectProjection(
         },
       };
     }
+  }
+  for (const [slideId, binding] of Object.entries(projected.notes ?? {})) {
+    const { block } = sourceNotes(mapping, binding.sourceId, slideId);
+    provenance[targetKey({ slideId })] = {
+      origin: "authored",
+      semanticId: block.id,
+      source: {
+        hash: mapping.hash,
+        blockId: block.id,
+        content: block.content,
+        kind: "notes",
+        stable: true,
+        notesCodec: NOTES_CODEC_VERSION,
+      },
+    };
   }
   return {
     document: generated,
