@@ -1,3 +1,9 @@
+import {
+  assertOfflineSvg,
+  assertOfflineSvgCss,
+  assertOfflineSvgData,
+  ResourceDependencyError,
+} from "./resources.ts";
 /** Pinned Bento shape checks, without coercion, mutation or network access. */
 import schemaJson from "../../vendor/bento/slides.schema.json" with {
   type: "json",
@@ -441,9 +447,18 @@ export function assertProjectDocument(doc: unknown): void {
     }
     return assets[key] as string;
   };
+  const inspected = (fn: () => void, path: string) => {
+    try {
+      fn();
+    } catch (error) {
+      if (error instanceof ResourceDependencyError) reject(path, error.message);
+      throw error;
+    }
+  };
   const embedded = (ref: string, path: string) => {
     if (!ref) return; // An explicit empty native placeholder has no resource.
     const resolved = ref.startsWith("asset:") ? asset(ref.slice(6), path) : ref;
+    inspected(() => assertOfflineSvgData(resolved), path);
     if (!/^data:/i.test(resolved)) {
       reject(
         path,
@@ -464,8 +479,20 @@ export function assertProjectDocument(doc: unknown): void {
             embedded(element.poster, at + "/poster");
           }
         }
-        if (element.type === "svg" && element.asset) {
-          asset(element.asset as string, at + "/asset");
+        if (element.type === "svg") {
+          const key = element.asset ? "asset" : "markup";
+          const markup = element.asset
+            ? asset(element.asset as string, at + "/asset")
+            : element.markup;
+          if (typeof markup === "string") {
+            inspected(() => assertOfflineSvg(markup), at + "/" + key);
+          }
+          if (typeof element.css === "string") {
+            inspected(
+              () => assertOfflineSvgCss(element.css as string),
+              at + "/css",
+            );
+          }
         }
         if (element.type === "code") {
           for (const key of ["grammarAssetId", "themeAssetId"]) {
@@ -473,6 +500,12 @@ export function assertProjectDocument(doc: unknown): void {
           }
         }
         if (element.type === "embed") {
+          if (typeof element.view === "string") {
+            const view = element.view.startsWith("asset:")
+              ? asset(element.view.slice(6), at + "/view")
+              : element.view;
+            inspected(() => assertOfflineSvg(view), at + "/view");
+          }
           for (const key of ["view", "doc"]) {
             const ref = element[key];
             if (typeof ref === "string" && ref.startsWith("asset:")) {
