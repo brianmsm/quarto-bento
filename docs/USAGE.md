@@ -134,6 +134,15 @@ no promete píxeles idénticos entre sistemas operativos.
 
 ## Entregar HTML, PDF o gráficos interactivos
 
+Las tablas calculadas compatibles de `gt` y `gtsummary` se representan mediante
+una imagen PNG a doble resolución. Conservan encabezados, valores, formatos y
+notas; modifica su contenido en el código productor. Define el ancho y la
+tipografía en R para que sean adecuados para la diapositiva. La captura requiere
+Chromium instalado y rechaza tablas que no caben completas, sin reducirlas ni
+eliminar filas automáticamente. Consulta el
+[ejemplo reproducible](../examples/rich-tables/README.md) y sus
+[límites y pruebas](evidence/RICH-TABLES.md).
+
 El archivo `deck.bento.html` contiene la presentación estática editable y puede
 distribuirse como una copia independiente. El control nativo de exportación PDF
 de Bento utiliza su representación de impresión; las diapositivas ocultas se

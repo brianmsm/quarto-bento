@@ -68,10 +68,15 @@ Reproducible sources include:
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
 - [Native charts](examples/native-charts/deck.qmd)
+- [Computed gt/gtsummary tables](examples/rich-tables/deck.qmd)
 - [Two-column components](examples/components/deck.qmd)
 - [Offline Plotly](examples/plotly-offline/deck.qmd)
 
-Each example uses its accompanying `data.csv`. Unknown conversions refuse rather
+Examples use their accompanying CSV inputs. The rich-table example also uses
+`participants.csv`. Bounded `gt`/`gtsummary` output is captured as a complete 2x
+PNG with its source formatting; native slide and offline PDF inspection are
+recorded in [rich-table evidence](docs/evidence/RICH-TABLES.md). Rendering that
+fallback requires an installed Chromium. Unknown conversions refuse rather
 than invent a result. Studio supports text/structural review, reversible slide
 actions and fresh conflict resolution. See the bounded
 [component evidence](docs/evidence/COMPONENTS.md). The guarded `qbento-html`

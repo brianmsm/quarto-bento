@@ -21,8 +21,10 @@ integrated state proof are detailed below.
 
 Verified on Linux with Quarto 1.10.19, Deno 2.9.6, R/knitr 1.51, `gt` 1.3.0,
 `gtsummary` 2.5.1 and Chromium 152.0.7977.82. The project's pinned Bento
-revision is `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`; this adapter has not yet
-been verified inside its native image/presentation renderer.
+revision is `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`. The coordinator also
+inspected both complete tables inside that native shell and its offline print
+output with HeadlessChrome 155; see the native acceptance below. The capture
+adapter and the browser used to inspect the resulting deck are separate layers.
 
 The current slice requires an explicit stable slide and a standalone wrapper
 whose opening line is exactly `::: {#id}`. The wrapper contains exactly one
@@ -179,8 +181,11 @@ The suite executes real Quarto/R producers, then runs real Chromium headlessly:
 
 - Grouped `gt` output preserves the bold title, spanner, decimal formatting,
   column footnote and source note, with all 8 rows and 14 cells.
-- `gtsummary` preserves its bold characteristic labels, missing-value row,
-  grouped headers and footnote, with all 14 rows and 40 cells.
+- The original adapter fixture's `gtsummary` preserves its bold characteristic
+  labels, missing-value row, grouped headers and footnote, with all 14 rows and
+  40 cells. This fixture deliberately retains its original default formatting;
+  the canonical slide example described below now requests a compact continuous
+  summary explicitly.
 - Source bytes remain unchanged. A counter records one R execution per actual
   render and no additional execution during fragment writing or snapshots.
   Changing only the CSV updates negative numbers and labels including
@@ -245,6 +250,46 @@ review evidence at `/tmp/output/playwright/rich-native-offline.png`. That native
 smoke is distinct from the full rich fixture capture/structural tests and does
 not certify arbitrary later user resizing or cross-platform fonts.
 
-Final focused validation: 6 tests and 4 nested steps passed in 1m24s.
+At integration author commit `e521805`, focused validation passed 6 tests and
+4 nested steps in 1m24s.
 `deno task check`, targeted lint, and staged whitespace checks passed. No
 full-suite result or cross-platform acceptance is claimed by this slice.
+
+## Canonical native slides and offline PDF
+
+The coordinator rendered a fresh copy of the canonical example and both CSV
+inputs in `/tmp/qbento-rich-tables-native-final`, then opened the native Bento
+deck through the local Studio server. The first output retained the original
+default table sizes, including the taller categorical age summary. Both complete
+slides and a two-page PDF were inspected before the example was adjusted for
+presentation readability.
+
+The current example explicitly requests `table.width=gt::pct(100)` and
+`table.font.size=20` for both tables. It also requests continuous age in
+`tbl_summary` rather than relying on the package's small-sample type inference.
+Those are source-authored formatting/statistical choices. The adapter does not
+change those choices or remove rows. The final generated image frames are
+1120×301 and 1120×233 at x80/y166 on their respective slides. Revision 2 retained
+docId `e6a74a4c-1cf4-40b0-8f44-c6b945e17e32`, had no pending edits, and reported
+the two expected `STATIC_TABLE_PNG_FALLBACK` diagnostics.
+
+Visual inspection of the native slides and rasterized final PDF confirmed:
+
+- The `gt` table fills the available width, shows its grouped statistics header,
+  Alpha/Beta rows, N values 12/5, means 3.50/4.20, footnote and source note.
+- The summary shows the two groups, age medians and quartiles 25 (23, 28) and
+  27 (23, 30), the missing-value row, response values 3 (60%) and 2 (40%), and
+  the explanatory Median (Q1, Q3); n (%) footnote.
+- The native **Exportar PDF** control produced the print representation. With
+  the browser context offline, Chromium saved two 1200×675.12-point pages;
+  the 97,299-byte PDF contains no JavaScript. Both pages were inspected as
+  images, with complete visible tables and notes.
+
+Local evidence is in `output/playwright/rich-tables-styled-gt-native.png`,
+`rich-tables-styled-summary-native.png`, `rich-tables-styled-native.pdf`, and
+`rich-tables-styled-pdf-1.png` / `rich-tables-styled-pdf-2.png`. These are local
+ignored validation artifacts; the committed QMD/CSV example reproduces the
+content. Networking was disabled in the browser context during PDF generation,
+after the native deck had loaded. This establishes the native Chromium print
+layer on Linux, not OS-wide network isolation, system print dialogs or native
+macOS/Windows behavior.

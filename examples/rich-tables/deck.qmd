@@ -15,7 +15,8 @@ gt::gt(values) |>
   gt::tab_spanner(label="Statistics", columns=c(N, Mean)) |>
   gt::fmt_number(columns=Mean, decimals=2) |>
   gt::tab_footnote(footnote="Observed values", locations=gt::cells_column_labels(columns=N)) |>
-  gt::tab_source_note(source_note="Source: local input")
+  gt::tab_source_note(source_note="Source: local input") |>
+  gt::tab_options(table.width=gt::pct(100), table.font.size=20)
 ```
 :::
 
@@ -26,7 +27,10 @@ gt::gt(values) |>
 #| label: summary-maker
 #| echo: false
 participants <- read.csv("participants.csv", na.strings="NA")
-gtsummary::tbl_summary(participants, by=arm, missing="ifany") |>
-  gtsummary::bold_labels()
+gtsummary::tbl_summary(participants, by=arm,
+                       type=list(age ~ "continuous"), missing="ifany") |>
+  gtsummary::bold_labels() |>
+  gtsummary::as_gt() |>
+  gt::tab_options(table.width=gt::pct(100), table.font.size=20)
 ```
 :::
