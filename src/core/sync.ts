@@ -32,6 +32,7 @@ import {
   previewGraphEndpoints,
 } from "../source/graphs.ts";
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
+import { verifiedSourceSlide } from "./source-scope.ts";
 import { basename, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
 import {
@@ -85,6 +86,7 @@ import {
   applyNotes,
   normalizeNotesText,
   NOTES_CODEC_VERSION,
+  notesIdentity,
   type NotesPreview,
   type NotesRequest,
   previewNotes,
@@ -1042,6 +1044,65 @@ async function buildPlan(
       ) {
         const provenance = state.provenance[key], baseline = provenance?.source;
         if (
+          !provenance && change.after.present &&
+          typeof change.after.value === "string"
+        ) {
+          const mapping = scanSource(text);
+          const originalSlide = state.generatedBaseline.slides.find((slide) =>
+            slide.id === change.target.slideId
+          );
+          const hashes = new Set(
+            Object.values(state.provenance).map((proof) => proof.source?.hash),
+          );
+          const sourceSlide = mapping.slides.find((slide) =>
+            (acquiredIds.get(slide.headingId) ?? slide.id) ===
+              change.target.slideId
+          );
+          if (
+            change.origin !== "authored" || !originalSlide ||
+            (originalSlide.notes !== undefined && originalSlide.notes !== "") ||
+            canonical(change.before) !==
+              canonical(
+                originalSlide.notes === undefined
+                  ? { present: false }
+                  : { present: true, value: originalSlide.notes },
+              ) ||
+            hashes.size !== 1 || !hashes.has(mapping.hash) || !sourceSlide
+          ) {
+            fail(
+              "UNMAPPED_NOTES",
+              "New notes require an empty executed baseline and the unchanged source slide; recalculate and review first.",
+            );
+          }
+          verifiedSourceSlide(
+            mapping,
+            state,
+            sourceSlide.id,
+            change.target.slideId,
+          );
+          const normalized = normalizeNotesText(change.after.value);
+          const blockId = notesIdentity(change.target.slideId);
+          const operation: StructureOperation = {
+            type: "insert-notes",
+            slideId: change.target.slideId,
+            id: blockId,
+            text: normalized,
+          };
+          previewStructure(scanSource(identityResult), [operation]);
+          operations.push(operation);
+          changes.push({
+            changeId: change.id,
+            target: change.target,
+            blockId,
+            kind: "notes",
+            before: "",
+            after: normalized,
+            html: "",
+          });
+          addNormalization(change, { present: true, value: normalized });
+          continue;
+        }
+        if (
           change.origin !== "authored" || provenance?.origin !== "authored" ||
           baseline?.kind !== "notes" ||
           baseline.notesCodec !== NOTES_CODEC_VERSION ||
@@ -1221,12 +1282,11 @@ async function buildPlan(
         );
       }
       if (
-        (slide.notes && slide.notes !== "") ||
         (slide.title && slide.title !== "")
       ) {
         fail(
           "UNSUPPORTED_SYNC",
-          "New-slide notes and separate title metadata need explicit source authoring.",
+          "Separate title metadata needs explicit source authoring.",
         );
       }
       if (
@@ -1261,8 +1321,19 @@ async function buildPlan(
         titleElementId: texts[0].id,
         bodyElementIds: texts.slice(1).map((e) => e.id),
       });
+      if (slide.notes) {
+        operations.push({
+          type: "insert-notes",
+          slideId: slide.id,
+          id: notesIdentity(slide.id),
+          text: normalizeNotesText(slide.notes as string),
+        });
+      }
       creationChangeIds.push(change.id);
       const normalized = clone(slide);
+      if (slide.notes) {
+        normalized.notes = normalizeNotesText(slide.notes as string);
+      }
       for (const e of normalized.elements) {
         if (e.type === "text") e.html = canonicalInlineHtml(e.html as string);
       }

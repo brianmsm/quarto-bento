@@ -4,6 +4,7 @@ import {
   verifyComponentInsertion,
 } from "./component-insertion.ts";
 /** Explicit, review-only structural operations over original QMD source sections. */
+import { generatedNotes, verifyNotesInsertion } from "./notes.ts";
 import { hashSource, scanSource, sliceBytes, SourceError } from "./mod.ts";
 import type { SourceBlock, SourceDocument, SourceSlide, Span } from "./mod.ts";
 import {
@@ -13,6 +14,7 @@ import {
 } from "./deletion.ts";
 
 export type StructureOperation =
+  | { type: "insert-notes"; slideId: string; id: string; text: string }
   | ComponentInsertion
   | {
     type: "insert-slide";
@@ -306,10 +308,13 @@ function validateStep(
         replacement: prefix + section,
       }];
     }
+    case "insert-notes":
     case "insert-component":
     case "insert-text": {
       const slide = uniqueSlide(doc, operation.slideId);
-      const section = operation.type === "insert-component"
+      const section = operation.type === "insert-notes"
+        ? generatedNotes(doc, operation.slideId, operation.id, operation.text)
+        : operation.type === "insert-component"
         ? generatedComponent(doc, operation)
         : generatedText(doc, operation);
       const offset = spans.get(slide.id)!.end;
@@ -452,6 +457,15 @@ function verifyResult(
       );
     }
     sameProducerOrder(before, after);
+  } else if (operation.type === "insert-notes") {
+    verifyNotesInsertion(
+      before,
+      after,
+      operation.slideId,
+      operation.id,
+      operation.text,
+    );
+    sameProducerOrder(before, after, true);
   } else if (operation.type === "insert-component") {
     verifyComponentInsertion(before, after, operation);
     sameProducerOrder(before, after, true);

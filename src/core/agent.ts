@@ -1,4 +1,5 @@
 /** Bounded pure-data agent operations over the same saved project as Studio. */
+import { normalizeNotesText, notesIdentity } from "../source/notes.ts";
 import { basename, join } from "node:path";
 import { projectPaths, readProject, saveProject } from "./project.ts";
 import { applySlideAction } from "./slide-actions.ts";
@@ -17,7 +18,10 @@ import {
 } from "../render/validate.ts";
 import { inlineHtmlToMarkdown } from "../render/inline.ts";
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
-import { previewStructure } from "../source/structure.ts";
+import {
+  previewStructure,
+  type StructureOperation,
+} from "../source/structure.ts";
 
 export const MAX_AGENT_PATCH_BYTES = 1024 * 1024;
 export const MAX_AGENT_CREATE_ELEMENTS = 50;
@@ -185,13 +189,10 @@ function validatePatch(value: unknown): asserts value is AgentPatch {
             "Create requires 1..50 native elements.",
           );
         }
-        if (
-          (slide.notes !== undefined && slide.notes !== "") ||
-          (slide.title !== undefined && slide.title !== "")
-        ) {
+        if (slide.title !== undefined && slide.title !== "") {
           fail(
             "AGENT_UNSUPPORTED_CREATION",
-            "New-slide notes and separate title metadata require explicit QMD authoring.",
+            "Separate title metadata requires explicit QMD authoring.",
           );
         }
         for (const entity of [slide, ...slide.elements]) {
@@ -381,13 +382,10 @@ function assertFreshCreation(
 }
 /** Use the same inline codec and structural authoring grammar as reviewed sync. */
 function previewCreationSource(source: SourceDocument, created: BentoSlide) {
-  if (
-    (created.notes !== undefined && created.notes !== "") ||
-    (created.title !== undefined && created.title !== "")
-  ) {
+  if (created.title !== undefined && created.title !== "") {
     fail(
       "AGENT_UNSUPPORTED_CREATION",
-      "New-slide notes and separate title metadata require explicit QMD authoring.",
+      "Separate title metadata requires explicit QMD authoring.",
     );
   }
   const texts = created.elements.filter((e) => e.type === "text");
@@ -402,16 +400,23 @@ function previewCreationSource(source: SourceDocument, created: BentoSlide) {
   const [title, ...body] = texts.map((e) =>
     inlineHtmlToMarkdown(e.html as string)
   );
-  return scanSource(
-    previewStructure(source, [{
-      type: "insert-slide",
-      id: created.id,
-      title,
-      body: body.join("\n\n"),
-      titleElementId: texts[0].id,
-      bodyElementIds: texts.slice(1).map((e) => e.id),
-    }]).result,
-  );
+  const operations: StructureOperation[] = [{
+    type: "insert-slide",
+    id: created.id,
+    title,
+    body: body.join("\n\n"),
+    titleElementId: texts[0].id,
+    bodyElementIds: texts.slice(1).map((e) => e.id),
+  }];
+  if (created.notes) {
+    operations.push({
+      type: "insert-notes",
+      slideId: created.id,
+      id: notesIdentity(created.id),
+      text: normalizeNotesText(created.notes as string),
+    });
+  }
+  return scanSource(previewStructure(source, operations).result);
 }
 /** Validate the whole batch, then one existing CAS save; never writes QMD. */
 export async function patchAgentDeck(source: string, input: unknown) {

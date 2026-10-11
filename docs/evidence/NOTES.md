@@ -93,9 +93,8 @@ enabled; the inspected review screenshot is
 The agent's integrated branch passed 180 tests before the other parallel slices
 were combined; this is separate from the coordinator's subsequent full-suite run.
 
-Creating a notes div from Bento when no source binding exists is not
-implemented; author the identified `.notes` div in QMD first and recalculate.
-New-slide notes remain subject to the existing source-creation restriction.
+Notes creation is now supported by the bounded core workflow described below;
+its native Studio acceptance is separate from the earlier existing-notes run.
 Nested or multiple notes divs, extra attributes/classes, formatting, generated
 notes and transforms without an exact literal plain-text proof refuse with a
 diagnostic.
@@ -116,3 +115,44 @@ leading/trailing line breaks) is refused instead of silently normalized. CRLF
 and CR line endings in a native edit are normalized to LF in the native value
 through the existing reviewed normalization receipt; the source patch retains
 the QMD newline convention.
+
+## Creating notes without a pre-existing source container
+
+The bounded core now accepts nonempty plain native notes on an existing slide
+whose executed baseline contains no notes and whose source is unchanged. The
+reviewed structural operation inserts a single top-level `.notes` div at that
+slide's source boundary, using `qb-notes-` plus a deterministic 24-character
+SHA-256 prefix of the native slide ID. Existing source identities cannot be
+reused. Plain QMD headings acquire their stable technical identities in the
+same explicit review before the insertion; source bytes stay unchanged on Save.
+
+A newly authored slide can carry notes too. Its reviewed plan contains both the
+slide insertion and notes insertion. JSON `slide.create`, including a following
+`slide.patch` in the same batch, validates that same source grammar before its
+single durable Save. Unsupported inline execution cannot be introduced through
+this route. The API does not write QMD before the checked sync operation.
+
+Creation differs from editing an existing bound notes body: it requires the
+unchanged executed source, an empty baseline, a verified slide scope, and no
+existing notes container in that scope. Ambiguous structure, stale source,
+colliding identities and modified plans refuse. The inserted literal text uses
+the existing punctuation escaping and whitespace rules. Existing notes edits
+and their conflict behavior retain their original bounded-body patch.
+
+`tests/notes_creation_test.ts` adds five focused checks (all passed on Linux,
+29 seconds): exact Unicode/CRLF insertion and tamper/stale/collision/injection
+refusal; real Quarto round trips for both explicitly identified and plain-QMD
+slides; JSON new-slide creation followed by a notes patch; and atomic refusal
+when QMD independently gains notes or native notes contain inline execution.
+The existing-slide cases also select only notes while another semantic edit
+remains pending, preserve visual placement and `docId`, and reconstruct the exact
+emitted document from copied QMD and `.qbento/{project,state}.json` without HTML
+or history. No native UI or other-platform acceptance is claimed by these new
+core tests.
+
+The combined focused regression run passed **38 tests, zero failures** in
+**1 min 3 s**, covering `notes_creation_test.ts`, `notes_test.ts`,
+`source_structure_test.ts`, `sync_structure_test.ts`, `agent_test.ts` and
+`agent_create_test.ts` with `DENO_JOBS=2` and `deno test --parallel` plus read,
+write, env, run and localhost-net permissions. `deno task check`, lint and format
+checks for all changed TypeScript files, and `git diff --check` also passed.

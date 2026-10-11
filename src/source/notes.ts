@@ -233,3 +233,76 @@ export function applyNotes(current: string, preview: NotesPreview): string {
   }
   return verified.result;
 }
+
+/** Stable source identity shared by native, Studio and agent creation. */
+export function notesIdentity(slideId: string): string {
+  return `qb-notes-${hashSource(slideId).slice(0, 24)}`;
+}
+export function generatedNotes(
+  doc: SourceDocument,
+  slideId: string,
+  id: string,
+  text: string,
+): string {
+  if (
+    !/^[\p{L}_][\p{L}\p{N}\p{M}_.:-]*$/u.test(id) ||
+    doc.blocks.some((block) => block.id === id)
+  ) {
+    fail(
+      "duplicate-id",
+      "The new notes source identity is invalid or already used.",
+    );
+  }
+  if (
+    doc.blocks.some((block) =>
+      block.slideId === slideId && block.kind === "div" &&
+      opener(block)?.includes(".notes")
+    )
+  ) {
+    fail(
+      "AMBIGUOUS_NOTES",
+      "This slide already contains source notes; recalculate before editing them.",
+    );
+  }
+  const normalized = normalizeNotesText(text);
+  if (!normalized) {
+    fail("UNSUPPORTED_NOTES", "New notes must contain plain text.");
+  }
+  return (`::: {#${id} .notes}\n${
+    normalized.replace(punctuation, "\\$&")
+  }\n:::\n\n`).replace(/\n/g, doc.newline);
+}
+export function verifyNotesInsertion(
+  before: SourceDocument,
+  after: SourceDocument,
+  slideId: string,
+  id: string,
+  text: string,
+): void {
+  const binding = sourceNotes(after, id, slideId);
+  const outside = (doc: SourceDocument) =>
+    doc.blocks.filter((block) =>
+      block.id !== id &&
+      !(block.span.start >= binding.block.contentSpan.start &&
+        block.span.end <= binding.block.contentSpan.end && doc === after)
+    ).map((
+      block,
+    ) => [
+      block.id,
+      block.kind,
+      block.raw.replace(/\r?\n$/, ""),
+      block.origin,
+      block.slideId,
+    ]);
+  if (
+    binding.text !== normalizeNotesText(text) ||
+    JSON.stringify(outside(before)) !== JSON.stringify(outside(after)) ||
+    JSON.stringify(before.slides.map((slide) => [slide.id, slide.stable])) !==
+      JSON.stringify(after.slides.map((slide) => [slide.id, slide.stable]))
+  ) {
+    fail(
+      "invalid-notes-insertion",
+      "Notes insertion changed existing source scope or content.",
+    );
+  }
+}

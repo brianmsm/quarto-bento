@@ -334,8 +334,8 @@ Deno.test({
           ],
         }, "AGENT_INVALID_REQUEST"],
         [
-          { ...request, operations: [modify({ notes: "New notes" })] },
-          "AGENT_UNSUPPORTED_CREATION",
+          { ...request, operations: [modify({ notes: "`r 1 + 1`" })] },
+          "COMPUTED_NOTES_UNSUPPORTED",
         ],
         [
           { ...request, operations: [modify({ title: "Separate title" })] },
@@ -466,9 +466,9 @@ Deno.test({
           operations: [operation, {
             op: "slide.patch",
             slideId: "fresh",
-            fields: { notes: "Unsupported new notes" },
+            fields: { notes: "`r 1 + 1`" },
           }],
-        }, "AGENT_UNSUPPORTED_CREATION"],
+        }, "COMPUTED_NOTES_UNSUPPORTED"],
         [{
           ...request,
           operations: [operation, {
