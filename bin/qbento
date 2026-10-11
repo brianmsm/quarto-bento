@@ -1,0 +1,5 @@
+#!/bin/sh
+# Portable development launcher: keep caller's working directory and arguments.
+set -eu
+qbento_bin=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+exec deno run --no-config --no-remote --no-npm --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1 "$qbento_bin/../runtime/src/cli.ts" "$@"
