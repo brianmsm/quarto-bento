@@ -196,3 +196,18 @@ parallelism. The existing computed-producer deletion test remains unchanged and
 passes: a producer inside a slide selected for deletion reaches the original
 `unsafe-delete` guard instead of being acquired. Types, lint, formatting and
 source diff whitespace checks passed for the repair as well.
+
+A second independent scanner probe found that a marker inside a div could survive
+its closing fence and incorrectly name a later, unrelated top-level chunk.
+The scanner now rejects nested producer markers immediately and consumes any
+pending marker before dispatching a following line that is not an executable
+fence. The regression covers one or two closing divs, opening divs, headings,
+raw HTML, include directives and non-executable code fences, checking both the
+diagnostic and that the invalid marker never supplies the later chunk's ID.
+The independent three-case boundary probe passed after this repair.
+
+The final scanner-boundary repair passed **24 focused tests, zero failures** in
+**43 seconds** (`notes_creation_test.ts`, `source_test.ts`, `plain_qmd_test.ts`),
+including both existing/plain note round trips and the unlabelled R producer's
+complete design-preserving rebuild. Type checking via these test imports, lint,
+formatting and diff whitespace checks also passed.

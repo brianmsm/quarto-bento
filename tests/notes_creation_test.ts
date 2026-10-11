@@ -366,3 +366,34 @@ Deno.test({
     }
   },
 });
+
+Deno.test("producer markers cannot cross closing divs or other source boundaries into unrelated chunks", () => {
+  const marker = "<!-- qb-producer:chunk@88 -->\n",
+    chunk = "```{r}\nplot(1)\n```\n";
+  for (
+    const source of [
+      "::: {#outer}\n" + marker + ":::\n" + chunk,
+      "::: {#outer}\n::: {#inner}\n" + marker + ":::\n:::\n" + chunk,
+      "::: {#outer}\n" + marker + chunk + ":::\n",
+      marker + "::: {#new}\n:::\n" + chunk,
+      marker + "## Heading {#heading}\n" + chunk,
+      marker + "<div>\n</div>\n" + chunk,
+      marker + "{{< include other.qmd >}}\n" + chunk,
+      marker + "```plain\nliteral\n```\n" + chunk,
+    ]
+  ) {
+    const document = scanSource(source);
+    if (
+      !document.diagnostics.some((diagnostic) =>
+        diagnostic.code === "invalid-producer-marker"
+      )
+    ) throw new Error(`Marker crossed source boundary: ${source}`);
+    if (
+      document.blocks.some((block) => block.id === "chunk@88" && block.stable)
+    ) {
+      throw new Error(
+        "Rejected marker still assigned identity to an unrelated chunk",
+      );
+    }
+  }
+});

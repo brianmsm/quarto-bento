@@ -335,15 +335,18 @@ export function scanSource(
   }
   while (i < lines.length) {
     const line = lines[i], s = line.text;
+    // Check adjacency before dispatch: closing fences do not call add(), so a
+    // marker must never survive a scope boundary on its way to another chunk.
+    if (producerMarker && !/^ {0,3}(?:`{3,}|~{3,})\s*\{[A-Za-z]/.test(s)) {
+      diagnostics.push({
+        code: "invalid-producer-marker",
+        message:
+          "A producer marker must immediately precede its executable chunk.",
+        span: { start: line.start, end: line.fullEnd },
+      });
+      producerMarker = undefined;
+    }
     if (!s.trim()) {
-      if (producerMarker) {
-        diagnostics.push({
-          code: "invalid-producer-marker",
-          message:
-            "A producer marker must immediately precede its executable chunk.",
-        });
-        producerMarker = undefined;
-      }
       i++;
       continue;
     }
@@ -353,13 +356,6 @@ export function scanSource(
       const comment = lines.slice(first, Math.min(i + 1, lines.length)).map((
         l,
       ) => l.text).join("\n");
-      if (producerMarker) {
-        diagnostics.push({
-          code: "invalid-producer-marker",
-          message:
-            "A producer marker must directly precede its executable chunk.",
-        });
-      }
       producerMarker = comment.match(
         /^\s*<!--\s*qb-producer:(chunk@(?:0|[1-9][0-9]*))\s*-->\s*$/,
       )?.[1];
@@ -368,6 +364,13 @@ export function scanSource(
           code: "invalid-producer-marker",
           message: "Malformed retained producer identity.",
         });
+      }
+      if (producerMarker && stack.length) {
+        diagnostics.push({
+          code: "invalid-producer-marker",
+          message: "Retained producer markers must be authored at top level.",
+        });
+        producerMarker = undefined;
       }
       marker = comment.match(/^\s*<!--\s*qb:([^\s]+)\s*-->\s*$/)?.[1];
       if (marker && !isSourceIdentity(marker)) marker = undefined;
