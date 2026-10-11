@@ -1,0 +1,84 @@
+---
+title: "Diagramas y secuencias con fuente"
+qbento-annotations: none
+---
+
+## Dos opciones de análisis {#options}
+
+:::: {#analysis .bento-diagram}
+
+::: {#sample .bento-node}
+Muestra
+:::
+
+::: {#model-a .bento-node}
+Modelo A
+:::
+
+::: {#model-b .bento-node}
+Modelo B
+:::
+
+::: {#choose-a .bento-edge from="sample" to="model-a"}
+Comparar
+:::
+
+::: {#choose-b .bento-edge from="sample" to="model-b"}
+:::
+
+::::
+
+## Proceso mínimo {#process}
+
+:::: {#minimal .bento-diagram}
+
+::: {#collect .bento-node}
+Recoger datos
+:::
+
+::: {#prepare .bento-node}
+Preparar análisis
+:::
+
+::: {#prepare-link .bento-edge from="collect" to="prepare"}
+Validar
+:::
+
+::::
+
+## Orden en la fuente {#sequence}
+
+:::: {#milestones .bento-timeline}
+
+::: {#plan .bento-milestone}
+Diseño
+:::
+
+::: {#observations .bento-milestone}
+Datos
+:::
+
+::: {#estimate .bento-milestone}
+Ajuste
+:::
+
+::: {#report .bento-milestone}
+Informe
+:::
+
+::::
+
+## Resultado recalculable {#computed}
+
+::: {#data-figure}
+
+```{r}
+#| label: fig-values
+#| echo: false
+#| dev: svg
+values <- read.csv("data.csv")
+plot(values$value, type = "b", col = "#156f65",
+     xlab = "Observación", ylab = "Valor", main = "Datos locales")
+```
+
+:::
