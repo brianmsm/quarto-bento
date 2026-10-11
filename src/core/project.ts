@@ -1,7 +1,13 @@
 import { basename, dirname, resolve } from "node:path";
 import { executeQuarto } from "../render/quarto.ts";
 import { projectAst } from "../render/project.ts";
-import { extractDocument, spliceDocument } from "../render/html.ts";
+import { spliceDocument } from "../render/html.ts";
+import {
+  consumeCapture,
+  preparePublication,
+  recordPublication,
+  verifyCapture,
+} from "./capture.ts";
 import { hashSource, scanSource } from "../source/mod.ts";
 import {
   assertOutputUnchanged,
@@ -213,11 +219,15 @@ async function render(source: string, executed?: ExecutedRender) {
     const shell = await Deno.readTextFile(
       new URL("../../vendor/bento/shell.html", import.meta.url),
     );
-    const html = spliceDocument(
+    const assembled = spliceDocument(
       shell,
       composed.document as unknown as RenderDoc,
       ISOLATION_BOOTSTRAP,
       OFFLINE_CSP,
+    );
+    const { html, receipt } = await preparePublication(
+      composed.document,
+      assembled,
     );
     // Recheck immediately before publishing: edits during execution must also survive.
     await assertOutputUnchanged(state, paths.output);
@@ -269,7 +279,13 @@ async function render(source: string, executed?: ExecutedRender) {
       }
     }
     state = await store.save(
-      await markEmitted(state, composed.document, paths.output, html),
+      await recordPublication(
+        state,
+        composed.document,
+        paths.output,
+        html,
+        receipt,
+      ),
     );
     // Atomic no-clobber publication refuses an output recreated by a native save.
     await Deno.link(staging, paths.output);
@@ -291,12 +307,12 @@ export async function captureProject(source: string, editedPath?: string) {
       await assertOutputUnchanged(state, paths.output);
     }
     const html = await Deno.readTextFile(target);
-    const doc = extractDocument(html) as unknown as BentoDoc;
+    const doc = await verifyCapture(state, html);
     state = captureEdits(state, doc);
     if (target === paths.output) {
       state = await markEmitted(state, doc, paths.output, html);
     }
-    state = await store.save(state);
+    state = await store.save(consumeCapture(state));
     return {
       state,
       pending: state.pending.length,
