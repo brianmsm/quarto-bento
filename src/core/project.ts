@@ -30,6 +30,7 @@ import {
   prepareIsolatedDocument,
 } from "../bridge/isolation.ts";
 import type { Ast, BentoDoc as RenderDoc } from "../render/types.ts";
+import { syncDirectory, writeDurable } from "./io.ts";
 
 export function projectPaths(source: string) {
   source = resolve(source);
@@ -132,6 +133,96 @@ export async function renderProjectFromAst(
 ) {
   return await render(source, executed);
 }
+/** Execute and project one source snapshot; callers hold the project operation lock. */
+export async function projectProjection(
+  source: string,
+  state: ProjectState | null | undefined,
+  executed?: ExecutedRender,
+) {
+  const paths = projectPaths(source);
+  const text = await Deno.readTextFile(paths.source),
+    mapping = scanSource(text);
+  if (executed && mapping.hash !== executed.sourceHash) {
+    throw new Error(
+      "SOURCE_CHANGED: QMD differs from the executed source snapshot",
+    );
+  }
+  const build = resolve(paths.stateDir, "build");
+  const ast = executed?.ast ?? await executeQuarto(paths.source, build);
+  if (hashSource(await Deno.readTextFile(paths.source)) !== mapping.hash) {
+    throw new Error(
+      "SOURCE_CHANGED: QMD changed during execution; render aborted",
+    );
+  }
+  const projected = await projectAst(
+    ast,
+    state?.docId ?? crypto.randomUUID(),
+    executed?.assetDirectories ?? [build, paths.directory],
+  );
+  const generated = prepareIsolatedDocument(
+    projected.document,
+  ) as unknown as BentoDoc;
+  const provenance: ProvenanceMap = {};
+  for (const [slideId, els] of Object.entries(projected.origins)) {
+    for (const [elementId, origin] of Object.entries(els)) {
+      const block = mapping.blocks.find((b) => b.id === origin.sourceId);
+      provenance[targetKey({ slideId, elementId })] = {
+        origin: block?.origin === "computed" ? "computed" : origin.origin,
+        ...(origin.sourceId ? { semanticId: origin.sourceId } : {}),
+        ...(origin.producer ? { producer: origin.producer } : {}),
+        source: {
+          hash: mapping.hash,
+          ...(block
+            ? {
+              blockId: block.id,
+              content: block.content,
+              kind: block.kind,
+              stable: block.stable,
+              ...(block.parentId
+                ? {
+                  parentId: block.parentId,
+                  siblings: mapping.blocks.filter((b) =>
+                    b.parentId === block.parentId && b.kind === block.kind
+                  ).length,
+                }
+                : {}),
+            }
+            : {}),
+        },
+      };
+    }
+  }
+  return {
+    document: generated,
+    provenance,
+    sourceHash: mapping.hash,
+    diagnostics: projected.diagnostics,
+  };
+}
+export function assertProjectionIdentity(
+  state: ProjectState,
+  provenance: ProvenanceMap,
+  sourceHash: string,
+) {
+  if (state) {
+    for (const [key, old] of Object.entries(state.provenance)) {
+      const fresh = provenance[key];
+      if (old.source?.hash !== sourceHash && old.origin !== "computed") {
+        const safeExplicit = old.source?.stable === true &&
+          fresh?.semanticId === old.semanticId;
+        const safeSingleton = old.source?.parentId &&
+          old.source?.siblings === 1 && fresh?.source?.siblings === 1 &&
+          fresh?.source?.parentId === old.source.parentId;
+        if (!safeExplicit && !safeSingleton) {
+          throw new Error(
+            "AMBIGUOUS_IDENTITY: source changed around an unpinned element; explicitly pin identities before regenerating retained design",
+          );
+        }
+      }
+    }
+  }
+}
+
 async function render(source: string, executed?: ExecutedRender) {
   return await withProject(source, async (paths, store) => {
     let state = await store.load();
@@ -144,74 +235,10 @@ async function render(source: string, executed?: ExecutedRender) {
       );
     }
     await assertOutputUnchanged(state, paths.output);
-    const text = await Deno.readTextFile(paths.source),
-      mapping = scanSource(text);
-    if (executed && mapping.hash !== executed.sourceHash) {
-      throw new Error(
-        "SOURCE_CHANGED: QMD differs from the executed source snapshot",
-      );
-    }
-    const build = resolve(paths.stateDir, "build");
-    const ast = executed?.ast ?? await executeQuarto(paths.source, build);
-    if (hashSource(await Deno.readTextFile(paths.source)) !== mapping.hash) {
-      throw new Error(
-        "SOURCE_CHANGED: QMD changed during execution; render aborted",
-      );
-    }
-    const projected = await projectAst(
-      ast,
-      state?.docId ?? crypto.randomUUID(),
-      executed?.assetDirectories ?? [build, paths.directory],
-    );
-    const generated = prepareIsolatedDocument(
-      projected.document,
-    ) as unknown as BentoDoc;
-    const provenance: ProvenanceMap = {};
-    for (const [slideId, els] of Object.entries(projected.origins)) {
-      for (const [elementId, origin] of Object.entries(els)) {
-        const block = mapping.blocks.find((b) => b.id === origin.sourceId);
-        provenance[targetKey({ slideId, elementId })] = {
-          origin: block?.origin === "computed" ? "computed" : origin.origin,
-          ...(origin.sourceId ? { semanticId: origin.sourceId } : {}),
-          ...(origin.producer ? { producer: origin.producer } : {}),
-          source: {
-            hash: mapping.hash,
-            ...(block
-              ? {
-                blockId: block.id,
-                content: block.content,
-                kind: block.kind,
-                stable: block.stable,
-                ...(block.parentId
-                  ? {
-                    parentId: block.parentId,
-                    siblings: mapping.blocks.filter((b) =>
-                      b.parentId === block.parentId && b.kind === block.kind
-                    ).length,
-                  }
-                  : {}),
-              }
-              : {}),
-          },
-        };
-      }
-    }
+    const projected = await projectProjection(source, state, executed);
+    const generated = projected.document, provenance = projected.provenance;
     if (state) {
-      for (const [key, old] of Object.entries(state.provenance)) {
-        const fresh = provenance[key];
-        if (old.source?.hash !== mapping.hash && old.origin !== "computed") {
-          const safeExplicit = old.source?.stable === true &&
-            fresh?.semanticId === old.semanticId;
-          const safeSingleton = old.source?.parentId &&
-            old.source?.siblings === 1 && fresh?.source?.siblings === 1 &&
-            fresh?.source?.parentId === old.source.parentId;
-          if (!safeExplicit && !safeSingleton) {
-            throw new Error(
-              "AMBIGUOUS_IDENTITY: source changed around an unpinned element; explicitly pin identities before regenerating retained design",
-            );
-          }
-        }
-      }
+      assertProjectionIdentity(state, provenance, projected.sourceHash);
     }
     if (!state) state = createState(generated, provenance);
     const composed = compose(state, generated, provenance);
@@ -231,21 +258,21 @@ async function render(source: string, executed?: ExecutedRender) {
     );
     // Recheck immediately before publishing: edits during execution must also survive.
     await assertOutputUnchanged(state, paths.output);
-    const staging = paths.output + ".pending-" + crypto.randomUUID();
-    const file = await Deno.open(staging, { createNew: true, write: true });
-    try {
-      const bytes = new TextEncoder().encode(html);
-      let n = 0;
-      while (n < bytes.length) n += await file.write(bytes.subarray(n));
-      await file.sync();
-    } finally {
-      file.close();
+    if (
+      hashSource(await Deno.readTextFile(paths.source)) !== projected.sourceHash
+    ) {
+      throw new Error(
+        "SOURCE_CHANGED: QMD changed during projection; publication aborted",
+      );
     }
+    const staging = paths.output + ".pending-" + crypto.randomUUID();
+    await writeDurable(staging, html);
+    await syncDirectory(paths.directory);
     const journal = resolve(paths.stateDir, "render-transaction.json");
     const history = resolve(paths.stateDir, "history");
     await Deno.mkdir(history, { recursive: true });
     const backup = resolve(history, `output-${crypto.randomUUID()}.html`);
-    await Deno.writeTextFile(
+    await writeDurable(
       journal,
       JSON.stringify(
         {
@@ -261,15 +288,25 @@ async function render(source: string, executed?: ExecutedRender) {
         null,
         2,
       ),
-      { createNew: true },
     );
+    await syncDirectory(paths.stateDir);
+    if (
+      hashSource(await Deno.readTextFile(paths.source)) !== projected.sourceHash
+    ) {
+      throw new Error(
+        "SOURCE_CHANGED: QMD changed while preparing publication; recover the retained transaction",
+      );
+    }
     if (await exists(paths.output)) {
       // Rename preserves even a native save arriving after the last hash check.
       // Keep this recoverable copy; never discard it as part of publication.
       await Deno.rename(paths.output, backup);
+      await syncDirectory(paths.directory);
+      await syncDirectory(history);
       if (await sha256(await Deno.readFile(backup)) !== state.output?.sha256) {
         try {
           await Deno.link(backup, paths.output);
+          await syncDirectory(paths.directory);
         } catch (e) {
           if (!(e instanceof Deno.errors.AlreadyExists)) throw e;
         }
@@ -289,8 +326,11 @@ async function render(source: string, executed?: ExecutedRender) {
     );
     // Atomic no-clobber publication refuses an output recreated by a native save.
     await Deno.link(staging, paths.output);
+    await syncDirectory(paths.directory);
     await Deno.remove(staging);
+    await syncDirectory(paths.directory);
     await Deno.remove(journal);
+    await syncDirectory(paths.stateDir);
     return { output: paths.output, state, diagnostics: projected.diagnostics };
   });
 }
