@@ -1,7 +1,9 @@
 # Bounded display-math codec evidence
 
-Verified 2026-10-11 on Linux with Deno 2.9.6 and Quarto 1.10.19. This is a codec
-and mapping test, not integrated Studio/round-trip acceptance.
+Verified 2026-10-11 on Linux with Deno 2.9.6 and Quarto 1.10.19. This document
+records codec, source mapping and integrated project tests. The separate
+[combined native evidence](SEMANTIC-ROUNDTRIP.md) records the Studio edit,
+reviewed QMD patch, reopen and changed-data regeneration in the actual editor.
 
 ## Native representation
 
@@ -97,9 +99,8 @@ Greek operators, scalable fences, Unicode/literal HTML, aligned rows and
 matrices) produced MathML through the native delimiter path. A further 158
 currently supported command examples produced strict MathML after excluding
 `textbf` and `textit` as described below. These checks are runtime
-engine/delimiter evidence; they do not establish browser font, visual layout,
-native edit, save/reopen or integrated safe sync acceptance. The coordinator
-must still integrate projection/sync and perform that UI loop.
+engine/delimiter evidence; native visual and editing checks are recorded
+separately in the combined evidence linked above.
 
 ## Conservative native fidelity restrictions
 

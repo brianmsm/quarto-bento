@@ -56,8 +56,9 @@ Full product acceptance and public v1 release remain pending. See
   retain computed provenance and cannot reverse-write their producer.
   Plain identified speaker notes now synchronize through their own bounded patch.
   Identified standalone display equations use a bounded LaTeX codec and reviewed
-  body-only patches. Independent review is tightening edge cases against the
-  pinned native math renderer; this is not general TeX support.
+  body-only patches. Independent review closed delimiter, script-base and lossy
+  text edge cases against the pinned native renderer; this is not general TeX
+  support.
   Native charts/tables, components, widgets,
   Presenter/widgets and cross-platform native packaging remain separate incomplete gates.
 - Capture permits one accepted capture per published generation and refuses

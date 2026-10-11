@@ -50,7 +50,9 @@ the separate visual check.
 
 Local, ignored screenshots were captured and viewed:
 `output/playwright/native-math-review.png` and
-`output/playwright/native-math-reopened.png`. The test fixture directory was
+`output/playwright/native-math-reopened.png`. The changed-data SVG was also
+inspected in `output/playwright/native-combined-figure.png`, showing the last
+point at 60. The test fixture directory was
 `/tmp/qbento-semantics-native-zukv4z3g`; those temporary files are not a durable
 project dependency. This evidence does not extend the bounded math vocabulary,
 prove general TeX conversion or establish other operating systems' behavior.
