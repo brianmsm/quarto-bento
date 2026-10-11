@@ -1,4 +1,5 @@
 import { prepareRichTables } from "../rich/project.ts";
+import { missingDesignDiagnostics } from "./design-diagnostics.ts";
 import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
 import {
   assertDesignRegistryUnchanged,
@@ -46,7 +47,11 @@ import {
   OFFLINE_CSP,
   prepareIsolatedDocument,
 } from "../bridge/isolation.ts";
-import type { Ast, BentoDoc as RenderDoc } from "../render/types.ts";
+import type {
+  Ast,
+  BentoDoc as RenderDoc,
+  Diagnostic,
+} from "../render/types.ts";
 import { syncDirectory, writeDurable } from "./io.ts";
 import { assertProjectDocument } from "../render/validate.ts";
 
@@ -362,7 +367,10 @@ export async function projectProjection(
     ownership,
     sourceHash: mapping.hash,
     designHash: registry.hash,
-    diagnostics: projected.diagnostics,
+    diagnostics: [
+      ...projected.diagnostics,
+      ...missingDesignDiagnostics(mapping, state, registry),
+    ],
     widgets,
     mapping,
   };
@@ -625,6 +633,17 @@ export async function readProject(source: string): Promise<ProjectState> {
   const state = await new StateStore(projectPaths(source).stateDir).load();
   if (!state) throw new Error("NO_BASELINE: render this project first");
   return state;
+}
+
+/** Read-only Studio diagnostics: no Quarto execution, state writes or source cleanup. */
+export async function readProjectDiagnostics(
+  source: string,
+): Promise<Diagnostic[]> {
+  const paths = projectPaths(source);
+  const state = await new StateStore(paths.stateDir).load();
+  const registry = await loadDesignRegistry(paths.directory);
+  const mapping = scanSource(await Deno.readTextFile(paths.source));
+  return missingDesignDiagnostics(mapping, state, registry);
 }
 
 export async function readProjectPresenter(

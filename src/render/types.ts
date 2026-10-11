@@ -29,6 +29,9 @@ export interface Diagnostic {
   code: string;
   message: string;
   elementId?: string;
+  slideId?: string;
+  /** Original managed design reference; minimal traces identify the directory only. */
+  reference?: string;
 }
 export interface Origin {
   origin: "authored" | "computed";

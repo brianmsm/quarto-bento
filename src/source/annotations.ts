@@ -104,7 +104,7 @@ function splice(text: string, patches: SourcePatch[]): string {
   }
   return decoder.decode(bytes);
 }
-/** Inspect only reserved standalone comments outside literal code/chunk/math. */
+/** Standalone comments at 0–3 spaces; indented code/tabs and fenced literals are not traces. */
 function comments(doc: SourceDocument) {
   const found: {
     start: number;
@@ -119,7 +119,7 @@ function comments(doc: SourceDocument) {
   const yamlEnd = yaml ? encoder.encode(yaml).length : 0;
   for (
     const match of doc.text.matchAll(
-      /^[ \t]*<!--[ \t]*qbento-design\b[^\r\n]*(?:\r\n|\n|$)/gm,
+      /^ {0,3}<!--[ \t]*qbento-design\b[^\r\n]*(?:\r\n|\n|$)/gm,
     )
   ) {
     const start = encoder.encode(doc.text.slice(0, match.index)).length;
@@ -132,7 +132,7 @@ function comments(doc: SourceDocument) {
     ) continue;
     const raw = match[0],
       body =
-        /^[ \t]*<!--[ \t]*qbento-design:[ \t]*(\{.*\})[ \t]*-->[ \t]*(?:\r\n|\n|$)$/
+        /^ {0,3}<!--[ \t]*qbento-design:[ \t]*(\{.*\})[ \t]*-->[ \t]*(?:\r\n|\n|$)$/
           .exec(raw)?.[1];
     let value: {
       version?: unknown;
@@ -174,6 +174,79 @@ function comments(doc: SourceDocument) {
     found.push({ start, end: start + encoder.encode(raw).length, raw, data });
   }
   return found;
+}
+export interface SourceDesignAnnotation {
+  slideId: string;
+  /** Minimal classes deliberately do not identify one specific sidecar. */
+  features?: AnnotationFeature[];
+  references?: AnnotationReference[];
+}
+/** Read original managed traces only; no patches, technical IDs or ownership. */
+export function readDesignAnnotations(
+  doc: SourceDocument,
+): SourceDesignAnnotation[] {
+  if (hashSource(doc.text) !== doc.hash) {
+    throw new SourceError("stale-document", "Source snapshot changed.");
+  }
+  const existing = comments(doc), consumed = new Set<number>();
+  const result: SourceDesignAnnotation[] = [];
+  for (const slide of doc.slides) {
+    const heading = doc.blocks.find((b) => b.id === slide.headingId)!;
+    const associated = existing.filter((c) =>
+      c.start >= heading.span.end &&
+      /^[\r\n \t]*$/.test(
+        sliceBytes(doc.text, { start: heading.span.end, end: c.start }),
+      )
+    );
+    if (associated.length > 1) {
+      fail("More than one descriptive reference follows a slide heading.");
+    }
+    const current = associated[0];
+    if (current) {
+      consumed.add(current.start);
+      if (current.data.slideId !== slide.id) {
+        fail(
+          "A descriptive reference points to a different source slide; preserve and reconcile it before sync.",
+        );
+      }
+    }
+    const line = heading.raw.replace(/(?:\r\n|\n|\r)$/, "");
+    const attrs = /\{([^{}]*)\}[ \t]*$/.exec(line);
+    let annotated = false;
+    if (
+      attrs?.[1].replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, "")
+        .match(/(?:^|\s)\.qbento-design(?:\s|$)/)
+    ) {
+      const tokens = originalAttributeTokens(attrs[1]);
+      originalPandocAttributes(attrs[1], tokens);
+      const marks = tokens.filter((t) =>
+        attrs[1].slice(t.start, t.end) === `.${namespace}`
+      );
+      if (marks.length > 1) {
+        fail(
+          "Duplicate .qbento-design class; preserve and repair it before sync.",
+        );
+      }
+      annotated = marks.length === 1;
+    }
+    if (annotated || current) {
+      result.push({
+        slideId: slide.id,
+        ...(current
+          ? {
+            features: current.data.features,
+            references: current.data.references,
+          }
+          : {}),
+      });
+    }
+  }
+  if (existing.some((c) => !consumed.has(c.start))) {
+    fail(
+      "A reserved design reference does not directly follow its source slide heading.",
+    );
+  }
+  return result;
 }
 /** Patches exactly optional class tokens/reference comments, preserving all other bytes. */
 export function previewAnnotations(

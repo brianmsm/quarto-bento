@@ -1,6 +1,9 @@
 /** Original-YAML configuration and bounded external-design signals for sync only. */
 import { resolve } from "node:path";
-import { validateDesignRegistry } from "../render/registry.ts";
+import {
+  assertDesignRegistryReady,
+  validateDesignRegistry,
+} from "../render/registry.ts";
 import type { ProjectState } from "../state/mod.ts";
 import { canonical, sha256, StateError } from "../state/mod.ts";
 import { type SourceDocument, SourceError } from "../source/mod.ts";
@@ -166,6 +169,7 @@ export interface AnnotationRegistry {
 export async function annotationRegistry(
   directory: string,
 ): Promise<AnnotationRegistry> {
+  await assertDesignRegistryReady(directory);
   const path = resolve(directory, ".qbento/design.json");
   let text: string;
   let bytes: Uint8Array;
@@ -225,7 +229,7 @@ export async function annotationRegistry(
 }
 export function annotationRequests(
   doc: SourceDocument,
-  state: ProjectState,
+  state: ProjectState | null | undefined,
   selected: string[],
   registry: AnnotationRegistry,
   diagnostics: AnnotationDiagnostic[] = [],
@@ -254,14 +258,16 @@ export function annotationRequests(
       }
     }
   }
-  for (const override of state.overrides) {
+  for (const override of state?.overrides ?? []) {
     if (override.fields.length) add(override.target.slideId, "overrides");
   }
-  for (const decoration of state.bentoOnly) {
+  for (const decoration of state?.bentoOnly ?? []) {
     add(decoration.slideId, "decorations");
   }
-  for (const order of state.elementOrders) add(order.slideId, "stacking");
-  for (const change of state.pending) {
+  for (const order of state?.elementOrders ?? []) {
+    add(order.slideId, "stacking");
+  }
+  for (const change of state?.pending ?? []) {
     if (
       selected.includes(change.id) &&
       ["create-slide", "create-element"].includes(change.kind)
