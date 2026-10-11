@@ -30,14 +30,26 @@ function setBusy(value) {
     $("render").focus();
   }
 }
-async function connect() {
+function connect() {
   try {
     const editor = $("editor").contentWindow;
     if (!editor.bento) {
       setTimeout(connect, 150);
       return;
     }
-    state = await api("state");
+    // The iframe and its save revision must describe the same immutable snapshot.
+    // A later /api/state fetch can already belong to another editor's save.
+    const snapshot = editor.__qbentoSnapshot;
+    if (!snapshot || !Number.isSafeInteger(snapshot.revision)) {
+      throw new Error(
+        "El editor no tiene una revisión verificable. Recarga el proyecto.",
+      );
+    }
+    state = {
+      docId: snapshot.docId,
+      revision: snapshot.revision,
+      pending: snapshot.pending,
+    };
     const oldBridge = bridge;
     bridge = createBentoBridge(editor.bento, {
       docId: state.docId,
@@ -63,8 +75,8 @@ async function connect() {
     oldBridge?.dispose();
     setBusy(false);
     status(
-      state.pending.length
-        ? `${state.pending.length} cambios pendientes de sincronización`
+      state.pending
+        ? `${state.pending} cambios pendientes de sincronización`
         : "Proyecto abierto",
     );
   } catch (error) {

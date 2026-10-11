@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "deno test --allow-read --allow-write --allow-env --allow-run tests",
+    "test": "deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests",
     "check": "deno check src/**/*.ts",
     "qbento": "deno run --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1 src/cli.ts"
   },

@@ -67,7 +67,14 @@ export async function startStudio(source: string, port = 0) {
             spliceDocument(
               shell,
               state.emitted as unknown as RenderDoc,
-              managedBoot,
+              managedBoot +
+                "\nObject.defineProperty(globalThis, '__qbentoSnapshot', { value: Object.freeze(" +
+                JSON.stringify({
+                  docId: state.docId,
+                  revision: state.revision,
+                  pending: state.pending.length,
+                }).replaceAll("<", "\\u003c") +
+                ") });",
               OFFLINE_CSP,
             ),
             200,
