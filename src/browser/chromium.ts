@@ -7,6 +7,41 @@ export interface ChromiumClient {
   events: { method: string; params: Record<string, unknown> }[];
   version: string;
 }
+/** A missing result means a valid prefix of Chromium's two-line endpoint file. */
+export function chromiumEndpoint(contents: string): string | undefined {
+  const invalid = () => {
+    throw new Error("INVALID_CHROMIUM_ENDPOINT");
+  };
+  const newline = contents.indexOf("\n");
+  if (newline < 0) {
+    const port = contents.endsWith("\r") ? contents.slice(0, -1) : contents;
+    if (!/^\d{0,5}$/.test(port) || Number(port) > 65535) invalid();
+    // A zero-only five-digit port cannot become a valid port by appending.
+    if (port.length === 5 && Number(port) === 0) invalid();
+    if (contents.endsWith("\r") && (!port || Number(port) === 0)) invalid();
+    return undefined;
+  }
+  const port = contents.slice(0, newline).replace(/\r$/, "");
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    invalid();
+  }
+  const rawPath = contents.slice(newline + 1);
+  const path = rawPath.replace(/(?:\r?\n|\r)$/, "");
+  const shape = "/devtools/browser/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+  if (path.length > shape.length) invalid();
+  for (let i = 0; i < path.length; i++) {
+    if (shape[i] === "x" ? !/[a-f0-9]/.test(path[i]) : path[i] !== shape[i]) {
+      invalid();
+    }
+  }
+  if (path.length < shape.length) {
+    // A newline commits the path; a short committed path is malformed.
+    if (rawPath.endsWith("\n") || rawPath.endsWith("\r")) invalid();
+    return undefined;
+  }
+  if (rawPath.endsWith("\r")) return undefined;
+  return `ws://127.0.0.1:${port}${path}`;
+}
 export async function withHeadlessChromium<T>(
   options: { chromium?: string; timeoutMs?: number },
   action: (client: ChromiumClient) => Promise<T>,
@@ -72,17 +107,13 @@ export async function withHeadlessChromium<T>(
       let endpoint = "";
       for (let i = 0; i < 100 && !stopped; i++) {
         try {
-          const [port, path] =
-            (await Deno.readTextFile(`${dir}/DevToolsActivePort`)).trim().split(
-              /\r?\n/,
-            );
-          if (
-            !/^\d{1,5}$/.test(port) || Number(port) < 1 ||
-            Number(port) > 65535 ||
-            !/^\/devtools\/browser\/[a-f0-9-]+$/.test(path)
-          ) throw new Error("INVALID_CHROMIUM_ENDPOINT");
-          endpoint = `ws://127.0.0.1:${port}${path}`;
-          break;
+          const ready = chromiumEndpoint(
+            await Deno.readTextFile(`${dir}/DevToolsActivePort`),
+          );
+          if (ready) {
+            endpoint = ready;
+            break;
+          }
         } catch (error) {
           if (!(error instanceof Deno.errors.NotFound)) throw error;
         }
