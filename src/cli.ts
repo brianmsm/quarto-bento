@@ -8,11 +8,18 @@ import { installQuartoProject } from "./integration/install.ts";
 import { recoverQuartoRender } from "./integration/quarto.ts";
 import { assertBentoContract } from "./render/validate.ts";
 import { applyReconcile, previewReconcile } from "./core/reconcile.ts";
+import {
+  getAgentDeck,
+  patchAgentDeck,
+  readAgentPatchFile,
+} from "./core/agent.ts";
 const help = `qbento <command> <presentation.qmd> [arguments]
 
 render                 Execute Quarto and retain saved design
 capture [edited.html]   Explicitly capture native local HTML edits
 status | diff          Inspect durable pending changes
+get                    Read the saved deck, revision, provenance and pending edits
+patch <payload.json>   Apply bounded structured edits to saved state; never writes QMD
 sync [--apply plan.json] Preview source changes or apply an inspected plan
 reconcile [--apply resolution.json] Execute conflict preview, or apply {plan,choices} to saved state
 recover [inspect|finish|rollback] Inspect or explicitly recover an interrupted operation
@@ -61,6 +68,20 @@ if (import.meta.main) {
           pending: s.pending,
           overrides: s.overrides,
         };
+        break;
+      }
+      case "get": {
+        if (!source || extra !== undefined || Deno.args.length !== 2) {
+          throw new Error("AGENT_USAGE: Use get source.qmd");
+        }
+        result = await getAgentDeck(source);
+        break;
+      }
+      case "patch": {
+        if (!source || !extra || Deno.args.length !== 3) {
+          throw new Error("AGENT_USAGE: Use patch source.qmd payload.json");
+        }
+        result = await patchAgentDeck(source, await readAgentPatchFile(extra));
         break;
       }
       case "sync": {
@@ -181,7 +202,10 @@ if (import.meta.main) {
     console.error(
       JSON.stringify(
         {
-          error: e.code || "QBENTO_ERROR",
+          error: e.code ||
+            (["get", "patch"].includes(command) &&
+              e.message.match(/^([A-Z][A-Z_0-9]+):/)?.[1]) ||
+            "QBENTO_ERROR",
           message: e.message,
           details: e.details,
         },

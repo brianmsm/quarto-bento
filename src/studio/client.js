@@ -266,6 +266,7 @@ async function runSlideAction(action, slideId) {
       action,
       slideId,
       revision: state.revision,
+      expectedDocId: state.docId,
     });
     state.revision = receipt.revision;
     $("slides-dialog").close();

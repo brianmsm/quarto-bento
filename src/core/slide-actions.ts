@@ -15,6 +15,7 @@ export interface SlideActionRequest {
   action: "hide" | "show" | "delete" | "restore";
   slideId: string;
   revision: number;
+  expectedDocId?: string;
 }
 
 /** Save reversible slide actions; source deletion belongs only to reviewed sync. */
@@ -26,12 +27,23 @@ export async function applySlideAction(
     !request ||
     !["hide", "show", "delete", "restore"].includes(request.action) ||
     typeof request.slideId !== "string" || !request.slideId ||
-    !Number.isSafeInteger(request.revision)
+    !Number.isSafeInteger(request.revision) ||
+    (request.expectedDocId !== undefined &&
+      (typeof request.expectedDocId !== "string" || !request.expectedDocId))
   ) throw new StateError("INVALID_SLIDE_ACTION", "Invalid slide action.");
   return await withProject(source, async (paths, store) => {
     const state = await store.load();
     if (!state) {
       throw new StateError("NO_BASELINE", "Render the project first.");
+    }
+    if (
+      request.expectedDocId !== undefined &&
+      state.docId !== request.expectedDocId
+    ) {
+      throw new StateError(
+        "UNRELATED_DOCUMENT",
+        "The slide action belongs to a different docId. Reload the project.",
+      );
     }
     if (state.revision !== request.revision) {
       throw new StateError("STALE_REVISION", "Reload before changing slides.");

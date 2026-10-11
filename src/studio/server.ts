@@ -12,7 +12,7 @@ import {
 } from "../core/slide-actions.ts";
 import { spliceDocument } from "../render/html.ts";
 import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
-import type { BentoDoc } from "../state/mod.ts";
+import { type BentoDoc, StateError } from "../state/mod.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
 
 export const MAX_STUDIO_BODY_BYTES = 25_000_000;
@@ -223,10 +223,17 @@ export async function startStudio(source: string, port = 0) {
           }
           const text = await readStudioBody(req);
           if (text === null) return respond('{"error":"Plan too large"}', 413);
-          const state = await applySlideAction(
-            source,
-            JSON.parse(text) as SlideActionRequest,
-          );
+          const payload = JSON.parse(text) as SlideActionRequest;
+          if (
+            !payload || typeof payload.expectedDocId !== "string" ||
+            !payload.expectedDocId
+          ) {
+            throw new StateError(
+              "INVALID_SLIDE_ACTION",
+              "Slide actions require the saved document identity.",
+            );
+          }
+          const state = await applySlideAction(source, payload);
           return respond(JSON.stringify({
             revision: state.revision,
             pending: state.pending.length,

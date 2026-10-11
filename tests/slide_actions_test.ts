@@ -361,11 +361,31 @@ Deno.test({
         });
         return { status: response.status, body: await response.json() };
       };
-      let response = await post("slides/action", {
+      const request = {
         action: "delete",
         slideId: "appendix",
         revision: f.initial.revision,
+        expectedDocId: f.initial.docId,
+      };
+      let response = await post("slides/action", {
+        ...request,
+        expectedDocId: undefined,
       });
+      assert(
+        response.status === 409 &&
+          response.body.error === "INVALID_SLIDE_ACTION",
+      );
+      response = await post("slides/action", {
+        ...request,
+        expectedDocId: "another-document",
+      });
+      assert(
+        response.status === 409 &&
+          response.body.error === "UNRELATED_DOCUMENT",
+      );
+      assert((await readProject(f.source)).revision === f.initial.revision);
+      assert(await Deno.readTextFile(f.source) === f.text);
+      response = await post("slides/action", request);
       assert(response.status === 200);
       const state = await readProject(f.source);
       const deletion = state.pending.find((change) =>
@@ -394,12 +414,14 @@ Deno.test({
         action: "delete",
         slideId: "end",
         revision: current.revision,
+        expectedDocId: current.docId,
       });
       assert(response.status === 200);
       response = await post("slides/action", {
         action: "delete",
         slideId: "start",
         revision: response.body.revision,
+        expectedDocId: current.docId,
       });
       assert(
         response.status === 409 &&
