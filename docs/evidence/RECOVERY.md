@@ -110,3 +110,30 @@ scope, symlink parents, changed staging, corrupt recovery envelopes and
 mismatched sync receipts. These are synthetic crash-stage and real Linux
 filesystem checks, not power-loss injection or cross-platform packaging
 evidence.
+
+## Approved native-creation metadata
+
+Source sync can optionally stage a checksum-protected approval envelope through
+`approvalStaging` (the exact transaction's `history/sync-approval-UUID.json`)
+and `approvalPath` (`.qbento/sync-approved.json`). Recovery invokes the shared
+approval validator, then binds its document ID, result-source hash, next
+revision, plan hash and exact ordered pending records to this sync journal and
+baseline.
+
+Sync finish publishes that approval without clobbering another approval, after
+source/state completion and before the success receipt. Rollback archives an
+active approval only when its bytes match the preserved stage. Missing stages,
+foreign active approval, inconsistent expected edits and unsafe paths refuse.
+
+Render journals may additionally contain `approval: {path, sha256, archive}`,
+where `archive` is a scoped `history/consumed-sync-UUID.json` path. Finish
+consumes only that exact active approval, preserving its archive. Rollback to
+the pre-render state preserves or restores the same approval without clobbering
+another file, so the still-pending creation can be promoted on the next render.
+This covers interruption after publication but before approval cleanup or
+active-journal removal.
+
+The extended suite now has **43 passing recovery tests**, including the six sync
+stages with creation approval, published/unpublished approval rollback,
+mismatched approval defenses, and render finish/rollback before/after approval
+archival.

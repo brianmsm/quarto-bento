@@ -1,6 +1,7 @@
 import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { projectPaths } from "./project.ts";
+import { validateSyncApproval } from "./sync.ts";
 import { extractDocument } from "../render/html.ts";
 import {
   canonical,
@@ -23,6 +24,7 @@ interface RenderJournal {
   nextRevision: number;
   sha256: string;
   previousOutput: { path: string; sha256: string } | null;
+  approval?: { path: string; sha256: string; archive: string };
 }
 interface SyncJournal {
   version: 1;
@@ -37,6 +39,8 @@ interface SyncJournal {
   stateRevision: number;
   planHash: string;
   selectedChangeIds: string[];
+  approvalStaging?: string;
+  approvalPath?: string;
 }
 export interface RecoveryFile {
   path: string;
@@ -184,6 +188,23 @@ function validateJournal(
     (!j.previousOutput || j.previousOutput.path !== paths.output ||
       !digest.test(j.previousOutput.sha256))
   ) fail("INVALID_RECOVERY_JOURNAL", "Invalid previous output receipt.");
+  if (
+    j.approval !== undefined &&
+    (!j.approval ||
+      j.approval.path !== join(paths.stateDir, "sync-approved.json") ||
+      typeof j.approval.sha256 !== "string" ||
+      !digest.test(j.approval.sha256) ||
+      typeof j.approval.archive !== "string" ||
+      dirname(j.approval.archive) !== join(paths.stateDir, "history") ||
+      !new RegExp("^consumed-sync-" + uuid + "\\.json$").test(
+        basename(j.approval.archive),
+      ))
+  ) {
+    fail(
+      "INVALID_RECOVERY_PATH",
+      "Render approval paths and digest must match scoped project history.",
+    );
+  }
   return j;
 }
 interface Snapshot {
@@ -265,6 +286,30 @@ async function inspect(source: string): Promise<Snapshot> {
       previous: join(paths.stateDir, "state.previous.json"),
     })
   ) report.files[name] = await evidence(path);
+  if (journal.approval) {
+    report.files.approval = await evidence(journal.approval.path);
+    report.files.approvalArchive = await evidence(journal.approval.archive);
+    if (!report.files.approval.exists && !report.files.approvalArchive.exists) {
+      fail(
+        "RECOVERY_APPROVAL_MISSING",
+        "Consumed render approval is missing from both active and archived paths.",
+      );
+    }
+    for (const name of ["approval", "approvalArchive"]) {
+      if (
+        report.files[name].exists &&
+        report.files[name].sha256 !== journal.approval.sha256
+      ) {
+        fail(
+          "RECOVERY_APPROVAL_MISMATCH",
+          "Render approval evidence differs from the exact transaction receipt; it will not be overwritten.",
+        );
+      }
+    }
+    if (report.files.approvalArchive.exists) {
+      report.preserved.push(journal.approval.archive);
+    }
+  }
   if (
     report.files.staging.exists &&
     report.files.staging.sha256 !== journal.sha256
@@ -451,7 +496,12 @@ async function archiveOutput(
 ): Promise<void> {
   const archive = join(
     history,
-    "recovery-output-" + crypto.randomUUID() + ".html",
+    "recovery-output-" + crypto.randomUUID() +
+      (path.endsWith(".json")
+        ? ".json"
+        : path.endsWith(".qmd")
+        ? ".qmd"
+        : ".html"),
   );
   await Deno.rename(path, archive);
   preserved.push(archive);
@@ -541,6 +591,19 @@ export async function recoverProject(
           );
         }
       }
+      if (j.approval) {
+        for (const name of ["approval", "approvalArchive"]) {
+          if (
+            report.files[name].sha256 !== initial.report.files[name].sha256 ||
+            report.files[name].exists !== initial.report.files[name].exists
+          ) {
+            fail(
+              "RECOVERY_CHANGED",
+              "Render approval changed while recovery acquired locks.",
+            );
+          }
+        }
+      }
       if (action === "finish") {
         if (!report.files.output.exists) {
           await publishNoClobber(j.staging, j.output);
@@ -594,6 +657,39 @@ export async function recoverProject(
             await durable(temp, oldBytes);
             await Deno.rename(temp, statePath);
           }
+        }
+      }
+      if (j.approval) {
+        if (action === "finish") {
+          if (!report.files.approvalArchive.exists) {
+            await publishNoClobber(j.approval.path, j.approval.archive);
+          }
+          if (
+            (await evidence(j.approval.archive)).sha256 !== j.approval.sha256
+          ) {
+            fail(
+              "RECOVERY_APPROVAL_MISMATCH",
+              "Archived approval changed during render recovery.",
+            );
+          }
+          preserved.push(j.approval.archive);
+          if (report.files.approval.exists) {
+            await archiveOutput(
+              j.approval.path,
+              j.approval.sha256,
+              history,
+              preserved,
+            );
+          }
+        } else if (!report.files.approval.exists) {
+          await publishNoClobber(j.approval.archive, j.approval.path);
+          if ((await evidence(j.approval.path)).sha256 !== j.approval.sha256) {
+            fail(
+              "RECOVERY_APPROVAL_MISMATCH",
+              "Restored approval changed during rollback.",
+            );
+          }
+          preserved.push(j.approval.archive);
         }
       }
       // Keep staged bytes, original HTML and the exact journal for forensic recovery.
@@ -695,6 +791,17 @@ function validateSync(
       "Sync journal paths are not the exact scoped transaction paths.",
     );
   }
+  if (
+    (j.approvalStaging !== undefined || j.approvalPath !== undefined) &&
+    (j.approvalStaging !==
+        join(history, "sync-approval-" + j.transactionId + ".json") ||
+      j.approvalPath !== join(paths.stateDir, "sync-approved.json"))
+  ) {
+    fail(
+      "INVALID_RECOVERY_PATH",
+      "Sync approval paths do not match the exact transaction stage and project approval file.",
+    );
+  }
   return j;
 }
 function syncReceipt(j: SyncJournal) {
@@ -748,6 +855,57 @@ async function inspectSync(
       "RECOVERY_PREVIOUS_MISMATCH",
       "Sync baseline envelope has a different revision.",
     );
+  }
+  if (j.approvalStaging && j.approvalPath) {
+    report.files.approvalStaging = await evidence(j.approvalStaging);
+    report.files.approval = await evidence(j.approvalPath);
+    if (!report.files.approvalStaging.exists) {
+      fail(
+        "RECOVERY_APPROVAL_MISSING",
+        "The durable approval stage is missing; preserve the transaction for explicit review.",
+      );
+    }
+    let envelope: unknown;
+    try {
+      envelope = JSON.parse(await Deno.readTextFile(j.approvalStaging));
+    } catch {
+      fail(
+        "RECOVERY_APPROVAL_INVALID",
+        "Staged synchronization approval is not JSON.",
+      );
+    }
+    validateSyncApproval(envelope);
+    const approval = envelope.approval;
+    if (
+      approval.docId !== baseline.docId ||
+      approval.sourceHash !== j.resultHash ||
+      approval.stateRevision !== j.stateRevision + 1 ||
+      approval.planHash !== j.planHash ||
+      !equal(
+        approval.expectedPending.map((p) => p.id),
+        j.selectedChangeIds,
+      ) || approval.expectedPending.some((p) =>
+        !equal(
+          p,
+          baseline.pending.find((original) => original.id === p.id),
+        )
+      )
+    ) {
+      fail(
+        "RECOVERY_APPROVAL_MISMATCH",
+        "Staged approval does not match the reviewed source transaction and exact pending baseline.",
+      );
+    }
+    if (
+      report.files.approval.exists &&
+      report.files.approval.sha256 !== report.files.approvalStaging.sha256
+    ) {
+      fail(
+        "RECOVERY_APPROVAL_MISMATCH",
+        "The active project approval differs from this transaction; it will not be overwritten or deleted.",
+      );
+    }
+    report.preserved.push(j.approvalStaging);
   }
   const state = await new StateStore(paths.stateDir).load();
   if (!state) {
@@ -912,6 +1070,19 @@ async function recoverSyncTransaction(
           );
         }
       }
+      if (j.approvalStaging && j.approvalPath) {
+        for (const name of ["approvalStaging", "approval"]) {
+          if (
+            report.files[name].sha256 !== initial.report.files[name].sha256 ||
+            report.files[name].exists !== initial.report.files[name].exists
+          ) {
+            fail(
+              "RECOVERY_CHANGED",
+              "Approval metadata changed while recovery acquired locks.",
+            );
+          }
+        }
+      }
       if (action === "finish") {
         if (report.files.source.sha256 !== j.resultHash) {
           if (report.files.source.exists) {
@@ -952,6 +1123,21 @@ async function recoverSyncTransaction(
           next.revision = j.stateRevision + 1;
           await replaceState(snapshot, next, preserved);
         }
+        if (j.approvalStaging && j.approvalPath) {
+          if (!report.files.approval.exists) {
+            await publishNoClobber(j.approvalStaging, j.approvalPath);
+          }
+          if (
+            (await evidence(j.approvalPath)).sha256 !==
+              report.files.approvalStaging.sha256
+          ) {
+            fail(
+              "RECOVERY_APPROVAL_MISMATCH",
+              "Published approval changed during recovery; preserve the transaction.",
+            );
+          }
+          preserved.push(j.approvalPath);
+        }
         if (!report.files.receipt.exists) {
           await durable(
             j.receiptPath,
@@ -977,6 +1163,14 @@ async function recoverSyncTransaction(
         }
         if (report.statePhase === "after") {
           await replaceState(snapshot, snapshot.previous!, preserved);
+        }
+        if (j.approvalPath && report.files.approval.exists) {
+          await archiveOutput(
+            j.approvalPath,
+            report.files.approvalStaging.sha256!,
+            history,
+            preserved,
+          );
         }
         // A rollback keeps the old success receipt as historical evidence, not an active transaction.
       }

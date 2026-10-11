@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { recoverProject } from "../src/core/recovery.ts";
 import {
   type BentoDoc,
+  canonical,
   createState,
   markEmitted,
   sha256,
@@ -418,5 +419,211 @@ Deno.test("sync recovery validates receipt, backup checksum and exact journal sc
     } finally {
       await Deno.remove(f.dir, { recursive: true });
     }
+  }
+});
+async function approvalFixture(
+  stage: "journal" | "backup" | "source" | "state" | "receipt" | "cleaned",
+  published = false,
+) {
+  const f = await syncFixture(stage);
+  const pending = {
+    id: "pending-edit-1",
+    target: { slideId: "new" },
+    path: [],
+    kind: "create-slide",
+    origin: "authored",
+    status: "bento-ahead",
+    before: { present: false },
+    after: {
+      present: true,
+      value: {
+        id: "new",
+        elements: [{ id: "new-title", type: "text", html: "New" }],
+      },
+    },
+  };
+  for (const path of [f.journal.stateBackup, join(f.stateDir, "state.json")]) {
+    const env = JSON.parse(await Deno.readTextFile(path));
+    env.state.pending = [pending];
+    env.sha256 = await sha256(canonical(env.state));
+    await Deno.writeTextFile(path, JSON.stringify(env));
+  }
+  const approvalStaging = join(
+      f.stateDir,
+      "history",
+      "sync-approval-" + f.journal.transactionId + ".json",
+    ),
+    approvalPath = join(f.stateDir, "sync-approved.json");
+  const approval = {
+    version: 1,
+    docId: f.state.docId,
+    sourceHash: f.journal.resultHash,
+    stateRevision: f.journal.stateRevision + 1,
+    planHash: f.journal.planHash,
+    expectedPending: [pending],
+    creationChangeIds: [pending.id],
+    normalizations: [],
+  };
+  const envelope = {
+    format: "qbento-sync-approval/1",
+    sha256: await sha256(canonical(approval)),
+    approval,
+  };
+  await Deno.writeTextFile(approvalStaging, JSON.stringify(envelope));
+  await Deno.writeTextFile(
+    f.journalPath,
+    JSON.stringify({ ...f.journal, approvalStaging, approvalPath }),
+  );
+  if (published) await Deno.link(approvalStaging, approvalPath);
+  return { ...f, approvalStaging, approvalPath, envelope };
+}
+for (
+  const stage of [
+    "journal",
+    "backup",
+    "source",
+    "state",
+    "receipt",
+    "cleaned",
+  ] as const
+) {
+  Deno.test(
+    "sync finish retains explicit creation approval at " + stage,
+    async () => {
+      const f = await approvalFixture(
+        stage,
+        ["receipt", "cleaned"].includes(stage),
+      );
+      try {
+        await recoverProject(f.source, "finish");
+        assert(
+          await Deno.readTextFile(f.approvalPath) ===
+            await Deno.readTextFile(f.approvalStaging),
+        );
+        assert((await f.store.load())!.pending.length === 1);
+      } finally {
+        await Deno.remove(f.dir, { recursive: true });
+      }
+    },
+  );
+}
+for (const published of [false, true]) {
+  Deno.test(
+    "sync rollback archives only its exact active approval, published=" +
+      published,
+    async () => {
+      const f = await approvalFixture("state", published);
+      try {
+        const report = await recoverProject(f.source, "rollback");
+        assert(!await Deno.stat(f.approvalPath).then(() => true, () => false));
+        assert(await Deno.stat(f.approvalStaging));
+        assert(report.preserved.includes(f.approvalStaging));
+        assert((await f.store.load())!.pending.length === 1);
+      } finally {
+        await Deno.remove(f.dir, { recursive: true });
+      }
+    },
+  );
+}
+Deno.test("sync recovery refuses unrelated active approval and journal-binding changes", async () => {
+  for (const mode of ["active", "sourceHash", "pending", "path"]) {
+    const f = await approvalFixture("state");
+    try {
+      if (mode === "active") {
+        await Deno.writeTextFile(f.approvalPath, "another approval");
+        await rejects(
+          () => recoverProject(f.source, "rollback"),
+          "RECOVERY_APPROVAL_MISMATCH",
+        );
+        assert(await Deno.readTextFile(f.approvalPath) === "another approval");
+      } else if (mode === "path") {
+        const j = JSON.parse(await Deno.readTextFile(f.journalPath));
+        j.approvalPath = join(f.dir, "outside.json");
+        await Deno.writeTextFile(f.journalPath, JSON.stringify(j));
+        await rejects(() => recoverProject(f.source), "INVALID_RECOVERY_PATH");
+      } else {
+        const env = structuredClone(f.envelope);
+        if (mode === "sourceHash") env.approval.sourceHash = "0".repeat(64);
+        else {env.approval.expectedPending[0].after.value.elements[0].html =
+            "Unexpected";}
+        env.sha256 = await sha256(canonical(env.approval));
+        await Deno.writeTextFile(f.approvalStaging, JSON.stringify(env));
+        await rejects(
+          () => recoverProject(f.source),
+          "RECOVERY_APPROVAL_MISMATCH",
+        );
+      }
+    } finally {
+      await Deno.remove(f.dir, { recursive: true });
+    }
+  }
+});
+async function renderApprovalFixture(archived: boolean) {
+  const f = await fixture("published");
+  const approval = {
+    path: join(f.stateDir, "sync-approved.json"),
+    sha256: await sha256("exact promotion approval"),
+    archive: join(
+      f.stateDir,
+      "history",
+      "consumed-sync-" + crypto.randomUUID() + ".json",
+    ),
+  };
+  await Deno.writeTextFile(
+    archived ? approval.archive : approval.path,
+    "exact promotion approval",
+  );
+  await Deno.writeTextFile(
+    f.journalPath,
+    JSON.stringify({ ...f.journal, approval }),
+  );
+  return { ...f, approval };
+}
+for (const archived of [false, true]) {
+  for (const action of ["finish", "rollback"] as const) {
+    Deno.test(
+      "render recovery " + action +
+        " retains promotion authorization, archived=" + archived,
+      async () => {
+        const f = await renderApprovalFixture(archived);
+        try {
+          await recoverProject(f.source, action);
+          if (action === "finish") {
+            assert(
+              await Deno.readTextFile(f.approval.archive) ===
+                "exact promotion approval",
+            );
+            assert(
+              !await Deno.stat(f.approval.path).then(() => true, () => false),
+            );
+            assert((await f.store.load())!.revision === 2);
+          } else {
+            assert(
+              await Deno.readTextFile(f.approval.path) ===
+                "exact promotion approval",
+            );
+            assert((await f.store.load())!.revision === 1);
+          }
+        } finally {
+          await Deno.remove(f.dir, { recursive: true });
+        }
+      },
+    );
+  }
+}
+Deno.test("render recovery refuses conflicting active promotion authorization without deleting it", async () => {
+  const f = await renderApprovalFixture(true);
+  try {
+    await Deno.writeTextFile(f.approval.path, "new unrelated authorization");
+    await rejects(
+      () => recoverProject(f.source, "rollback"),
+      "RECOVERY_APPROVAL_MISMATCH",
+    );
+    assert(
+      await Deno.readTextFile(f.approval.path) ===
+        "new unrelated authorization",
+    );
+  } finally {
+    await Deno.remove(f.dir, { recursive: true });
   }
 });
