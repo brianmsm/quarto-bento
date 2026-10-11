@@ -218,7 +218,8 @@ function linesOf(text: string): Line[] {
   );
 }
 const explicitId = (text: string): string | undefined => {
-  const tokens = text.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) ?? [];
+  const attributes = text.trim().replace(/^\{/, "").replace(/\}$/, "");
+  const tokens = attributes.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) ?? [];
   return tokens.find((token) => /^#[A-Za-z][\w:.-]*$/.test(token))?.slice(1);
 };
 const dynamic = (text: string): boolean =>

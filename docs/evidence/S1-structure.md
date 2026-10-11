@@ -76,7 +76,7 @@ Results: **11 structural tests pass**, including UTF-8/emoji/CRLF preservation,
 single-producer reorder, multi-producer and inline dependency rejection,
 deletion confirmation/crossrefs, marker relocation, nested pinning, dangerous
 syntax, duplicate IDs, stale/tampered previews and missing final newline. The
-combined source and structural suite passes **21 tests**; lint passes. These are
+combined source and structural suite passes **22 tests**; lint passes. These are
 core source-operation tests, not a claim of Studio UI or transaction
 integration.
 

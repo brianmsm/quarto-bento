@@ -237,3 +237,21 @@ Deno.test("quoted attribute text is not an ID, raw blocks and arbitrary executio
     "structural-replacement",
   );
 });
+Deno.test("sole and final fenced-div IDs survive attribute delimiters", () => {
+  for (
+    const attributes of [
+      "{#card}",
+      "{.bento-card #card}",
+      "{#card .bento-card}",
+      '{title="Quoted #false" #card}',
+    ]
+  ) {
+    const doc = scanSource(`## A {#a}\n\n::: ${attributes}\nParagraph.\n:::\n`);
+    const div = doc.blocks.find((b) => b.kind === "div")!,
+      paragraph = doc.blocks.find((b) => b.kind === "paragraph")!;
+    eq([div.id, div.explicitId, div.stable], ["card", "card", true]);
+    eq([paragraph.id, paragraph.parentId], ["card/paragraph:1", "card"]);
+  }
+  const code = scanSource("```{.python #display}\nx = 1\n```\n").blocks[0];
+  eq([code.id, code.editable], ["display", true]);
+});
