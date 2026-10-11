@@ -1,6 +1,6 @@
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
-let state, bridge, syncPlan, busy = false;
+let state, bridge, syncPlan, reconcilePlan, busy = false;
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
     method: body === undefined ? "GET" : "POST",
@@ -24,7 +24,9 @@ function setBusy(value) {
   busy = value;
   $("busy").hidden = !value;
   $("editor").inert = value;
-  for (const id of ["save", "review", "render"]) $(id).disabled = value;
+  for (const id of ["save", "review", "reconcile", "render"]) {
+    $(id).disabled = value;
+  }
   if (value) {
     $("editor").contentDocument?.activeElement?.blur();
     $("render").focus();
@@ -130,7 +132,7 @@ $("review").onclick = async () => {
     syncPlan = undefined;
     $("apply").disabled = true;
     $("patches").replaceChildren();
-    $("changes").textContent = JSON.stringify(saved.pending, null, 2);
+    showChanges($("changes"), saved.pending.map((change) => ({ change })));
     $("review-dialog").showModal();
     try {
       syncPlan = await api("sync/preview", {});
@@ -168,9 +170,134 @@ $("apply").onclick = async () => {
   }
 };
 $("close").onclick = () => $("review-dialog").close();
+function describeValue(value) {
+  if (!value?.present) return "No existe";
+  return typeof value.value === "string"
+    ? value.value
+    : JSON.stringify(value.value, null, 2);
+}
+function showChanges(container, items, selectable = false) {
+  container.replaceChildren();
+  const origins = {
+    authored: "Contenido escrito",
+    computed: "Resultado calculado",
+    "bento-only": "Objeto añadido en Bento",
+    detached: "Desvinculado del cálculo",
+  };
+  const actions = {
+    "keep-source": "Usar QMD y descartar esta edición de Bento",
+    "keep-bento": "Conservar Bento para sincronizar después",
+    detach: "Desvincular este valor del cálculo",
+  };
+  for (const { change, actions: choices } of items) {
+    const section = document.createElement("section"),
+      title = document.createElement("h3"),
+      origin = document.createElement("p");
+    title.textContent = [
+      change.target.slideId || "Presentación",
+      change.target.elementId,
+      change.path.join(".") || change.kind,
+    ].filter(Boolean).join(" · ");
+    origin.textContent = `${origins[change.origin] || change.origin} · ${
+      change.status === "conflict" ? "Conflicto" : "Pendiente"
+    }`;
+    section.append(title, origin);
+    for (
+      const [label, value] of [["Base compartida", change.before], [
+        "QMD actual",
+        change.source ?? change.before,
+      ], ["Edición Bento", change.after]]
+    ) {
+      const heading = document.createElement("strong"),
+        content = document.createElement("pre");
+      heading.textContent = label;
+      content.textContent = describeValue(value);
+      section.append(heading, content);
+    }
+    if (change.reason) {
+      const note = document.createElement("p");
+      note.textContent = change.reason;
+      section.append(note);
+    }
+    if (selectable) {
+      const label = document.createElement("label"),
+        select = document.createElement("select");
+      label.textContent = "Decisión: ";
+      select.dataset.change = change.id;
+      for (const action of ["", ...choices]) {
+        const option = document.createElement("option");
+        option.value = action;
+        option.textContent = actions[action] || "Mantener pendiente";
+        select.append(option);
+      }
+      select.onchange = () => {
+        $("resolve").disabled = ![...container.querySelectorAll("select")].some(
+          (s) => s.value,
+        );
+      };
+      label.append(select);
+      section.append(label);
+    }
+    container.append(section);
+  }
+}
+$("reconcile").onclick = async () => {
+  if (busy) return;
+  setBusy(true);
+  $("busy").textContent = "Ejecutando QMD para comparar sus resultados…";
+  try {
+    await bridge.save();
+    reconcilePlan = await api("reconcile/preview", {});
+    if (reconcilePlan.stateRevision !== state.revision) {
+      reconcilePlan = undefined;
+      throw new Error(
+        "Otra pestaña cambió el proyecto. Recarga antes de elegir valores.",
+      );
+    }
+    showChanges($("reconcile-changes"), reconcilePlan.changes, true);
+    $("reconcile-note").textContent = reconcilePlan.changes.length
+      ? "No se ha aplicado ninguna decisión."
+      : "No hay divergencias pendientes.";
+    $("resolve").disabled = true;
+    $("reconcile-dialog").showModal();
+  } catch (error) {
+    showError(error);
+  } finally {
+    setBusy(false);
+  }
+};
+$("resolve-close").onclick = () => $("reconcile-dialog").close();
+$("resolve").onclick = async () => {
+  if (!reconcilePlan || busy) return;
+  const choices = [...$("reconcile-changes").querySelectorAll("select")].filter(
+    (s) => s.value,
+  ).map((s) => ({ changeId: s.dataset.change, action: s.value }));
+  setBusy(true);
+  $("resolve").disabled = true;
+  $("resolve-close").disabled = true;
+  $("reconcile-note").textContent =
+    "Verificando de nuevo los resultados antes de guardar…";
+  try {
+    const result = await api("reconcile/apply", {
+      plan: reconcilePlan,
+      choices,
+    });
+    state.revision = result.revision;
+    reconcilePlan = undefined;
+    $("reconcile-dialog").close();
+    $("editor").contentWindow.__qbentoManagedReload = true;
+    $("editor").src = "/deck?revision=" + Date.now();
+  } catch (error) {
+    $("reconcile-note").textContent = error.message;
+    setBusy(false);
+  } finally {
+    $("resolve-close").disabled = false;
+  }
+};
 $("render").onclick = async () => {
   if (busy) return;
   setBusy(true);
+  $("busy").textContent = "Recalculando. Tus cambios están guardados.";
   try {
     await bridge.save();
     status("Recalculando…");

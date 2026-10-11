@@ -96,12 +96,14 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="review" disabled>Revisar cambios</button><button id="render" disabled>Recalcular</button><span id="status" role="status">Abriendo…</span></header>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><span id="status" role="status">Abriendo…</span></header>
     <iframe id="editor" src="/deck" title="Editor Bento"></iframe>
     <div id="busy" hidden
       role="status">Recalculando. Tus cambios están guardados.</div>
     <dialog
-      id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="patches"></div><details><summary>Otros cambios pendientes</summary><pre id="changes"></pre></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
+      id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="patches"></div><details><summary>Origen y detalle de los cambios</summary><div id="changes"></div></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
+    <dialog
+      id="reconcile-dialog"><h2>Comparar QMD y Bento</h2><p>La comparación ejecuta el QMD. Elige cómo resolver cada diferencia; las demás seguirán pendientes. Estas decisiones guardan el proyecto. Escribir el QMD requiere después revisar y aplicar la sincronización.</p><p id="reconcile-note" role="status"></p><div id="reconcile-changes"></div><button id="resolve" disabled>Guardar decisiones</button> <button id="resolve-close">Cerrar</button></dialog>
     <script>
     globalThis.qbentoToken = __QBENTO_TOKEN__;
     </script>

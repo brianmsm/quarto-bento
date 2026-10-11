@@ -6,12 +6,15 @@ import { extractDocument } from "./render/html.ts";
 import { startStudio } from "./studio/server.ts";
 import { installQuartoProject } from "./integration/install.ts";
 import { recoverQuartoRender } from "./integration/quarto.ts";
+import { assertBentoContract } from "./render/validate.ts";
+import { applyReconcile, previewReconcile } from "./core/reconcile.ts";
 const help = `qbento <command> <presentation.qmd> [arguments]
 
 render                 Execute Quarto and retain saved design
 capture [edited.html]   Explicitly capture native local HTML edits
 status | diff          Inspect durable pending changes
 sync [--apply plan.json] Preview source changes or apply an inspected plan
+reconcile [--apply resolution.json] Execute conflict preview, or apply {plan,choices} to saved state
 recover [inspect|finish|rollback] Inspect or explicitly recover an interrupted operation
 init [--extension-only] Install the offline Quarto integration without replacing existing configuration
 quarto-recover         Recover an interrupted ordinary Quarto invocation
@@ -90,9 +93,23 @@ if (import.meta.main) {
         );
         break;
       }
+      case "reconcile": {
+        if (!source) throw new Error("QMD path required");
+        if (extra === undefined) result = await previewReconcile(source);
+        else if (extra === "--apply" && Deno.args[3]) {
+          const { plan, choices } = JSON.parse(
+            await Deno.readTextFile(Deno.args[3]),
+          );
+          result = await applyReconcile(source, plan, choices);
+        } else {throw new Error(
+            "Use reconcile source.qmd [--apply resolution.json]",
+          );}
+        break;
+      }
       case "validate": {
         if (!source) throw new Error("HTML path required");
         const d = extractDocument(await Deno.readTextFile(source));
+        assertBentoContract(d);
         result = { valid: true, docId: d.docId, slides: d.slides.length };
         break;
       }

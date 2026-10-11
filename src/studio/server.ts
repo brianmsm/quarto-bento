@@ -1,5 +1,6 @@
 import { readProject, renderProject, saveProject } from "../core/project.ts";
 import { applySync, previewSync } from "../core/sync.ts";
+import { applyReconcile, previewReconcile } from "../core/reconcile.ts";
 import { spliceDocument } from "../render/html.ts";
 import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
 import type { BentoDoc } from "../state/mod.ts";
@@ -34,6 +35,7 @@ export async function startStudio(source: string, port = 0) {
         "Content-Type": type,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
         ...(csp ? { "Content-Security-Policy": csp } : {}),
       },
     });
@@ -145,6 +147,29 @@ export async function startStudio(source: string, port = 0) {
             JSON.stringify({
               revision: r.state.revision,
               pending: r.state.pending.length,
+            }),
+          );
+        }
+        if (
+          req.method === "POST" && url.pathname === "/api/reconcile/preview"
+        ) {
+          return respond(JSON.stringify(await previewReconcile(source)));
+        }
+        if (req.method === "POST" && url.pathname === "/api/reconcile/apply") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await req.text();
+          if (text.length > 25_000_000) {
+            return respond('{"error":"Plan too large"}', 413);
+          }
+          const { plan, choices } = JSON.parse(text);
+          const result = await applyReconcile(source, plan, choices);
+          return respond(
+            JSON.stringify({
+              revision: result.state.revision,
+              remaining: result.remaining,
+              sourceUnchanged: true,
             }),
           );
         }
