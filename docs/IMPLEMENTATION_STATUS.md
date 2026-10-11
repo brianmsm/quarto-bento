@@ -67,6 +67,12 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 
 ## Delivered local scope and remaining limits
 
+The full-product audit at `89fc134` identifies additional ordinary authoring
+work: new speaker notes, Markdown lists and composition of adapted results in
+cards/layouts. See the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md).
+The passing integrated receipt below remains evidence for its tested scope;
+it does not close these newly explicit gates.
+
 The post-suite audit's ordinary-QMD identity, confirmed source-element deletion,
 source KPI, Studio-created card/KPI and diagram/timeline workflows are now
 integrated and independently reviewed. Linux headless Studio acceptance includes

@@ -5,6 +5,16 @@ prove requirements outside its fixtures. Current validation is limited to the
 owner's Linux machine; other operating systems and hosted CI are deferred.
 Public release scope is a separate decision.
 
+## Full-product follow-up after the local receipt
+
+The [requirement-by-requirement audit](PRODUCT_ACCEPTANCE_AUDIT.md) at `89fc134`
+identified ordinary authoring gaps beyond the previously audited local slice:
+creating speaker notes without a prepared QMD block, faithful Markdown list
+round-trip, and composing simple tables/charts/KPIs within cards/layouts.
+These remain implementation gates; documenting a conservative refusal does not
+make the missing ordinary workflow an accepted product exclusion. Local work
+can continue without reopening the owner's deferral of other-platform tests.
+
 ## Closed gaps from the audit at `0bf0d9c`
 
 ### Plain QMD source mapping and reviewed identity acquisition
