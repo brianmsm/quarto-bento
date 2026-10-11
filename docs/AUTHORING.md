@@ -94,6 +94,27 @@ Source-owned compatible typography/geometry uses the same attribute-review flow
 as text objects. The `.bento-code` component wrapper remains future integration.
 See [executed and native evidence](evidence/DISPLAYED-CODE.md).
 
+### Speaker notes (implemented subset)
+
+Use one identified, top-level notes div under an identified slide:
+
+```markdown
+## Results {#results}
+
+::: {#results-notes .notes}
+Explain the result.
+
+Pause for questions.
+:::
+```
+
+The native notes field contains plain text. Save preserves pending changes;
+review and sync replace only the notes body's bytes. Clearing the field retains
+the empty identified div. Rich Markdown, executable inline expressions, multiple
+notes blocks on the same slide and unbound notes refuse this round-trip. Create
+the identified block in QMD first if none exists. The exact whitespace and
+execution limits are documented in [notes evidence](evidence/NOTES.md).
+
 ### Stable identities
 
 - Reuse explicit heading/block IDs and chunk labels when possible.

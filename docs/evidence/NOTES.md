@@ -2,17 +2,20 @@
 
 Verified on Linux with Quarto 1.10.19, Deno 2.9.6 and the pinned Bento 1.2.6
 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (2026-10-11). This evidence
-covers the core API and the executed Quarto projection. It does not claim a new
-native-browser or Presenter visual acceptance run.
+covers the core API, executed Quarto projection and native editor workflow
+described below. Presenter visual acceptance remains separate.
 
 ## Supported source and native representation
 
-```markdown
+```qmd
 ## Results {#results}
 
-::: {#results-notes .notes} Explain the first result. Continue on a new line.
+::: {#results-notes .notes}
+Explain the first result.
+Continue on a new line.
 
-Mention the second result. :::
+Mention the second result.
+:::
 ```
 
 One explicitly identified, top-level `.notes` fenced div belongs to one
@@ -39,8 +42,7 @@ design.
 plan. Its UTF-8 span covers only the existing div body, preserving the opening
 fence, notes identity, closing fence, headings, other slides and the source's
 CRLF/LF convention. The Studio review displays this patch under “notas de
-orador” and enables Apply when notes are the only selected change. This UI
-wiring is implemented; native-browser acceptance is a separate validation layer.
+orador” and enables Apply when notes are the only selected change.
 
 `applySync()` recomputes the complete approved plan and independently
 revalidates the notes bounds, expected fragment and result before using the
@@ -78,6 +80,18 @@ deno test --allow-read --allow-write --allow-env --allow-run \
 ```
 
 ## Remaining boundaries
+
+The integrated native Chromium run used
+`/tmp/qbento-notes-native-z_ta2f1d/deck.qmd`. Editing the actual notes textarea to
+two paragraphs including `α = 0.05`, then save → review → apply → recalculate,
+left the QMD unchanged until Apply, changed only the notes body with reviewed
+Markdown escapes, and reopened the exact plain notes in the native textarea.
+Durable revision 4 had no pending edits. The notes-only Apply control was
+enabled; the inspected review screenshot is
+`output/playwright/native-notes-review.png` (ignored local evidence).
+
+The agent's integrated branch passed 180 tests before the other parallel slices
+were combined; this is separate from the coordinator's subsequent full-suite run.
 
 Creating a notes div from Bento when no source binding exists is not
 implemented; author the identified `.notes` div in QMD first and recalculate.
