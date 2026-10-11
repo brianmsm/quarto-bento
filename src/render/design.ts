@@ -4,7 +4,7 @@ export type PandocAttr = [string, string[], [string, string][]];
 export type DesignProperties = Record<string, string | number>;
 export interface DesignDeclaration {
   sourceId: string;
-  component?: "card" | "layout";
+  component?: "card" | "layout" | "code";
   layout?: string;
   properties: DesignProperties;
   /** Actual native Bento field -> the exact original QMD attribute key. */
@@ -163,13 +163,20 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
     }
     if (components[0] === "bento-card") result.component = "card";
     else if (components[0] === "bento-layout") result.component = "layout";
+    else if (components[0] === "bento-code") result.component = "code";
     else throw new DesignError("UNSUPPORTED_COMPONENT", components[0]);
   }
   const seen = new Set<string>();
   for (const [key, value] of attr[2]) {
     if (seen.has(key)) throw new DesignError("DUPLICATE_DESIGN_ATTRIBUTE", key);
     seen.add(key);
-    if (key === "layout") {
+    if (key === "layout" || key === "bento-layout-name") {
+      if (result.layout) {
+        throw new DesignError(
+          "DUPLICATE_DESIGN_ATTRIBUTE",
+          "Several layout names were declared.",
+        );
+      }
       if (
         result.component !== "layout" || !/^[a-z][a-z0-9-]{0,63}$/.test(value)
       ) {
@@ -201,7 +208,7 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
   if (result.component === "layout" && !result.layout) {
     throw new DesignError(
       "LAYOUT_REQUIRED",
-      'declare layout="two-column" or a registered reusable layout',
+      'declare bento-layout-name="two-column" or a registered reusable layout',
     );
   }
   return result;
@@ -210,7 +217,7 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
   if (
     !value || typeof value.sourceId !== "string" || !value.properties ||
     !value.bindings ||
-    value.component && !["card", "layout"].includes(value.component)
+    value.component && !["card", "layout", "code"].includes(value.component)
   ) {
     throw new DesignError(
       "INVALID_DECLARATION",
@@ -374,13 +381,23 @@ function placed(elements: Element[], frame: Frame): Element[] {
   }
   // Uniform fit retains aspect ratio and relative positioning within a semantic child.
   const scale = Math.min(frame.w / width, frame.h / height);
-  return original.map((e) => ({
-    ...structuredClone(e),
-    x: frame.x + (e.x - left) * scale,
-    y: frame.y + (e.y - top) * scale,
-    w: e.w * scale,
-    h: e.h * scale,
-  }));
+  return original.map((e) => {
+    const fitted: Element = {
+      ...structuredClone(e),
+      x: frame.x + (e.x - left) * scale,
+      y: frame.y + (e.y - top) * scale,
+      w: e.w * scale,
+      h: e.h * scale,
+    };
+    // Scale pixel metrics with their boxes; lineHeight is a unitless ratio.
+    // Keeping the original font size inside a fitted code box clips content.
+    for (
+      const field of ["fontSize", "letterSpacing", "strokeWidth", "radius"]
+    ) {
+      if (typeof e[field] === "number") fitted[field] = e[field] * scale;
+    }
+    return fitted;
+  });
 }
 export interface ComponentProjection {
   elements: Element[];
@@ -394,6 +411,16 @@ export function applyComponentDesign(
   declaration: DesignDeclaration,
   defaults: DesignDefaults = {},
 ): ComponentProjection {
+  const supported = new Set(["text", "code", "image", "shape"]);
+  const unsupported = children.flat().find((element) =>
+    !supported.has(element.type)
+  );
+  if (unsupported) {
+    throw new DesignError(
+      "COMPONENT_CONTENT_LAYOUT_UNSUPPORTED",
+      `${unsupported.type} needs a measured component-layout adapter; refusing to rescale only its box.`,
+    );
+  }
   const clean = validateDesignDefaults(defaults);
   declaration = checkedDeclaration(declaration);
   if ("rotation" in declaration.properties) {
@@ -402,7 +429,10 @@ export function applyComponentDesign(
       "rotate individual elements; a faithful coupled group rotation is not implemented",
     );
   }
-  if (!declaration.component || !declaration.sourceId) {
+  if (
+    !declaration.component || declaration.component === "code" ||
+    !declaration.sourceId
+  ) {
     throw new DesignError(
       "COMPONENT_REQUIRED",
       "identified card/layout required",
@@ -509,12 +539,32 @@ export function applyComponentDesign(
         }),
       )
     );
+    if (
+      Object.keys(declaration.properties).some((field) =>
+        textFields.has(field)
+      ) &&
+      !result.elements.some((e) => e.type === "text" || e.type === "code")
+    ) {
+      throw new DesignError(
+        "COMPONENT_STYLE_TARGET",
+        "Card typography requires a text/code child; no declaration is silently ignored.",
+      );
+    }
     for (const e of result.elements) {
-      if (e.type === "text") {
+      if (e.type === "text" || e.type === "code") {
         e.color = theme.color;
-        e.fontFamily = theme.fontFamily;
+        if (e.type === "text") e.fontFamily = theme.fontFamily;
         for (const [field, value] of Object.entries(declaration.properties)) {
           if (textFields.has(field)) {
+            if (
+              e.type === "code" &&
+              ["fontWeight", "letterSpacing"].includes(field)
+            ) {
+              throw new DesignError(
+                "DESIGN_TARGET_MISMATCH",
+                `${field} does not apply to native code in this card.`,
+              );
+            }
             e[field] = value;
             bind(e, field, declaration.bindings[field]);
           }

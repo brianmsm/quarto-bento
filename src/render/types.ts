@@ -34,6 +34,8 @@ export interface Origin {
   origin: "authored" | "computed";
   sourceId?: string;
   producer?: string;
+  /** A generated design-only background verified against an original card div. */
+  designOnly?: true;
 }
 export interface Projection {
   document: BentoDoc;

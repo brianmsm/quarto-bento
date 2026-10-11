@@ -1,6 +1,7 @@
 import { basename, dirname, resolve } from "node:path";
 import { extractDocument } from "../render/html.ts";
-import { hashSource } from "../source/mod.ts";
+import { hashSource, scanSource } from "../source/mod.ts";
+import { assertCompatibleComponentSource } from "../render/components.ts";
 import { assertOutputUnchanged, sha256, StateError } from "../state/mod.ts";
 import {
   projectPaths,
@@ -139,6 +140,7 @@ export async function beforeQuartoRender(): Promise<void> {
     );
   }
   const process = await assertSafeQuartoInvocation(source);
+  assertCompatibleComponentSource(scanSource(await Deno.readTextFile(source)));
   await inspectOutput(source);
   await withProject(source, async (paths, store) => {
     const state = await store.load();

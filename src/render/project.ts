@@ -1,3 +1,8 @@
+import {
+  assertCompatibleComponentSource,
+  projectComponent,
+  sourceComponentClass,
+} from "./components.ts";
 import type { SourceDocument } from "../source/mod.ts";
 import {
   NOTES_CODEC_VERSION,
@@ -202,10 +207,18 @@ export async function projectAst(
   }
   function design(attr: Attr, elements: Element[]) {
     const declaration = parseDesignAttributes(attr);
-    if (declaration.component) {
+    if (declaration.component === "code") {
+      if (elements.length !== 1 || elements[0].type !== "code") {
+        throw new DesignError(
+          "CODE_COMPONENT_CONTENT",
+          "A .bento-code component needs exactly one displayed code fence.",
+        );
+      }
+      delete declaration.component;
+    } else if (declaration.component) {
       throw new DesignError(
-        "COMPONENT_INTEGRATION_PENDING",
-        "Use a directly mapped single-object wrapper until component projection is integrated.",
+        "COMPONENT_TARGET",
+        "Card/layout components belong to fenced divs.",
       );
     }
     if (!Object.keys(declaration.properties).length) return;
@@ -262,18 +275,28 @@ export async function projectAst(
     });
     y += 420;
   }
-  async function walk(nodes: Node[], computed = false, parentId?: string) {
+  async function walk(
+    nodes: Node[],
+    computed = false,
+    parentId?: string,
+    inComponent = false,
+    groups?: Element[][],
+  ) {
+    let headingIndex = 0;
     let paragraphIndex = 0;
     let codeIndex = 0;
     let mathIndex = 0;
     let sourceMarker: string | undefined;
     for (const node of nodes) {
+      const groupSlide = slide, groupStart = slide?.elements.length ?? 0;
+      // Child subtrees are measured independently before the component places them.
+      if (groups) y = 166;
       if (!["Para", "Plain", "RawBlock", "CodeBlock"].includes(node.t)) {
         sourceMarker = undefined;
       }
       if (node.t === "Header") {
         const [level, attr, content] = node.c as [number, Attr, Node[]];
-        if (level <= 2) {
+        if (level <= 2 && !inComponent) {
           const id = attr[0] || `qb-slide-${document.slides.length + 1}`;
           startSlide(id);
           const nativeTitleId = attr[2].find(([name]) =>
@@ -292,19 +315,105 @@ export async function projectAst(
             sourceId: id,
             ...(computed && parentId ? { producer: parentId } : {}),
           });
-        } else {text(
-            attr[0] || `${parentId || slide?.id}-heading-${++counter}`,
+        } else {
+          headingIndex++;
+          const mapped = inComponent && source && parentId
+            ? source.blocks.filter((b) =>
+              b.parentId === parentId && b.kind === "heading"
+            )[headingIndex - 1]
+            : undefined;
+          const sourceId = mapped?.id ?? (attr[0] || undefined);
+          text(
+            sourceId || `${parentId || slide?.id}-heading-${++counter}`,
             inline(content),
             false,
             {
               origin: computed ? "computed" : "authored",
-              sourceId: attr[0] || undefined,
+              sourceId,
               ...(computed && parentId ? { producer: parentId } : {}),
             },
-          );}
+          );
+          if (inComponent) {
+            slide!.elements.at(-1)!.fontSize = 32;
+            slide!.elements.at(-1)!.fontWeight = 700;
+          }
+        }
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const declaration = parseDesignAttributes(attr);
+        if (
+          declaration.component === "card" || declaration.component === "layout"
+        ) {
+          if (
+            computed ||
+            attr[1].some((c) => c === "cell" || c.startsWith("cell-output"))
+          ) {
+            throw new DesignError(
+              "COMPUTED_COMPONENT",
+              "Declare source components outside execution output.",
+            );
+          }
+          if (!slide) startSlide("qb-introduction");
+          if (
+            declaration.component === "layout" &&
+            children.some((child) =>
+              child.t !== "Div" || !(child.c as [Attr, Node[]])[0][0]
+            )
+          ) {
+            throw new DesignError(
+              "LAYOUT_CHILDREN",
+              "Named layouts require identified direct fenced-div children.",
+            );
+          }
+          const index = slide!.elements.length, componentY = y;
+          const childGroups: Element[][] = [];
+          await walk(children, false, attr[0], true, childGroups);
+          const fields = (result.design![slide!.id] ??= {});
+          const component = projectComponent(
+            childGroups.filter((group) => group.length),
+            declaration,
+            {
+              x: 80,
+              y: componentY,
+              w: 1120,
+              h: Math.min(470, 680 - componentY),
+            },
+            fields,
+          );
+          for (const id of component.decorativeIds) {
+            if (slide!.elements.slice(0, index).some((e) => e.id === id)) {
+              throw new Error(`DUPLICATE_ID: ${id}`);
+            }
+            result.origins[slide!.id][id] = {
+              origin: "authored",
+              sourceId: attr[0],
+              designOnly: true,
+            };
+          }
+          slide!.elements.splice(
+            index,
+            slide!.elements.length - index,
+            ...component.elements,
+          );
+          Object.assign(fields, component.fields);
+          y = Math.max(...component.elements.map((e) =>
+            Number(e.y) + Number(e.h)
+          )) + 20;
+          if (groups) {
+            groups.push(slide!.elements.slice(groupStart));
+          }
+          continue;
+        }
+        if (
+          declaration.component === "code" &&
+          (children.length !== 1 || children[0].t !== "CodeBlock")
+        ) {
+          throw new DesignError(
+            "CODE_COMPONENT_CONTENT",
+            "A .bento-code wrapper needs exactly one displayed, non-executable code fence.",
+          );
+        }
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
         const containsTable = (value: unknown): boolean =>
           Array.isArray(value)
@@ -414,7 +523,7 @@ export async function projectAst(
           for (const img of images(children)) {
             await figure(img, isComputed, attr[0]);
           }
-        } else await walk(children, isComputed, sourceParent);
+        } else await walk(children, isComputed, sourceParent, inComponent);
         design(
           attr,
           slide && (!beforeSlide || slide === beforeSlide)
@@ -483,7 +592,7 @@ export async function projectAst(
           (parentId ? `${parentId}/code:${++codeIndex}` : undefined);
         sourceMarker = undefined;
         const languages = attr[1].filter((name) =>
-          !["sourceCode", "cell-code"].includes(name)
+          !["sourceCode", "cell-code", "bento-code"].includes(name)
         );
         if (languages.length > 1) {
           throw new Error(
@@ -537,6 +646,15 @@ export async function projectAst(
       } else {throw new Error(
           `UNSUPPORTED_BLOCK: ${node.t}; no faithful projection implemented`,
         );}
+      if (groups) {
+        if (slide !== groupSlide && groupSlide) {
+          throw new DesignError(
+            "COMPONENT_SLIDE",
+            "Component content cannot create slides.",
+          );
+        }
+        groups.push(slide?.elements.slice(groupStart) ?? []);
+      }
     }
   }
   await walk(ast.blocks);
@@ -559,6 +677,7 @@ export async function projectAst(
 
 /** Execution modes that erase source/output boundaries cannot be reverse-mapped. */
 export function assertSupportedExecutionSource(source: SourceDocument): void {
+  assertCompatibleComponentSource(source);
   for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
     if (
       /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
@@ -596,6 +715,22 @@ export function validateProjectionOrigins(
       let candidates = original.sourceId
         ? source.blocks.filter((b) => b.id === original.sourceId)
         : [];
+      if (original.designOnly) {
+        const container = candidates[0];
+        if (
+          candidates.length !== 1 || container.kind !== "div" ||
+          !container.stable ||
+          sourceComponentClass(container.raw) !== ".bento-card" ||
+          element.type !== "shape" ||
+          elementId !== `${container.id}/qb-card-background`
+        ) {
+          throw new Error(
+            "UNMAPPED_COMPONENT_DESIGN: generated card background lacks original container proof",
+          );
+        }
+        origins[slideId][elementId] = original;
+        continue;
+      }
       if (original.origin === "computed") {
         const producer = original.producer ??
           (candidates[0]?.kind === "chunk" ? candidates[0].id : undefined);

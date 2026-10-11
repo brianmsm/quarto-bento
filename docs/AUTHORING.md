@@ -1,6 +1,6 @@
 # QMD authoring and visual annotations
 
-**Status:** this document describes the **intended Quarto-Bento contract**. Direct-object visual attributes on identified headings/single-object fenced divs now have integrated [projection and sync evidence](evidence/DESIGN.md). The component vocabulary and annotation levels below remain incomplete. Standard Pandoc/Quarto fenced div syntax underlies the examples; component-specific semantics are ours.
+**Status:** this document describes the **intended Quarto-Bento contract**. Direct-object visual attributes on identified headings/single-object fenced divs now have integrated [projection and sync evidence](evidence/DESIGN.md). Identified cards, two-column layouts and displayed-code components now have [executed component evidence](evidence/COMPONENTS.md); the remaining vocabulary and annotation levels are incomplete. Standard Pandoc/Quarto fenced div syntax underlies the examples; component-specific semantics are ours.
 
 ## Three modes
 
@@ -13,7 +13,7 @@
 ````markdown
 ## Resultados {#resultados}
 
-:::: {#results-grid .bento-layout layout="two-column"}
+:::: {#results-grid .bento-layout bento-layout-name="two-column"}
 
 ::: {#effects-chart .bento-chart}
 
@@ -51,7 +51,7 @@ With `beta_indirecto` computed upstream, changing the data updates the displayed
 
 | QMD component | Intended role / likely Bento projection |
 |---|---|
-| `.bento-layout` | Named reusable arrangement for a group (`layout="two-column"` etc.). |
+| `.bento-layout` | Named reusable arrangement for a group (`bento-layout-name="two-column"` etc.). |
 | `.bento-card` | Styled group/card whose meaningful heading and body remain in QMD. |
 | `.bento-kpi` | KPI/metric composition; literal or computed provenance must be retained. |
 | `.bento-chart` | Native chart if faithful; SVG/static fallback otherwise. |
@@ -60,6 +60,57 @@ With `beta_indirecto` computed upstream, changing the data updates the displayed
 | `.bento-code` | Displayed source-code component (distinct from a computed output). |
 
 These are **Quarto-Bento abstractions**, not necessarily built-in Bento element types. The exact per-component schema, editable subset and conversion thresholds are implementation work.
+
+### Implemented component subset
+
+`.bento-card` is an identified fenced div containing supported authored headings,
+paragraphs, displayed code, and source-mapped computed figures. It produces a
+native decorative background and source-backed child objects. Internal headings
+remain card content, including a nested H2; they do not create slides. Card text
+edits use bounded source patches. Explicit background fill/stroke properties can
+sync to the original card opener.
+
+`.bento-layout` requires `bento-layout-name="two-column"` and exactly two identified
+direct fenced-div children. Reuse this name across source components. It uses
+native grouped objects with proportional geometry; a flat native `groupId`
+represents the outer component, while source provenance retains the nested
+containers. Custom layout/theme registries and nested native grouping are not
+claimed here. **Use the namespaced attribute:** Quarto 1.10.19 already interprets
+`layout=` as its JSON layout syntax. The former proposed `layout="two-column"`
+spelling now refuses before computation in both CLI and installed Quarto hooks.
+
+Attributes for a coupled parent frame produce source-owned child geometry.
+Moving one child cannot establish a safe inverse update to that parent. Such
+edits remain recoverable pending changes and refuse source sync with
+`UNMAPPED_DESIGN`; the same applies to a parent style inherited by multiple
+children. Attributes with one faithful target (such as card background fill or
+one code wrapper's font size) use the existing bounded attribute sync. Declare
+geometry on the containing component: explicit geometry on children that would
+be overwritten by parent placement refuses. Proportional fitting also scales
+pixel typography; an explicitly declared child font size/radius/stroke width
+that a parent would rescale refuses rather than ignoring the declaration or
+clipping content. Unspecified native geometry/styles
+remain sidecar overrides and survive regeneration.
+
+````markdown
+::: {#shown .bento-code x="210" font-size="22"}
+
+```{.python}
+print("hello")
+```
+
+:::
+````
+
+This wrapper maps its code body's provenance to the original displayed fence.
+A wrapper around an executable `{r}` chunk refuses, preserving the distinction
+between displayed source and execution outputs. Unknown components, unsupported
+content, conflicting ownership and layouts with the wrong child count refuse
+explicitly. Component composition is closed to adapted native text, code,
+image and decorative rectangle types. Tables/charts/embeds or raw native SVG
+objects inside a component currently refuse `COMPONENT_CONTENT_LAYOUT_UNSUPPORTED`
+until their internal metrics have a measured layout adapter; SVG figures
+projected as images remain supported.
 
 ```markdown
 ## Resultados {#resultados}
@@ -91,7 +142,7 @@ the native language selection currently remains pending and refuses reverse
 conversion. A runnable Quarto chunk such as `{r}` is distinct: its echoed code
 has computed provenance and cannot be synchronized as displayed authored code.
 Source-owned compatible typography/geometry uses the same attribute-review flow
-as text objects. The `.bento-code` component wrapper remains future integration.
+as text objects. The identified `.bento-code` wrapper around one displayed, non-executable fence is supported; see the component subset below.
 See [executed and native evidence](evidence/DISPLAYED-CODE.md).
 
 ### Speaker notes (implemented subset)
