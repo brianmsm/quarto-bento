@@ -263,7 +263,7 @@ all `src/**/*.ts`, targeted lint/format and whitespace checks passed for the
 complete caller.
 
 Independent KPI review verified exact `2445963` through the public project API:
-a fresh 200-word computed result measures 215px inside its saved 310px box at
+a fresh 200-word source value measures 215px inside its saved 310px box at
 font size 12 and line height 1.6. All native member geometry and following
 paragraph y=656 remain unchanged, source/default baseline font size 52 and line
 height 1.25 remain intact, and the final document has no KPI overflow
@@ -273,3 +273,45 @@ passed independently on its exact commit.
 
 No full repository suite, Windows/macOS run, remote operation, release or
 foreground desktop qualification is asserted by this slice.
+
+
+## Integrated native creation acceptance on Linux
+
+At `398e8dd`, the coordinator completed the real pinned Bento workflow through
+Studio in headless Chromium. A plain QMD with two unlabelled headings, a rich
+paragraph and an R/CSV figure began at revision 1. **Añadir componente** created
+a card and a KPI on the first existing slide (revisions 2 and 3). The native
+inspector moved/resized both backgrounds and all five text roles into a
+side-by-side design; native editing made the card body bold and set the KPI
+value's line height to 1.6. Saving reached revision 5 with five pending semantic
+members and unchanged QMD.
+
+After reopening, native Delete removed only the KPI detail. Save retained its
+snapshot; **Restaurar componente incompleto** recovered the exact text,
+geometry and stacking at revision 7. Every slide and element equalled the saved
+design; the native document's modification timestamp appropriately changed.
+
+Review displayed three exact identity-acquisition patches, both complete
+component insertions and the proposed QMD. Explicit Apply and Recalculate
+produced revision 9 with zero pending edits, no creation intents and two durable
+component projection records. All slide objects, identities, ordering and
+visual fields were preserved. The only HTML normalization was an attribute-free
+`<span>123</span>` produced by native bold toggling, reviewed as the equivalent
+literal `123`. The rich card body became `**Resultado revisado β desde Studio.**`
+and the R producer remained byte-identical.
+
+Changing CSV values to 100, 25 and 150 then recalculating produced revision 10.
+The complete component slide stayed exactly equal, while the figure's SVG
+changed and its non-content fields stayed equal. Moving the old generated HTML
+to an independent backup and rendering from QMD, CSV and state produced revision
+11: the complete emitted document equalled revision 10, with zero pending edits
+and unchanged source. `docId` remained
+`48121814-31eb-43f5-a571-f51de14ad81d` throughout.
+
+The coordinator visually inspected the real component form, recovery dialog,
+source review, recomputed card/KPI and changed-data figure. Local screenshots
+are `output/playwright/components-native-*.png`; the machine receipt is
+`output/verification/components-native/receipt.json`. Source SHA-256 after
+sync is `e414126fd271be8e8aa913d38981f29216c83ff1346e7e021801332fe9d90f5b`.
+These are native editor and Linux browser observations; no desktop file dialog,
+other OS or public release is implied.
