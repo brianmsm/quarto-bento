@@ -1,5 +1,6 @@
 /** Explicit source diagram relationships; saving never writes QMD or executes it. */
 import { projectPaths, readProject, saveProject } from "./project.ts";
+import { nativeGraphSlide } from "./graph-scope.ts";
 import { canonical, clone, set, targetKey } from "../state/json.ts";
 import { assertGraphDocument, graphReceipt } from "../state/graphs.ts";
 import {
@@ -59,7 +60,7 @@ function catalog(state: ProjectState, text: string): GraphRelations {
     }
   }
   const graphs = sourceGraphs(source).map((graph): RelationGraph => {
-    const slideId = graph.wrapper.slideId!,
+    const slideId = nativeGraphSlide(source, state, graph),
       slide = state.emitted.slides.find((slide) => slide.id === slideId),
       baseline = state.generatedBaseline.slides.find((slide) =>
         slide.id === slideId
@@ -196,7 +197,7 @@ function catalog(state: ProjectState, text: string): GraphRelations {
     return {
       slideId,
       slideLabel: source.blocks.find((block) =>
-        block.id === slideId && block.kind === "heading"
+        block.id === graph.wrapper.slideId && block.kind === "heading"
       )?.content.trim() ?? slideId,
       componentId: graph.wrapper.id,
       kind: graph.kind,

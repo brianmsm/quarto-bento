@@ -46,6 +46,7 @@ import type {
   Ast,
   BentoDoc,
   Element,
+  Json,
   Node,
   Origin,
   Projection,
@@ -1074,8 +1075,22 @@ export function validateProjectionOrigins(
         ? source.blocks.filter((b) => b.id === original.sourceId)
         : [];
       if (original.graph) {
-        validateGraphOrigin(source, original, element, slideId);
-        origins[slideId][elementId] = original;
+        const sourceSlideId = originalSlides.get(slideId);
+        if (!sourceSlideId) {
+          throw new DesignError(
+            "UNMAPPED_GRAPH_PROVENANCE",
+            "Graph slide needs its exact original heading proof before projection.",
+          );
+        }
+        validateGraphOrigin(source, original, element, slideId, sourceSlideId);
+        origins[slideId][elementId] = {
+          ...original,
+          graph: {
+            ...(original.graph as { [key: string]: Json }),
+            nativeSlideId: slideId,
+            sourceSlideId,
+          },
+        };
         continue;
       }
       if (original.designOnly) {

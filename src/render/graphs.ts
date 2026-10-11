@@ -644,7 +644,8 @@ export function validateGraphOrigin(
   source: SourceDocument,
   origin: Origin,
   element: Element,
-  slideId: string,
+  nativeSlideId: string,
+  sourceSlideId = nativeSlideId,
 ): void {
   const proof = origin.graph;
   if (!proof || typeof proof !== "object" || Array.isArray(proof)) {
@@ -654,7 +655,11 @@ export function validateGraphOrigin(
   if (
     proof.version !== 1 || proof.kind !== graph.kind ||
     proof.sourceId !== origin.sourceId ||
-    graph.wrapper.slideId !== slideId ||
+    graph.wrapper.slideId !== sourceSlideId ||
+    (proof.nativeSlideId !== undefined &&
+      proof.nativeSlideId !== nativeSlideId) ||
+    (proof.sourceSlideId !== undefined &&
+      proof.sourceSlideId !== sourceSlideId) ||
     proof.prefix !== graphFlowSignature(source, graph) ||
     origin.origin !== "authored" || Object.keys(proof).some((key) =>
       ![
@@ -669,6 +674,8 @@ export function validateGraphOrigin(
         "labelId",
         "from",
         "to",
+        "nativeSlideId",
+        "sourceSlideId",
       ].includes(key)
     ) ||
     canonical(proof.nodeIds) !==

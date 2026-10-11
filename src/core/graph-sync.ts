@@ -22,6 +22,7 @@ import {
   projectGraph,
 } from "../render/graphs.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
+import { nativeGraphSlide } from "./graph-scope.ts";
 
 function fail(code: string, message: string): never {
   throw new StateError(code, message);
@@ -73,7 +74,7 @@ export function graphSyncRequest(
   }
   const doc = scanSource(text), graph = sourceGraph(doc, proof.componentId);
   if (
-    graph.wrapper.slideId !== change.target.slideId ||
+    nativeGraphSlide(doc, state, graph) !== change.target.slideId ||
     canonical(graph.nodes.map((node) => node.block.id).sort()) !==
       canonical([...proof.nodeIds].sort())
   ) {
@@ -165,6 +166,16 @@ export async function preflightGraphSync(
       );
     }
     const original = sourceGraph(currentDoc, graph.wrapper.id);
+    const slideId = nativeGraphSlide(currentDoc, state, original);
+    if (
+      graph.wrapper.slideId !== original.wrapper.slideId &&
+      graph.wrapper.slideId !== slideId
+    ) {
+      fail(
+        "SOURCE_CONFLICT",
+        "The proposed graph moved outside its verified original heading scope.",
+      );
+    }
     const explicitFrame = original.declaration.properties.y !== undefined &&
       original.declaration.properties.h !== undefined &&
       graph.declaration.properties.y !== undefined &&
@@ -189,7 +200,7 @@ export async function preflightGraphSync(
     // are applied by the chosen prospective source, never frozen as overrides.
     for (const element of projected.elements) {
       const overlay = state.overrides.find((overlay) =>
-        overlay.target.slideId === graph.wrapper.slideId &&
+        overlay.target.slideId === slideId &&
         overlay.target.elementId === element.id
       );
       for (const field of overlay?.fields ?? []) {
@@ -199,11 +210,11 @@ export async function preflightGraphSync(
     }
     const document = {
       ...state.emitted,
-      slides: [{ id: graph.wrapper.slideId!, elements: projected.elements }],
+      slides: [{ id: slideId, elements: projected.elements }],
     };
     const provenance = Object.fromEntries(
       Object.entries(projected.origins).map(([elementId, origin]) => [
-        targetKey({ slideId: graph.wrapper.slideId, elementId }),
+        targetKey({ slideId, elementId }),
         {
           origin: origin.origin,
           source: {
