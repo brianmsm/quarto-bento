@@ -1,5 +1,5 @@
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
-import { kpiSource } from "../source/kpi.ts";
+import { kpiSource, kpiSourceAttributes } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
 import { projectGraph, validateGraphOrigin } from "./graphs.ts";
 import { sourceGraphs } from "../source/graphs.ts";
@@ -211,6 +211,27 @@ export async function projectAst(
   let counter = 0;
   let contentFrame: Frame | undefined;
   const tableSources = new Set<string>();
+  const kpiAncestors = new Map<string, { attr: Attr; parentId?: string }>();
+  if (source) {
+    for (const block of source.blocks) {
+      if (
+        block.kind !== "div" || sourceComponentClass(block.raw) !== ".bento-kpi"
+      ) continue;
+      for (const id of kpiSource(source, block.id).ancestors) {
+        const ancestor = source.blocks.find((candidate) =>
+          candidate.id === id
+        )!;
+        kpiAncestors.set(id, {
+          attr: kpiSourceAttributes(ancestor),
+          parentId: ancestor.parentId,
+        });
+      }
+    }
+  }
+  const measuredComponents = {
+    fixed: new Set<string>(),
+    omitted: new Set<string>(),
+  };
   function startSlide(id: string): Slide {
     if (document.slides.some((s) => s.id === id)) {
       throw new Error(`DUPLICATE_ID: ${id}`);
@@ -428,6 +449,19 @@ export async function projectAst(
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const ancestor = kpiAncestors.get(attr[0]);
+        if (
+          ancestor && (ancestor.parentId !== parentId ||
+            JSON.stringify([...attr[1]].sort()) !==
+              JSON.stringify([...ancestor.attr[1]].sort()) ||
+            JSON.stringify([...attr[2]].sort()) !==
+              JSON.stringify([...ancestor.attr[2]].sort()))
+        ) {
+          throw new DesignError(
+            "KPI_SOURCE_CONTEXT",
+            "Executed KPI ancestor attributes or ancestry differ from original source.",
+          );
+        }
         const richTable = richTables.get(attr[0]);
         if (richTable) {
           if (
@@ -480,12 +514,19 @@ export async function projectAst(
         const declaration = parseDesignAttributes(attr);
         if (declaration.component === "kpi") {
           if (
-            !source || computed || inComponent ||
+            !source || computed ||
             attr[1].some((c) => c === "cell" || c.startsWith("cell-output"))
           ) {
             throw new DesignError(
               "KPI_SOURCE_CONTEXT",
-              "Declare an original standalone KPI outside execution output and nested components.",
+              "Declare an original KPI outside execution output; only verified source cards/layouts can contain it.",
+            );
+          }
+          const binding = kpiSource(source, attr[0]);
+          if (binding.wrapper.parentId !== parentId) {
+            throw new DesignError(
+              "KPI_SOURCE_CONTEXT",
+              "Executed KPI ancestry differs from its original source component chain.",
             );
           }
           if (!slide) startSlide("qb-introduction");
@@ -493,7 +534,7 @@ export async function projectAst(
             source,
             attr,
             children,
-            retainedFrames.get(attr[0]) ?? {
+            contentFrame ?? retainedFrames.get(attr[0]) ?? {
               x: 80,
               y,
               w: 1120,
@@ -501,8 +542,22 @@ export async function projectAst(
             },
             defaults,
             kpiAppearances.get(slide!.id),
+            binding.ancestors.some((id) => {
+              const original = kpiAncestors.get(id)!;
+              const properties =
+                parseDesignAttributes(original.attr).properties;
+              return ["x", "y", "w", "h"].some((field) => field in properties);
+            }),
           );
+          for (const element of component.elements) {
+            measuredComponents.fixed.add(element.id);
+          }
           if (component.appearanceRescued) {
+            for (const element of component.elements) {
+              if (element.type === "text") {
+                measuredComponents.omitted.add(element.id);
+              }
+            }
             (result.kpiAppearanceRescues ??= []).push({
               slideId: slide!.id,
               elementIds: component.elements.filter((element) =>
@@ -524,6 +579,7 @@ export async function projectAst(
                 Number(element.y) + Number(element.h)
               ),
             ) + 20;
+          if (groups) groups.push(slide!.elements.slice(groupStart));
           contentFrame = previousFrame;
           continue;
         }
@@ -609,6 +665,10 @@ export async function projectAst(
             );
           };
           const rowHeight = (child: Node): number => {
+            if (
+              child.t === "Div" &&
+              (child.c as [Attr, Node[]])[0][1].includes("bento-kpi")
+            ) return -1;
             // A table can be wrapped by source and execution divs. Inspect the
             // whole subtree; never select one descendant and drop its siblings.
             const tableHeight = (value: Node): number | undefined => {
@@ -683,6 +743,7 @@ export async function projectAst(
             placement.frame,
             fields,
             defaults,
+            measuredComponents,
           );
           for (const id of component.decorativeIds) {
             if (slide!.elements.slice(0, index).some((e) => e.id === id)) {
@@ -700,9 +761,11 @@ export async function projectAst(
             ...component.elements,
           );
           Object.assign(fields, component.fields);
-          y = Math.max(...component.elements.map((e) =>
-            Number(e.y) + Number(e.h)
-          )) + 20;
+          y = Math.max(
+            ...component.elements.filter((element) =>
+              !measuredComponents.omitted.has(element.id)
+            ).map((e) => Number(e.y) + Number(e.h)),
+          ) + 20;
           if (groups) {
             groups.push(slide!.elements.slice(groupStart));
           }
@@ -1054,13 +1117,7 @@ export function assertSupportedExecutionSource(source: SourceDocument): void {
       block.kind === "div" && sourceComponentClass(block.raw) === ".bento-kpi"
     )
   ) {
-    const binding = kpiSource(source, block.id);
-    if (binding.wrapper.parentId) {
-      throw new DesignError(
-        "KPI_SOURCE_CONTEXT",
-        "Declare KPI components at the top level of their source slide.",
-      );
-    }
+    kpiSource(source, block.id);
   }
   sourceGraphs(source);
   for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
@@ -1169,14 +1226,19 @@ export function validateProjectionOrigins(
               elementId === `${container.id}/qb-card-background` ||
             sourceComponentClass(container.raw) === ".bento-kpi" &&
               elementId === `${container.id}/qb-kpi-background` &&
-              element.groupId === container.id)
+              element.groupId === kpiSource(source, container.id).groupId)
         ) {
           throw new Error(
             "UNMAPPED_COMPONENT_DESIGN: generated component background lacks original container proof",
           );
         }
         if (sourceComponentClass(container.raw) === ".bento-kpi") {
-          kpiSource(source, container.id);
+          const binding = kpiSource(source, container.id);
+          if (binding.wrapper.slideId !== originalSlides.get(slideId)) {
+            throw new Error(
+              "UNMAPPED_COMPONENT_DESIGN: KPI background moved outside its verified source slide",
+            );
+          }
         }
         origins[slideId][elementId] = original;
         continue;
@@ -1235,6 +1297,25 @@ export function validateProjectionOrigins(
         throw new Error(
           `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,
         );
+      }
+      if (block.kind === "paragraph" && block.parentId) {
+        const role = source.blocks.find((candidate) =>
+          candidate.id === block.parentId
+        );
+        const wrapper = role?.parentId &&
+          source.blocks.find((candidate) => candidate.id === role.parentId);
+        if (wrapper && sourceComponentClass(wrapper.raw) === ".bento-kpi") {
+          const binding = kpiSource(source, wrapper.id);
+          if (
+            !binding.slots.some((slot) => slot.paragraph.id === block.id) ||
+            element.groupId !== binding.groupId ||
+            binding.wrapper.slideId !== originalSlides.get(slideId)
+          ) {
+            throw new Error(
+              "UNMAPPED_COMPONENT_DESIGN: KPI role does not match its verified source group and slide",
+            );
+          }
+        }
       }
       if (element.type === "chart") {
         validateAuthoredChart(source, block.id, element);

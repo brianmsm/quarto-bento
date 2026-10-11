@@ -308,7 +308,7 @@ Deno.test("real Quarto KPI unsupported inline and nested component projections r
         ],
         [
           "nested",
-          `::::: {#card .bento-card}\n${body}\n:::::\n`,
+          `::::: {#card}\n${body}\n:::::\n`,
           "KPI_SOURCE_CONTEXT",
         ],
         [

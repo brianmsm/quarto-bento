@@ -16,6 +16,7 @@ function sourceBackedScope(
   componentId: string,
 ): string | undefined {
   const backgroundId = `${componentId}/qb-kpi-background`;
+  const groupId = kpiSource(source, componentId).groupId;
   const candidates = Object.entries(state.provenance).flatMap(
     ([key, proof]) => {
       let target: unknown;
@@ -37,7 +38,7 @@ function sourceBackedScope(
       )
         ?.elements.find((element) => element.id === backgroundId);
       return baseline?.type === "shape" && baseline.shape === "rect" &&
-          baseline.groupId === componentId
+          baseline.groupId === groupId
         ? [target[0]]
         : [];
     },
@@ -117,7 +118,7 @@ export function retainedKpiAppearances(
       backgroundProof.source?.blockId === block.id &&
       baselineBackground?.type === "shape" &&
       baselineBackground.shape === "rect" &&
-      baselineBackground.groupId === block.id;
+      baselineBackground.groupId === binding.groupId;
     for (const slot of binding.slots) {
       const nativeId = slot.paragraph.id;
       const member = intent?.members.find((member) =>

@@ -30,6 +30,9 @@ export interface KpiSource {
   attr: PandocAttr;
   design: DesignDeclaration;
   slots: KpiSlot[];
+  /** Verified outermost source component; native Bento grouping is flat. */
+  groupId: string;
+  ancestors: string[];
 }
 function fail(code: string, message: string): never {
   throw new DesignError(code, message);
@@ -100,6 +103,26 @@ export function kpiSource(document: SourceDocument, id: string): KpiSource {
       "The original .bento-kpi identity must fit the pinned native object IDs.",
     );
   }
+  const ancestors: string[] = [];
+  let parentId = wrapper.parentId;
+  while (parentId) {
+    const parent = source.blocks.find((block) => block.id === parentId);
+    if (
+      !parent || ancestors.includes(parentId) || parent.kind !== "div" ||
+      !parent.explicitId || parent.origin !== "authored" ||
+      parent.slideId !== wrapper.slideId ||
+      !["card", "layout"].includes(
+        parseDesignAttributes(kpiSourceAttributes(parent)).component ?? "",
+      )
+    ) {
+      fail(
+        "KPI_SOURCE_CONTEXT",
+        "KPI ancestors must be identified original cards/layouts on the same slide, outside execution output.",
+      );
+    }
+    ancestors.push(parentId);
+    parentId = parent.parentId;
+  }
   const children = source.blocks.filter((block) => block.parentId === id);
   if (
     children.length < 2 || children.length > 3 ||
@@ -162,5 +185,12 @@ export function kpiSource(document: SourceDocument, id: string): KpiSource {
       design: parseDesignAttributes(childAttr),
     };
   });
-  return { wrapper, attr, design, slots };
+  return {
+    wrapper,
+    attr,
+    design,
+    slots,
+    ancestors,
+    groupId: ancestors.at(-1) ?? id,
+  };
 }

@@ -1,0 +1,48 @@
+---
+engine: knitr
+qbento-annotations: none
+---
+
+## Results
+
+:::::: {#grid .bento-layout bento-layout-name="two-column"}
+
+::::: {#card .bento-card}
+
+### Observed
+
+:::: {#metric .bento-kpi}
+
+::: {#label bento-role="label"}
+Mean
+:::
+
+::: {#value bento-role="value"}
+`r sprintf("%.2f", mean(read.csv("data.csv")$value))`
+:::
+
+::: {#detail bento-role="detail"}
+From project data
+:::
+
+::::
+
+:::::
+
+:::: {#literal .bento-kpi}
+
+::: {#literal-label bento-role="label"}
+Target
+:::
+
+::: {#literal-value bento-role="value"}
+25
+:::
+
+::: {#literal-detail bento-role="detail"}
+Authored threshold
+:::
+
+::::
+
+::::::

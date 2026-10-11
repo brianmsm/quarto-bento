@@ -99,6 +99,8 @@ export async function projectKpi(
   base: Frame,
   defaults: DesignDefaults = {},
   appearance?: KpiAppearance,
+  /** An enclosing QMD frame cannot adopt saved role boxes as visual overlays. */
+  sourceFrameOwned = false,
 ): Promise<
   {
     elements: Element[];
@@ -309,7 +311,10 @@ export async function projectKpi(
     // Source-coupled geometry remains strict, and baseline boxes stay unchanged:
     // the consumer preserves saved geometry and checks the actual composed boxes.
     let fitsRetained = false;
-    if (!geometryOwned && frame.w > 48 && retained.every(Boolean)) {
+    if (
+      !geometryOwned && !sourceFrameOwned && frame.w > 48 &&
+      retained.every(Boolean)
+    ) {
       const measurements = await effectiveMeasurements();
       const height = measurements.reduce((sum, result) =>
         sum + result.height, 0) +

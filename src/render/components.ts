@@ -5,6 +5,7 @@ import {
   type DesignDefaults,
   DesignError,
   type Frame,
+  type MeasuredComponents,
 } from "./design.ts";
 import type { Element, Projection } from "./types.ts";
 
@@ -17,11 +18,13 @@ export function projectComponent(
   frame: Frame,
   existing: Fields,
   defaults: DesignDefaults = {},
+  measured?: MeasuredComponents,
 ): { elements: Element[]; fields: Fields; decorativeIds: string[] } {
   if (declaration.component === "layout") {
     const slots =
       componentFrames(declaration, frame, groups.length, defaults).children;
     groups.forEach((group, i) => {
+      group = group.filter((element) => !measured?.omitted.has(element.id));
       const width = Math.max(...group.map((e) => Number(e.x) + Number(e.w))) -
         Math.min(...group.map((e) => Number(e.x)));
       const height = Math.max(...group.map((e) => Number(e.y) + Number(e.h))) -
@@ -44,7 +47,7 @@ export function projectComponent(
   const projected = applyComponentDesign(groups, declaration, {
     ...defaults,
     frame,
-  });
+  }, measured);
   const fields: Fields = {};
   const original = new Map(
     groups.flat().map((element) => [element.id, element]),
@@ -78,6 +81,29 @@ export function projectComponent(
       }
       // A default card theme must not override explicitly authored child typography.
       element[field] = original.get(element.id)![field];
+    }
+    if (measured?.fixed.has(element.id)) {
+      const before = original.get(element.id)!;
+      for (
+        const field of [
+          "w",
+          "h",
+          "fontSize",
+          "fontFamily",
+          "fontWeight",
+          "lineHeight",
+          "letterSpacing",
+          "align",
+          "valign",
+        ]
+      ) {
+        if (element[field] !== before[field]) {
+          throw new DesignError(
+            "COMPONENT_MEASURED_STYLE",
+            "An enclosing component would change measured KPI metrics; declare typography on the KPI or its roles, and geometry on its enclosing layout.",
+          );
+        }
+      }
     }
     if (
       element.type === "code" &&

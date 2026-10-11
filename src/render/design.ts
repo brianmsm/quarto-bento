@@ -428,7 +428,20 @@ export function validateDesignDefaults(
   }
   return clean;
 }
-function placed(elements: Element[], frame: Frame): Element[] {
+export interface MeasuredComponents {
+  /** Source-verified native objects whose metrics must not change after measuring. */
+  fixed: ReadonlySet<string>;
+  /** Rescued default text has no painted bounds until saved overlays are composed. */
+  omitted: ReadonlySet<string>;
+}
+function bounds(elements: Element[], measured?: MeasuredComponents): Element[] {
+  return elements.filter((element) => !measured?.omitted.has(element.id));
+}
+function placed(
+  elements: Element[],
+  frame: Frame,
+  measured?: MeasuredComponents,
+): Element[] {
   if (!elements.length) return [];
   const original = elements.map((e) => {
     if (
@@ -438,24 +451,29 @@ function placed(elements: Element[], frame: Frame): Element[] {
     ) throw new DesignError("INVALID_ELEMENT_FRAME", e.id);
     return e as Element & Frame;
   });
-  const left = Math.min(...original.map((e) => e.x)),
-    top = Math.min(...original.map((e) => e.y));
-  const width = Math.max(...original.map((e) => e.x + e.w)) - left;
-  const height = Math.max(...original.map((e) => e.y + e.h)) - top;
+  const sizing = bounds(original, measured) as (Element & Frame)[];
+  const left = Math.min(...sizing.map((e) => e.x)),
+    top = Math.min(...sizing.map((e) => e.y));
+  const width = Math.max(...sizing.map((e) => e.x + e.w)) - left;
+  const height = Math.max(...sizing.map((e) => e.y + e.h)) - top;
   if (width <= 0 || height <= 0) {
     throw new DesignError("INVALID_ELEMENT_FRAME", "empty group bounds");
   }
   // Uniform fit retains aspect ratio and relative positioning within a semantic child.
   let scale = Math.min(1, frame.w / width, frame.h / height);
-  if (original.some((element) => element.type === "table")) {
+  if (
+    original.some((element) =>
+      element.type === "table" || measured?.fixed.has(element.id)
+    )
+  ) {
     if (width > frame.w + .01 || height > frame.h + .01) {
       throw new DesignError(
         "COMPONENT_CONTENT_OVERFLOW",
-        "A native table must fit its final frame without scaling its box; use a wider or taller component.",
+        "Measured native content must fit its final frame without scaling its box; use a wider or taller component.",
       );
     }
     // Coordinate subtraction can exceed an exact slot by floating-point dust.
-    // Accept that tolerance as translation, never as a near-one table scale.
+    // Accept that tolerance as translation, never as a near-one scale.
     scale = 1;
   }
   return original.map((e) => {
@@ -578,6 +596,7 @@ export function applyComponentDesign(
   children: Element[][],
   declaration: DesignDeclaration,
   defaults: DesignDefaults = {},
+  measuredComponents?: MeasuredComponents,
 ): ComponentProjection {
   const supported = new Set(["text", "code", "image", "shape", "table"]);
   const unsupported = children.flat().find((element) =>
@@ -663,7 +682,7 @@ export function applyComponentDesign(
           y: frame.y + layout.padding,
           w: width,
           h: height,
-        }),
+        }, measuredComponents),
       )
     );
   } else {
@@ -697,10 +716,11 @@ export function applyComponentDesign(
     }
     result.elements.push(background);
     result.decorativeIds.push(background.id);
-    const measured = children.map((child) =>
-      Math.max(...child.map((e) => Number(e.y) + Number(e.h))) -
-      Math.min(...child.map((e) => Number(e.y)))
-    );
+    const measured = children.map((child) => {
+      const sized = bounds(child, measuredComponents);
+      return Math.max(...sized.map((e) => Number(e.y) + Number(e.h))) -
+        Math.min(...sized.map((e) => Number(e.y)));
+    });
     const total = measured.reduce((sum, h) => sum + h, 0);
     const available = frame.h - 2 * padding - gap * (children.length - 1);
     if (total > available + .01) {
@@ -718,7 +738,7 @@ export function applyComponentDesign(
           y: childY,
           w: frame.w - 2 * padding,
           h: measured[i] * fit,
-        }),
+        }, measuredComponents),
       );
       childY += measured[i] * fit + gap;
     });
