@@ -48,41 +48,54 @@ and retained font resources, with refusal or retained-design diagnostics for
 unsupported/overflowing typography. See [KPI contract](evidence/KPI.md) and
 [native acceptance](evidence/PLAIN-KPI-NATIVE.md).
 
-## Implementation and review still in progress
-
 ### Meaningful Studio-created cards and KPIs
 
-[WORKFLOWS.md](WORKFLOWS.md) and [DECISIONS.md](DECISIONS.md) require content in
-a newly created card/KPI to become a pending semantic component, then
-source-backed fenced divs after reviewed sync. Explicit component creation,
-durable membership snapshots, partial-deletion recovery and safe promotion are
-being implemented in an isolated worktree. This capability is not established by
-source KPI support.
+Explicit component creation, durable membership snapshots, partial-deletion
+recovery and approved source promotion are integrated. The native Studio flow
+creates a card and KPI on an ordinary QMD slide, retains rich text and individual
+object design, restores a missing member in the correct stacking order, and
+shows all identity and component patches before Apply. Recalculation promotes
+the complete components; changed data and reconstruction without the prior HTML
+preserve their design and document identity. See
+[component creation acceptance](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
 
-Spatial proximity or arbitrary native grouping must not establish semantic
-structure. Authored text belongs in QMD; decorations and geometry remain in the
-sidecar; a computed value keeps its producer. Remaining acceptance includes
-multiple components, ordinary QMD, restoration stacking, native background
-edits, failed publication/recovery, native Studio controls and integrated tests.
+Membership is explicit, never inferred from spatial proximity or arbitrary
+native groups. Authored text becomes QMD after approval; geometry remains in the
+sidecar. Studio creates literal values; computed values continue to come from
+source expressions. Negative and recovery tests cover partial selections,
+altered/stale approval, publication failure and source ownership. Retained KPI
+measurement also works under exact verified source headings without IDs when
+only computation inputs change.
 
 ### Declarative diagram and timeline adapters
 
-The [target component vocabulary](AUTHORING.md) includes `.bento-diagram` and
-`.bento-timeline`. Their bounded adapters and explicit source node/edge or
-lexical milestone structures are integrated and independently reviewed. Studio
-displays exact relationship patches and the complete proposed QMD. Native
-label edit/save/reopen/sync and changed-data recomputation retained the complete
-graph/timeline design; see [graph evidence](evidence/GRAPHS.md). The pinned editor
-detaches a dragged endpoint rather than rebinding it. This is safely refused on
-sync; an explicit Studio relationship selector is being implemented to make
-valid endpoint changes directly accessible. Its final acceptance remains.
+Bounded `.bento-diagram` and `.bento-timeline` adapters, native label editing and
+source synchronization are integrated. Studio's **Relaciones** dialog explicitly
+saves both source endpoints of an existing diagram edge; native Save/reopen,
+exact relationship review, Apply and Recalculate passed on Linux. Timeline
+adjacency is displayed read-only because lexical source order defines it.
+The pinned editor's endpoint drag detaches its anchor; detached or unsupported
+relations cannot silently rewrite QMD. See
+[relationship acceptance](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux).
 
-## Integrated verification still required
+The integrated mixed regression covers a graph under an ordinary heading,
+reviewed identity acquisition, card/KPI creation, rich/native design, approved
+endpoint changes and exact HTML-free reconstruction. Weak slide bindings require
+current original-source receipts; labels, positions and coincident IDs cannot
+substitute for provenance.
 
-The last complete suite receipt is 332 tests at `c225546`; it predates these
-changes. Focused and native receipts above do not replace a full suite and
-portable-package check on the completed integration. The implementation ledger
-will record the final runtime revision and exact results.
+## Local integrated verification completed
+
+Runtime `75edcdf` passed **430 tests, 4 steps, 0 failures and 0 ignored
+tests** in **9m44s** with the optional pinned math, Studio and Relations
+browser checks enabled. Types, lint and formatting passed. The final 91-file
+portable runtime passed relocation and state-only reconstruction; its actual
+launcher rebuilt the two-component native demo with an exact emitted document
+and zero pending changes. See [the complete receipt](evidence/INTEGRATED-LINUX.md).
+
+This closes the audited local acceptance pass for the documented workflows.
+Other-platform execution remains deferred at the owner's request; complete
+release/dependency review and a frozen public v1 scope remain separate gates.
 
 Unsupported arbitrary widgets, general TeX, ambiguous source spans, automatic
 computed-value reverse edits and inference of an entire parent transform from

@@ -53,6 +53,8 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 | Authored text/math/displayed code/notes synchronization       | Supported rich text, identified display equations, displayed code and plain identified speaker notes round-trip tested, including live native editing. [Inline](evidence/INLINE.md), [displayed code](evidence/DISPLAYED-CODE.md), [notes](evidence/NOTES.md), [math](evidence/MATH-CODEC.md). A combined native edit/sync/recompute fixture preserves all four and a changed-data SVG; the integrated suite at `ba0843d` passes 202 tests. [Combined evidence](evidence/SEMANTIC-ROUNDTRIP.md). General TeX and inline equations remain unsupported.                                                                                                                                                                                                                                                                                                                                                                       |
 | Computed provenance and explicit detach                       | Executed origins verified against original source; generated as-is content refuses ambiguous provenance. Explicit reconciliation supports restore/detach; broader fixtures remain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | QMD visual attributes + annotation levels                     | Direct-object QMD fields apply to projection, stay source-owned and sync through bounded patches; conflict and native UI checks pass. Component source ownership and none/minimal/detailed annotations are integrated. Exact optional patches and omission diagnostics have native Studio acceptance; save/render preserve QMD and reviewed apply uses the recovery transaction. [Annotations](evidence/ANNOTATIONS.md). Original QMD design traces now produce persistent `MISSING_DESIGN` warnings when external design is absent, including fresh rebuild/reopen and native Studio opening/recalculation. Invalid state and unresolved registry transactions remain failures. [Missing design](evidence/MISSING-DESIGN.md). [Design](evidence/DESIGN.md), [components](evidence/COMPONENTS.md).                                                                                                                          |
+| Explicit Studio cards and KPI components | Native creation, rich-text/design edits, partial-member recovery, inspected source promotion and HTML-free reconstruction pass on Linux. Source-backed computed KPIs retain verified typography on stable or exact weak heading scopes. [Creation and KPI scope](evidence/COMPONENT-CREATION.md). |
+| Source diagrams, timelines and relationships | Bounded source adapters and native label/design/sync/recompute pass. Studio saves paired diagram endpoints with source/revision checks and exact source review; timeline adjacency stays source-ordered. Ordinary headings and combined identity/component/graph edits have integration coverage. [Graphs](evidence/GRAPHS.md). |
 | Components, layouts, themes, animation/morph                  | Final-slot composition fixes undersized nested cards. Native heading/body/code readability, literal-text save/body-only sync and changed-data SVG with retained geometry/docId are demonstrated for bounded fixtures. [Canonical example](../examples/components/deck.qmd), [components](evidence/COMPONENTS.md). A validated local layout/theme registry is integrated; native palette, fade-up, count-up, reveal and morph survived save/recompute and were exercised in playback. Studio edits named layouts and themes with byte/revision checks and recoverable saves. Native save → registry edit → recompute retains pending text, source-owned fields and identity; a reviewed sync completes the loop. The theme vocabulary and palette-reference ownership remain bounded. [Studio registry](evidence/STUDIO-REGISTRY.md). [Registry](DESIGN_REGISTRY.md), [native motion evidence](evidence/DESIGN_REGISTRY.md). |
 | Charts and simple tables; faithful rich fallback              | Plain tables and explicit bounded native bar/line charts now have executed provenance/fidelity tests and native save/changed-data visual acceptance. Geometry/table-wide styles survive; cells/chart-option reverse sync remains unsupported. Fresh bounded gt/gtsummary PNG fallback now preserves computed provenance, source formatting and full content. Native slides and a two-page offline PDF were visually inspected. [Tables](evidence/TABLES.md), [charts](evidence/CHARTS.md), [rich tables](evidence/RICH-TABLES.md).                                                                                                                                                                                                                                                                                                                                                                                          |
 | Plotly/htmlwidgets + isolated offline Presenter               | Trusted generation resources, recovery, ordinary Quarto hooks and Studio Presenter are integrated. Real SVGs retain saved geometry after recomputation; separate isolated interactive views have offline headless Chromium hover/zoom evidence and independent runtime review. Static native deck/PDF retain the SVG. Arbitrary widgets and exact-geometry interactive overlays remain outside this bounded adapter. [Canonical example](../examples/plotly-offline/deck.qmd), [Plotly](evidence/PLOTLY.md).                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -63,21 +65,20 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 | Linux/macOS/Windows packaging and native evidence             | Portable development directory, offline launchers and SHA256 inventory implemented; Linux relocation/clean-cache execution tested. A pinned CI matrix and an expanded portable launcher/state-only relocation smoke are committed; the latter passed locally on Linux. No hosted matrix run or native other-OS proof is claimed. Release packaging remains pending. [Packaging](PACKAGING.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Accurate end-user docs + public release scope                 | README, the [Spanish usage guide](USAGE.md), canonical semantic/table/chart/component/Plotly/rich-table examples and the [JSON agent contract](AGENT-API.md) describe bounded delivered behavior. Remaining implementation docs track active integrations; public v1 boundary is not frozen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
-## Known limits under active implementation
+## Delivered local scope and remaining limits
 
-The post-suite audit's plain-QMD identity and confirmed source-element deletion
-cases are now integrated, independently reviewed and demonstrated through native
-Studio. Source-authored KPI projection and changed-data recomputation are also
-integrated. Source diagrams/timelines now have independently reviewed integration
-and native label/design/sync/recompute evidence. Meaningful Studio-created
-card/KPI synchronization and an explicit diagram relationship selector remain
-in implementation/review branches. See the
-[functional acceptance checklist](ACCEPTANCE_GAPS.md). The prior full suite
-below predates these additions; their current evidence is focused, not a new
-complete suite result.
+The post-suite audit's ordinary-QMD identity, confirmed source-element deletion,
+source KPI, Studio-created card/KPI and diagram/timeline workflows are now
+integrated and independently reviewed. Linux headless Studio acceptance includes
+native rich-text editing, explicit component creation and recovery, paired
+relationship selection, inspected source patches, changed-data recomputation
+and rebuilding without the old HTML. See the
+[functional acceptance checklist](ACCEPTANCE_GAPS.md),
+[component creation](evidence/COMPONENT-CREATION.md) and
+[graph relationships](evidence/GRAPHS.md).
 
-- First-slice evidence is Linux-specific and bounded to the documented fixture.
-  Broader structural cases and all later product gates remain active work.
+- These receipts establish the documented local Linux workflows. They do not
+  establish arbitrary QMD support, native OS dialogs or other-platform support.
 - `results: asis` can lose computation wrappers in Quarto's executed AST. This
   refuses before execution; a generated heading must never become implicitly
   authored content. Original-source/producer checks also validate projection.
@@ -93,9 +94,11 @@ complete suite result.
   source and fidelity limits; cell/option reverse synchronization remains
   unsupported. Corrected component composition and durable Plotly/Presenter
   integration are verified for their documented fixtures. Fresh gt/gtsummary
-  captures have bounded native image and offline PDF evidence. Rich pending
-  component content, inherited child-to-parent visual inference, arbitrary
-  widgets and cross-platform native packaging remain incomplete gates.
+  captures have bounded native image and offline PDF evidence. Studio-created
+  card/KPI text now supports the same bounded rich-text synchronization codec,
+  including recovery and reviewed component promotion. Inference of an entire
+  parent transform from one child, arbitrary widgets and cross-platform native
+  packaging remain outside this local acceptance.
   Interactive Plotly views are separate from the native static slide
   composition.
 - Capture permits one accepted capture per published generation and refuses
@@ -106,11 +109,51 @@ complete suite result.
 
 ## Recent integrated verification
 
+- At `75edcdf`, the final integrated suite passed **430 tests, 4 steps,
+  0 failures and 0 ignored tests** in **9m44s**, with all optional browser and
+  pinned math checks enabled. Full types, lint (158 files), formatting (159
+  files), the 91-file portable smoke and an exact source/state-only demo rebuild
+  passed. The usable package is `output/qbento-dev-75edcdf/` and the demo is
+  `output/demo-75edcdf/`. [Final Linux receipt](evidence/INTEGRATED-LINUX.md).
+
+- `563ccda` fixes a reproduced Chromium startup race: a valid partial endpoint
+  file is polled within the original deadline, and only a complete canonical
+  local endpoint can connect. Six deterministic/real-browser tests and an
+  independent five-case probe pass; rich-table resource and visibility guards
+  remain unchanged. `75edcdf` adjusts only test startup allowances for concurrent
+  validation. [Startup evidence](evidence/CHROMIUM-STARTUP.md).
+- `9c17657` and `2c3d96a` update three obsolete test expectations exposed by the
+  expanded suite. Unknown components and diagnostic-only plans still refuse;
+  reviewed plain-source identities and early unsupported-math diagnostics are
+  asserted explicitly, including exact source and state/publication protection.
+  These commits change tests only.
+
+- `ed89c68` integrates explicit Studio cards/KPIs; `398e8dd` accepts the native
+  editor's transparent, attribute-free text spans in the existing bounded codec.
+  Real Studio creation, rich-text/design edits, partial-member restoration,
+  reviewed source promotion, changed-data SVG and an HTML-free exact native
+  document rebuild passed. No source change occurred before reviewed Apply.
+  [Native component receipt](evidence/COMPONENT-CREATION.md).
+- `068bbb8` integrates paired diagram relationship controls. Native Save,
+  reopen, exact two-attribute source review, Apply and Recalculate passed;
+  timeline adjacency remains read-only. `2c50c55` verifies original headings
+  without explicit IDs through exact source receipts. `db6ecca` adds the passing
+  mixed ordinary-QMD/component/graph regression, including identity acquisition,
+  saved component backgrounds and HTML-free whole-document reconstruction.
+  [Graph evidence](evidence/GRAPHS.md).
+- `260bc8f` integrates the reviewed retained-KPI scope correction for ordinary
+  headings. Real R data changes with QMD bytes unchanged preserve saved
+  typography and geometry on two weakly identified slides, while generated
+  baselines and computed provenance stay source-owned. Forged, stale, duplicate
+  or cross-slide receipts cannot supply appearance; changed ambiguous source
+  still refuses atomically. [KPI scope receipt](evidence/COMPONENT-CREATION.md).
+
 - At `9e8d8d8`, source diagrams/timelines passed 19 combined graph/KPI/plain
   tests, 2 graph/identity regressions and 5 Studio client tests. Native label
   editing, save/reopen, reviewed sync and changed-data execution preserved
   `docId` and exact graph design. Detached endpoints refuse safely; the explicit
-  relation selector is the remaining UI follow-up. [Graph evidence](evidence/GRAPHS.md).
+  relation selector was the remaining UI follow-up at that checkpoint and is
+  now accepted in the newer receipt above. [Graph evidence](evidence/GRAPHS.md).
 
 - At `be98fc1`, 22 focused plain-QMD/deletion/client tests passed with zero
   failures. Independent mixed testing covered CRLF, reviewed identities,
@@ -131,11 +174,12 @@ complete suite result.
 
 - At `c225546`, the full integrated suite passed **332 tests, 4 steps, 0
   failures, 0 ignored tests** in **8 minutes 34 seconds**, with process exit
-  **0**. The pinned upstream math comparison and real headless Studio check were
+  **0**. This historical receipt predates the later source and Studio additions.
+  The pinned upstream math comparison and real headless Studio check were
   enabled. Full source type checking, lint and runtime/test/tool formatting
   passed. The 69-file portable package also passed its complete relocated
-  state-only rebuild smoke and ordinary Quarto test on Linux. This is the latest
-  complete-suite receipt; details and reproduction are in
+  state-only rebuild smoke and ordinary Quarto test on Linux. This is a
+  historical complete-suite receipt; current results and reproduction are in
   [integrated Linux validation](evidence/INTEGRATED-LINUX.md).
 
 - At `20a3492` (components and tables), the complete suite passed **223 tests, 0

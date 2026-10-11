@@ -165,9 +165,12 @@ assertions, without browser visual evidence, PDF/widget coverage or a v1 release
 claim. Ordinary integration on macOS/Windows remains deliberately unsupported
 until its process/output preflight is implemented and validated there.
 
-The coordinator repeated the complete Linux smoke after integration `c225546`,
-including the new composed-diagnostics runtime module. The portable inventory
-contained 69 payload files; all launcher, retained-pending-edit, state-only
-rebuild and relocated ordinary-Quarto assertions passed with process exit 0. The
-local receipt is `/tmp/qbento-portable-c225546.log`. This extends the Linux
-receipt, without changing the other-platform qualification boundary above.
+The coordinator repeated the complete Linux smoke on runtime
+`75edcdf0dc2b04d09d6314c0630f694693c55f8e`, including source graph scope,
+retained KPI appearance, explicit Studio components and Chromium startup readiness. The portable
+inventory contained **91 payload files**; all launcher, retained-pending-edit,
+state-only rebuild and relocated ordinary-Quarto assertions passed with process
+exit **0** in 6.92 seconds. The local raw receipt is
+`output/verification/75edcdf/portable.log`. The prior 69-file receipt at
+`c225546` remains historical evidence. These checks extend the Linux receipt
+without changing the other-platform qualification boundary.

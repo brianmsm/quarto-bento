@@ -11,6 +11,15 @@
 7. Start with S0: **QMD → BentoDoc → native HTML edits → stable-ID visual overrides → recompute → preserved design**, including stable Bento `docId` and protection against losing edits in the generated HTML. The complete first implementation milestone must *also* prove Bento-authored edits → safe QMD synchronization.
 8. Never rewrite source or discard unsynced edits on render without a checked, approved operation. Make source patches inspectable and recoverable.
 
-**Immediate next action:** continue the integrated S0/S1/S2/S4 work tracked in `docs/IMPLEMENTATION_STATUS.md`, retain the first-slice evidence and proceed through the remaining product acceptance gates. Finalize contracts and schemas using test evidence. The product horizon is in `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the exact v1 release boundary is not frozen**; do not claim a full v1 release without confirming its acceptance scope.
+**Immediate next action:** start from the integrated Linux acceptance receipts
+in `docs/IMPLEMENTATION_STATUS.md` and `docs/evidence/INTEGRATED-LINUX.md`.
+The audited local workflows and portable development artifact are validated;
+do not repeat the original S0/S1/S2/S4 spikes as if they were unimplemented.
+Respect the bounded codecs and remaining gates in `docs/ACCEPTANCE_GAPS.md`.
+The owner currently limits execution tests to local Linux; native macOS/Windows
+and hosted CI are deferred. The product horizon remains
+`docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the
+exact v1 release boundary is not frozen**; do not claim a full v1 release
+without confirming its acceptance scope.
 
 Upstream: https://github.com/nyblnet/bento · Quarto: https://quarto.org/

@@ -145,3 +145,23 @@ exact source review and recomputed native slide. Local screenshots are
 counter: save, reopen, review and Apply did not execute R; Recalculate did.
 Conflicts, stale source/revisions, detached sides, repeated changes and legacy
 journals contradictory to the saved connector have bounded refusal tests.
+
+## Ordinary-heading and mixed-component integration
+
+`2c50c55` verifies graph scopes below headings without explicit source IDs using
+exact original-source heading receipts. Initial projection records separate
+source/native slide identities; relationship review and source patching verify
+that binding against the current QMD hash. Duplicate/forged receipts, title/body
+pending changes and unrelated native IDs cannot be substituted for this proof.
+The exact author commit `7d5cd64` passed independent review with 12 focal tests,
+including additional reviewer-owned source-scope cases.
+
+At `db6ecca`, `tests/component_graph_integration_test.ts` passed in 18 seconds.
+One ordinary-QMD project combines authored paragraph edits, source graph
+geometry and endpoint edits, explicit card/KPI creation and modified native
+backgrounds. Preview leaves QMD unchanged and includes exact identity,
+component and edge patches. Apply plus execution clears pending edits and keeps
+the approved authored content, component objects and saved graph fields.
+Rebuilding without the old HTML preserves the complete emitted native document.
+Graph geometry without a saved override may reflow when topology changes;
+this receipt does not freeze source-generated defaults.
