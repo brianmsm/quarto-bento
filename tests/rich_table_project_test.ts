@@ -35,17 +35,26 @@ async function refuses(fn: () => unknown, code: string) {
   }
   throw new Error(`Expected ${code}`);
 }
+// Freeze the canonical inputs for this test module. Editing the demonstration
+// while a long suite runs must not make its three tests use different fixtures.
+const canonicalInputs = new Map(
+  await Promise.all(
+    ["deck.qmd", "data.csv", "participants.csv"].map(async (name) =>
+      [
+        name,
+        await Deno.readTextFile(
+          new URL(`../examples/rich-tables/${name}`, import.meta.url),
+        ),
+      ] as const
+    ),
+  ),
+);
 async function fixture(dir: string) {
   await Deno.mkdir(dir, { recursive: true });
   for (const name of ["data.csv", "participants.csv"]) {
-    await Deno.copyFile(
-      new URL(`../examples/rich-tables/${name}`, import.meta.url),
-      join(dir, name),
-    );
+    await Deno.writeTextFile(join(dir, name), canonicalInputs.get(name)!);
   }
-  const raw = await Deno.readTextFile(
-    new URL("../examples/rich-tables/deck.qmd", import.meta.url),
-  );
+  const raw = canonicalInputs.get("deck.qmd")!;
   const qmd = raw.replaceAll(
     "#| echo: false\n",
     "#| echo: false\ncat('executed\\n', file='executions.txt', append=TRUE)\n",
@@ -76,7 +85,6 @@ Deno.test("integrated rich table PNG keeps source authority design identity conf
     eq(await count(dir), 2);
     eq(firstImage.type, "image");
     ok(String(firstImage.src).startsWith("data:image/png;base64,"));
-    eq([firstImage.w, firstImage.h], [1120, 260]);
     eq(
       first.diagnostics.filter((d) => d.code === "STATIC_TABLE_PNG_FALLBACK")
         .length,
@@ -90,6 +98,26 @@ Deno.test("integrated rich table PNG keeps source authority design identity conf
       "grouped-maker",
     ]);
     ok(provenance.source?.richTable, "trusted state receipt absent");
+    const receipt = provenance.source.richTable as {
+      width: number;
+      height: number;
+      pixelRatio: number;
+    };
+    eq([firstImage.w, firstImage.h], [receipt.width, receipt.height]);
+    eq([receipt.width, receipt.pixelRatio], [1120, 2]);
+    ok(
+      receipt.height > 0 && receipt.height <= 534,
+      "natural table must fit its frame",
+    );
+    const png = Uint8Array.from(
+      atob(String(firstImage.src).split(",")[1]),
+      (c) => c.charCodeAt(0),
+    );
+    const pngHeader = new DataView(png.buffer, png.byteOffset, png.byteLength);
+    eq([pngHeader.getUint32(16), pngHeader.getUint32(20)], [
+      Number(firstImage.w) * 2,
+      Number(firstImage.h) * 2,
+    ]);
     const again = await renderProject(source);
     eq(await count(dir), 4);
     eq(image(again.state.emitted).src, firstImage.src);
@@ -222,7 +250,10 @@ Deno.test("rich projection rejects stale capture wrong slide duplicate wrapper a
     content.blocks.splice(
       second + 1,
       0,
-      { t: "Para", c: [{ t: "Str", c: "Preceding content" }] } as Node,
+      ...Array.from({ length: 4 }, (_, index): Node => ({
+        t: "Para",
+        c: [{ t: "Str", c: `Preceding content ${index + 1}` }],
+      })),
     );
     await refuses(() => project(content), "cannot fit after preceding content");
     eq(await count(dir), 2);
