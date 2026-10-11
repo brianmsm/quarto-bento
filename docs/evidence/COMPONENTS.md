@@ -13,7 +13,7 @@ deno test --allow-read --allow-write --allow-run --allow-env tests/components_ex
 deno test --allow-read --allow-write --allow-run --allow-env tests/design_test.ts tests/design_execution_test.ts tests/displayed_code_test.ts
 ```
 
-Seven focused component tests prove:
+Focused component tests prove:
 
 - A named two-column layout with identified card children projects to native
   groups/backgrounds. Internal H2 and H3 headings remain on one slide and bind
@@ -39,10 +39,15 @@ Seven focused component tests prove:
   and an installed ordinary Quarto pre-render hook. A producer that creates a
   file does not run; QMD remains byte-identical.
 
-The final focused run passed **20 tests, 0 failures** in 1 minute 31 seconds:
+An earlier isolated run passed **20 tests, 0 failures** in 1 minute 31 seconds:
 seven component tests plus thirteen existing design and displayed-code
 regressions. Type checking, lint and formatting checks also passed. The entire
 repository suite was not run for this isolated component change.
+
+After the final-slot correction and durable widget integration, the
+coordinator's main run passed **12 focused component/widget-project tests**.
+This later integration receipt is separate from the earlier isolated run and the
+latest complete-suite receipt in [the ledger](../IMPLEMENTATION_STATUS.md).
 
 ## Quarto attribute discovery
 
@@ -91,12 +96,13 @@ This prevents later projector branches from silently admitting clipped content.
 
 ## Native readability follow-up
 
-The coordinator inspected `output/playwright/native-components-initial.png`
-and found that proportional fitting still produced unusably small content: a card first projected at full slide width and then fitted into a
-column, shrinking both its height and all descendants. The implementation now
-resolves the final column/card slots before projecting children. Short heading
-and body rows retain 32 px and 26 px fonts, respectively; figures receive the
-remaining vertical space. Fitting never enlarges a text row automatically.
+The coordinator inspected `output/playwright/native-components-initial.png` and
+found that proportional fitting still produced unusably small content: a card
+first projected at full slide width and then fitted into a column, shrinking
+both its height and all descendants. The implementation now resolves the final
+column/card slots before projecting children. Short heading and body rows retain
+32 px and 26 px fonts, respectively; figures receive the remaining vertical
+space. Fitting never enlarges a text row automatically.
 
 Two fixtures were rendered with Quarto 1.10.19 and opened in the pinned native
 editor through Studio in Chromium. Screenshots were actually inspected at the
@@ -115,3 +121,67 @@ text, native template layouts, browser font substitutions and all possible card
 content are not universally measured. Long content which exceeds the bounded
 natural row estimate refuses before publication, preserving the previous state
 and source. Native tables/charts remain rejected in components.
+
+## Native save, source sync and changed-data acceptance
+
+The coordinator also exercised the corrected two-column fixture through the real
+Studio/native editor, rather than only substituting a document in a test. The
+deck retained `docId` `71b2f359-3167-490c-a55e-b23ac4c527ae` throughout:
+
+1. The native text `Literal β result.` was changed to
+   `Updated literal β result.`. **Guardar proyecto** produced revision **3**
+   with one authored pending `html` field change. The QMD was unchanged.
+2. The inspected source proposal patched only that literal body span. Explicit
+   synchronization produced revision **4**. A byte diff against the preserved
+   `before-native-sync.qmd` changes only that text line; the internal headings,
+   component attributes, chunk and source structure remain intact.
+3. The third CSV value changed from **3 to 7**. **Recalcular** produced revision
+   **5**, zero pending edits, the updated literal text and a changed computed
+   figure. Figure geometry remained **x=680, y=250, w=496, h=362**.
+
+The image's complete `src` data URI has these SHA-256 digests; these are hashes
+of that string, not of the decoded SVG bytes:
+
+| Saved state               | SHA-256 of `src`                                                   |
+| ------------------------- | ------------------------------------------------------------------ |
+| Revision 3, original data | `4c545849514e5c0b76f451bdef1059884e7ca0cde5bf1504d5204322e887b309` |
+| Revision 5, changed data  | `4e69b34729c7fff1f214c5d41e4e5c808f0af07d232c0f376b0170f2244ef429` |
+
+The preserved snapshots were independently checked during documentation:
+revision 3 contains exactly the pending literal-body change, revision 5 has no
+pending edits, and both retain the same identity and figure geometry. The
+original input was verified against the real execution fixture in
+`tests/components_execution_test.ts`: CSV header `value` and values `1,2,3`. The
+temporary live CSV now contains `1,2,7` and is not the canonical input.
+
+The coordinator and documentation follow-up actually inspected
+`output/playwright/native-components-corrected.png` and
+`output/playwright/native-components-recomputed.png`. At the native editor's 59%
+zoom, both cards retain readable heading/body text and the figure stays inside
+the right card. The second capture shows the updated literal text and the
+recomputed chart reaching 7. These ignored generated captures and temporary
+snapshots are local evidence, not required source artifacts.
+
+The reproducible source is now
+[`examples/components/deck.qmd`](../../examples/components/deck.qmd) with its
+original [`data.csv`](../../examples/components/data.csv). To try it without
+writing generated state into the example directory:
+
+```sh
+mkdir -p /tmp/qbento-components-example
+cp examples/components/deck.qmd examples/components/data.csv /tmp/qbento-components-example/
+deno task qbento render /tmp/qbento-components-example/deck.qmd
+deno task qbento edit /tmp/qbento-components-example/deck.qmd
+```
+
+The canonical pair was smoke-rendered from a fresh temporary copy on the
+integrated build. It emitted one slide, the original literal body and computed
+`fig-values` SVG at 680/250/496/362 with zero pending edits. Both QMD and CSV
+remained unchanged. This render check adds no new browser interaction claim.
+
+This closes the literal-body native save/sync/recompute and bounded visual
+composition acceptance for this fixture. It does not prove arbitrary rich
+pending edits, inherited parent-style reverse inference, registry/theme
+persistence, unadapted native chart/table placement or other operating systems.
+Unsupported changes remain recoverable pending content and may require a
+diagnostic/resolution before sync or publication.

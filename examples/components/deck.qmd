@@ -1,0 +1,26 @@
+## Results {#results}
+
+::::: {#grid .bento-layout bento-layout-name="two-column"}
+
+:::: {#left .bento-card fill="#eefaff"}
+
+## Internal heading
+
+Literal β result.
+
+::::
+
+:::: {#right .bento-card}
+
+### Computed figure
+
+```{r}
+#| label: fig-values
+#| echo: false
+#| dev: svg
+plot(read.csv("data.csv")$value)
+```
+
+::::
+
+:::::

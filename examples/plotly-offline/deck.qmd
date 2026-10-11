@@ -1,0 +1,17 @@
+---
+title: Integrated Plotly
+---
+
+## Data {#data}
+
+::: {#plot-result}
+
+```{r}
+#| label: widget-values
+#| echo: false
+v <- read.csv("data.csv")
+plotly::plot_ly(x = v$x, y = v$y,
+               type = "scatter", mode = "lines+markers")
+```
+
+:::
