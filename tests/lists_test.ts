@@ -290,3 +290,86 @@ Deno.test("executed list transformations and task checkbox semantics refuse publ
     }
   }
 });
+
+Deno.test("indented root list boundaries agree with Pandoc without splitting nested or loose items", async () => {
+  for (const indentation of [0, 1, 2, 3]) {
+    const pad = " ".repeat(indentation);
+    const body = pad + "- Parent\n" + pad + "  1. Nested first\n" + pad +
+      "  2. Nested second\n" + pad + "- Final\n\n" + pad + "1. Root first\n" +
+      pad + "2. Root second\n";
+    const doc = scanSource(body);
+    eq(doc.blocks.map((b) => b.kind), ["list", "list"]);
+    const proofs = await readSourceInline(doc);
+    eq([...proofs.values()].map((p) => p.html), [
+      "<ul><li>Parent<ol><li>Nested first</li><li>Nested second</li></ol></li><li>Final</li></ul>",
+      "<ol><li>Root first</li><li>Root second</li></ol>",
+    ]);
+    const loose = scanSource(
+      pad + "- First\n\n" + pad + "  Paragraph\n\n" + pad + "  1. Nested\n\n" +
+        pad + "- Final\n",
+    );
+    eq(loose.blocks.map((b) => b.kind), ["list"]);
+    eq((await readSourceInline(loose)).size, 1);
+  }
+});
+Deno.test("marked list consumes its sibling ordinal across render reviewed sync and rebuild", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-list-markers-" }),
+    source = dir + "/deck.qmd";
+  const original =
+    "---\nqbento-annotations: none\n---\n\n## A {#a}\n\n::: {#body}\n\n<!-- qb:first -->\n  - First\n  - Other\n\n  1. Next\n  2. Final\n\n:::\n";
+  try {
+    await Deno.writeTextFile(source, original);
+    const first = await renderProject(source);
+    const slide = first.state.emitted.slides[0];
+    eq(slide.elements.map((e) => e.id), ["a-title", "first", "body/list:2"]);
+    eq(
+      first.state
+        .provenance[targetKey({ slideId: "a", elementId: "body/list:2" })]
+        .source?.blockId,
+      "body/list:2",
+    );
+    const edited = structuredClone(first.state.emitted);
+    edited.slides[0].elements[2].html =
+      "<ol><li>Reviewed</li><li>Final</li></ol>";
+    edited.slides[0].elements[2].x = 337;
+    await saveProject(source, edited, first.state.revision);
+    eq(await Deno.readTextFile(source), original);
+    const plan = await previewSync(source);
+    ok(plan.result.includes("<!-- qb:first -->\n  - First\n  - Other"));
+    eq(
+      scanSource(plan.result).blocks.find((b) => b.id === "first")?.content,
+      scanSource(original).blocks.find((b) => b.id === "first")?.content,
+    );
+    await applySync(source, plan);
+    const second = await renderProject(source);
+    eq(second.state.pending.length, 0);
+    eq(
+      second.state.emitted.slides[0].elements.map((e) => e.id),
+      slide.elements.map((e) => e.id),
+    );
+    eq(second.state.emitted.slides[0].elements[2].x, 337);
+    await Deno.remove(dir + "/deck.bento.html");
+    eq((await renderProject(source)).state.emitted, second.state.emitted);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("source list coverage refuses filters that remove authored lists before publication", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-list-drop-" }),
+    source = dir + "/deck.qmd";
+  const original =
+    "---\nfilters: [drop.lua]\n---\n\n## A {#a}\n\n::: {#list}\n\n- Keep this authored item\n\n:::\n";
+  try {
+    await Deno.writeTextFile(source, original);
+    await Deno.writeTextFile(
+      dir + "/drop.lua",
+      "function BulletList(el) return {} end\n",
+    );
+    await refuses(() => renderProject(source), "UNMAPPED_PROVENANCE");
+    eq(await Deno.readTextFile(source), original);
+    await refuses(() => Deno.stat(dir + "/deck.bento.html"), "NotFound");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

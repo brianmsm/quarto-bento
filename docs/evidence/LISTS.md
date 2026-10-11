@@ -63,3 +63,28 @@ plain-QMD tests) in **56 seconds**. The final additional list test covers real
 Quarto filter alteration and task checkbox refusal. `deno task check`, focused
 lint/format checks and `git diff --check` passed. No full-suite or native browser
 acceptance claim is made by these author-side checks.
+
+## Review hardening
+
+Independent review reproduced marked-list sibling ordinal drift, root lists
+indented by two spaces being conflated, and a Quarto filter silently removing an
+authored list. The follow-up implementation increments source ordinals even when
+a technical marker supplies the native ID, distinguishes root markers by their
+content column, and requires every supported authored source list on a source
+slide to appear in the validated projection. Trailing blank separators remain
+outside list spans so wrapping another sibling does not change an untouched
+list's original-source proof. Tests exercise root indentation from zero through
+three spaces, mixed nested list types, loose paragraphs, marked sibling
+review/rebuild and a real deletion filter. These checks refuse dropped or altered
+semantics before publishing HTML.
+
+The codec synchronizes existing source-backed list objects. Converting unrelated
+paragraph objects into lists, inserting new native-only list objects, and deleting
+an entire source list through the existing element-deletion workflow remain
+explicitly unsupported operations; pending content is retained for source review.
+
+The post-review combined run passed **27/27** (eleven list tests, eleven source
+scanner tests and five plain-QMD tests) in **1 minute 22 seconds**, with zero
+failures. Focused lint/format and `git diff --check` also passed. The independent
+reviewer's original marker, indented-root and filter probes were rerun successfully
+against the corrected implementation.

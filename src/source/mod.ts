@@ -443,8 +443,11 @@ export function scanSource(
       continue;
     }
     if (/^ {0,3}(?:[-+*] |[0-9]+[.)] )/.test(s)) {
-      const rootMarker = /^ {0,3}([-+*]|[0-9]+[.)]) /.exec(s)![1];
-      const ordered = /^[0-9]/.test(rootMarker);
+      const rootMarker = /^( {0,3})([-+*]|[0-9]+[.)])( +)/.exec(s)!;
+      const ordered = /^[0-9]/.test(rootMarker[2]);
+      // Markers before this column belong to the root list. A deeper marker
+      // belongs to an item; changing its type must not split the parent span.
+      let contentIndent = rootMarker[0].length;
       const first = i++;
       while (i < lines.length) {
         if (!lines[i].text.trim()) {
@@ -458,8 +461,11 @@ export function scanSource(
           ) break;
           i = next;
         }
-        const nextMarker = /^([-+*]|[0-9]+[.)]) /.exec(lines[i].text)?.[1];
-        if (nextMarker && /^[0-9]/.test(nextMarker) !== ordered) break;
+        const nextMarker = /^( *)([-+*]|[0-9]+[.)])( +)/.exec(lines[i].text);
+        if (nextMarker && nextMarker[1].length < contentIndent) {
+          if (/^[0-9]/.test(nextMarker[2]) !== ordered) break;
+          contentIndent = nextMarker[0].length;
+        }
         if (
           /^ {0,3}(?:#{1,6}\s|`{3,}|~{3,}|:{3,}|<!--|\$\$\s*$)/.test(
             lines[i].text,
@@ -467,7 +473,11 @@ export function scanSource(
         ) break;
         i++;
       }
-      add("list", first, i - 1);
+      // Blank separators are outside the authored unit, regardless of whether
+      // lookahead found another list kind or a reviewed identity wrapper.
+      let last = i - 1;
+      while (last > first && !lines[last].text.trim()) last--;
+      add("list", first, last);
       continue;
     }
     const first = i++;

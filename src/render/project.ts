@@ -891,10 +891,10 @@ export async function projectAst(
           });
         }
       } else if (["BulletList", "OrderedList"].includes(node.t)) {
+        // Marked lists still consume their source-kind ordinal.
+        listIndex++;
         const id = sourceMarker ??
-          (parentId
-            ? `${parentId}/list:${++listIndex}`
-            : `qb-list-${++counter}`);
+          (parentId ? `${parentId}/list:${listIndex}` : `qb-list-${++counter}`);
         const explicitMarker = sourceMarker;
         sourceMarker = undefined;
         text(id, renderList(node), false, {
@@ -1247,6 +1247,18 @@ export function validateProjectionOrigins(
         sourceId: block.id,
         origin: block.origin,
       };
+    }
+  }
+  // A reader/filter may remove a whole authored list without emitting an
+  // object to validate above. Source coverage is part of fidelity too.
+  for (const block of source.blocks) {
+    if (
+      block.kind === "list" && block.origin === "authored" && block.slideId &&
+      originalHtml(block) !== undefined && !used.has(block.id)
+    ) {
+      throw new Error(
+        "UNMAPPED_PROVENANCE: an authored source list disappeared from executed output; source-transforming filters need an explicit adapter",
+      );
     }
   }
   for (const [slideId, binding] of Object.entries(projection.notes ?? {})) {
