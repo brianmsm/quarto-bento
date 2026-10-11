@@ -74,6 +74,7 @@ Deno.test("native text measurement refuses unfaithful automatic math and documen
       "<code>{{date:yyyy}}</code>",
       "&#36;&#36;x&#36;&#36;",
       "&#123;&#123;page&#125;&#125;",
+      '<a href="https://example.org/{{page}}">Click</a>',
     ]
   ) {
     let refused = false;

@@ -26,7 +26,7 @@ export async function measureNativeText(
     const plain = html.replace(/<[^>]*>/g, "");
     if (
       /\{\{\s*(?:page|pages|title|date|time|author|company|subject|event)(?::[^}]*?)?\s*\}\}/i
-        .test(plain) ||
+        .test(html) ||
       /\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/.test(
         plain,
       )
