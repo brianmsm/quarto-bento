@@ -315,3 +315,79 @@ are `output/playwright/components-native-*.png`; the machine receipt is
 sync is `e414126fd271be8e8aa913d38981f29216c83ff1346e7e021801332fe9d90f5b`.
 These are native editor and Linux browser observations; no desktop file dialog,
 other OS or public release is implied.
+
+## Incremental weak-heading retained-appearance receipt
+
+The bounded weak-heading correction is caller
+`dd9e2bf85cbbad8bedf4e5c8e827c8a297c1a418`, using the shared source-scope helper
+from graph checkpoint `7d5cd64c2d6263ea4de28fa556e8d27d7efddef7` (helper blob
+`24e78e207aa40d7644d594738b9c63a1df0e870d`). It changes only retained KPI scope
+resolution and dedicated regression tests; it does not change the renderer,
+measurement guards, source patches or state schema.
+
+A QMD heading without an explicit ID has an internal source identity that is not
+the native slide ID. The original retained-appearance hook treated those
+identities as equal, causing a valid saved font size 12 and line height 1.6 to
+be ignored during recomputation. A long computed value then failed the default
+font-size-52 capacity check even though the native saved design fit.
+
+The corrected hook first requires one exact authored generated-background
+receipt for the identified KPI wrapper, with the expected rectangular background
+and group in the generated baseline. That receipt supplies the expected native
+slide. The shared verifier requires the unique original authored heading
+receipt, exact heading identity/content/codec, native scope and baseline title
+type. For a weak heading, heading and background receipts must match the current
+QMD hash. Each role still requires its own exact source wrapper, paragraph,
+parent, hash and native-slide receipt. Pending component roles retain their
+explicit membership contract. Native IDs repeated on another slide and native
+slide-array order cannot select an appearance.
+
+The supported positive case keeps QMD bytes unchanged while external data used
+by inline R changes. The existing weak source-identity guard remains intact:
+changing QMD bytes does not reuse the weak heading's old visual receipt. A short
+changed source still refuses with `AMBIGUOUS_IDENTITY` and preserves source,
+saved state and published HTML byte for byte. The original literal long-value
+source-change repro remains a safe refusal until source identity is explicitly
+acquired; this correction does not promise a different diagnostic order for that
+unsupported identity transition.
+
+The focused caller run passed **6/6** tests in 41s:
+
+```sh
+deno test --allow-read --allow-write --allow-env --allow-run \
+  --allow-net=127.0.0.1 tests/kpi_weak_heading_test.ts \
+  tests/kpi_appearance_binding_test.ts tests/kpi_retained_flow_test.ts
+```
+
+The new real fixture has two ordinary headings and source-backed computed
+indicators. Fresh 200/210-word values measure 215px/234px inside the saved 310px
+box at font size 12 and line height 1.6. Recompute and rebuild after deleting
+the HTML retain the complete native document, changing only fresh computed HTML;
+source/default baseline font size 52 and line height 1.25 remain unchanged. The
+R execution counter advances only for each requested render, with no execution
+during Save, scope checks or measurement.
+
+Dedicated negative cases cover detached, missing, retyped, duplicated and forged
+heading receipts, incorrect content/hash/codec/identity, ambiguous background
+ownership, a stale background receipt, repeated native IDs on another slide and
+reordered slide arrays. Type checking all `src/**/*.ts`, targeted lint/format
+and whitespace checks passed.
+
+Independent read-only review closed green on exact `dd9e2bf`: **5/5** focal
+tests in 27s plus type checking, a separate real two-slide data-only fixture,
+HTML-free rebuild, a further fresh 220-word result, exact native preservation,
+strict source-owned `h="470"` refusal and forged/cross-slide receipt checks. The
+explicit-frame fixture measures 215px in the saved native box but still refuses
+source frame capacity, leaving source, state and output byte-exact. Local
+receipts are `/tmp/qbento-component-review-dd9-weakheading-focal.log`,
+`/tmp/qbento-component-review-weakheading-final.log` and
+`/tmp/qbento-component-review-weakheading-owned.log`. This is Linux-local
+render/headless evidence; foreground desktop and final integrated-suite
+acceptance remain separate.
+
+The pending-component caller recheck on the same runtime passed **10/10** in
+1m33s using `tests/component_creation_test.ts` and
+`tests/component_studio_test.ts`. It includes ordinary QMD identity acquisition
+only in reviewed sync, exact promotion/rebuild, incomplete recovery, approved
+parent deletion, computed conversion and failed-render retry. Its local log is
+`/tmp/qbento-kpi-weak-heading-components.log`.
