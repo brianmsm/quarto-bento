@@ -250,6 +250,12 @@ export function captureEdits(
           },
           "delete-element",
         );
+        const deletion = state.pending.find((p) =>
+          p.kind === "delete-element" && equal(p.target, target)
+        );
+        if (deletion) {
+          deletion.restoreOrder ??= oldSlide.elements.map((item) => item.id);
+        }
       } else capture(target, oldEl, el, ["id"]);
     }
     for (
@@ -485,11 +491,11 @@ export function compose(
   state.provenance = clone(provenance);
   state.ownership = clone(ownership);
   const retained: Change[] = [];
-  // A pending deletion that is now reflected in source also retires its design.
-  // Unrequested source removals still produce recoverable orphan conflicts.
+  // Slide deletion keeps its original confirmation behavior. Element retirement
+  // is approved explicitly by prepareApprovedSync after fresh execution; an
+  // independent source removal cannot authorize discarding its retained edits.
   const deleted = state.pending.filter((p) =>
-    (p.kind === "delete-slide" || p.kind === "delete-element") &&
-    !entity(generated, p.target)
+    p.kind === "delete-slide" && !entity(generated, p.target)
   );
   const underDeleted = (target: Target) =>
     deleted.some((p) =>
@@ -587,7 +593,10 @@ export function compose(
         : { present: false };}
     // A matching source independently confirms that particular edit; other pending fields survive.
     const creation = p.kind === "create-slide" || p.kind === "create-element";
-    if (!creation && p.origin !== "detached" && equal(source, p.after)) {
+    if (
+      !creation && p.origin !== "detached" && equal(source, p.after) &&
+      p.kind !== "delete-element"
+    ) {
       continue;
     }
     p.source = source;
@@ -600,6 +609,11 @@ export function compose(
       p.status = "conflict";
       p.reason =
         "A source object now occupies this pending creation ID. Explicitly promote the approved synchronized creation to preserve its design; coincident IDs are not proof of approval.";
+    }
+    if (p.kind === "delete-element" && !obj) {
+      p.status = "conflict";
+      p.reason =
+        "The source element is absent without verified deletion approval. Retained content and design remain recoverable; review or recover the source before retiring them.";
     }
     if (p.kind === "field" && !obj) {
       p.status = "conflict";
@@ -805,10 +819,16 @@ export function validateState(value: unknown): asserts value is ProjectState {
       !path(p.path) || !fieldValue(p.before) || !fieldValue(p.after) ||
       (p.source !== undefined && !fieldValue(p.source)) ||
       (p.restoreOrder !== undefined &&
-        (p.kind !== "delete-slide" || !Array.isArray(p.restoreOrder) ||
+        (!["delete-slide", "delete-element"].includes(p.kind) ||
+          !Array.isArray(p.restoreOrder) ||
           !p.restoreOrder.every((id) => typeof id === "string" && id) ||
           new Set(p.restoreOrder).size !== p.restoreOrder.length ||
-          !p.target.slideId || !p.restoreOrder.includes(p.target.slideId))) ||
+          !p.target.slideId ||
+          !p.restoreOrder.includes(
+            p.kind === "delete-element"
+              ? p.target.elementId!
+              : p.target.slideId,
+          ))) ||
       ![
         "field",
         "create-slide",

@@ -433,7 +433,7 @@ Deno.test("creation promotion requires explicit matching approval, identity and 
   eq(compose(promoteCreated(saved, generated, [id]), generated).document, edit);
   eq(saved.pending.length, 1);
 });
-Deno.test("source confirming a pending deletion retires associated design while unrelated design survives", () => {
+Deno.test("unapproved source-element removal retains deletion and design while unrelated design survives", () => {
   const edit = doc();
   edit.slides[0].elements[0].x = 999;
   edit.slides[0].elements[1].x = 777;
@@ -442,9 +442,16 @@ Deno.test("source confirming a pending deletion retires associated design while 
   saved = captureEdits(saved, edit);
   const generated = doc();
   generated.slides[0].elements.shift();
-  const out = compose(saved, generated);
-  eq(out.state.pending.length, 0);
-  eq(out.state.overrides.length, 1);
+  rejects(() => compose(saved, generated), "MERGE_CONFLICT");
+  const out = compose(saved, generated, undefined, undefined, {
+    strict: false,
+  });
+  assert(
+    out.state.pending.some((p) =>
+      p.kind === "delete-element" && p.status === "conflict"
+    ),
+  );
+  eq(out.state.overrides.length, 2);
   eq(out.document.slides[0].elements[0].x, 777);
 });
 Deno.test("repeated non-strict conflict previews retain the original orphan snapshot", () => {

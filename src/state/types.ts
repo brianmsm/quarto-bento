@@ -59,7 +59,7 @@ export interface Change {
   status: "bento-ahead" | "conflict" | "bento-only";
   before: Value;
   after: Value;
-  /** Observed slide order before a pending deletion, for reversible restoration. */
+  /** Observed slide or element order before a pending deletion, for reversible restoration. */
   restoreOrder?: string[];
   source?: Value;
   reason?: string;

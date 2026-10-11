@@ -229,6 +229,44 @@ function resolveCandidate(
     if (choice.action === "keep-source") {
       state.pending = state.pending.filter((p) => p.id !== pending.id);
       if (
+        pending.kind === "delete-element" && pending.target.elementId &&
+        entity(projection.document, pending.target)
+      ) {
+        // Removing only the deletion lets compose restore pending text and
+        // visual overrides; never restore a bare generated-baseline snapshot.
+        const slideId = pending.target.slideId!,
+          elementId = pending.target.elementId;
+        const order = state.elementOrders.find((item) =>
+          item.slideId === slideId
+        );
+        const ids = (order?.ids ?? state.emitted.slides.find((slide) =>
+          slide.id === slideId
+        )?.elements.map((element) =>
+          element.id
+        ) ?? [])
+          .filter((id) => id !== elementId);
+        const original = pending.restoreOrder ??
+          projection.document.slides.find((slide) => slide.id === slideId)!
+            .elements.map((element) => element.id);
+        const position = original.indexOf(elementId);
+        const following = original.slice(position + 1).find((id) =>
+          ids.includes(id)
+        );
+        const preceding = original.slice(0, position).reverse().find((id) =>
+          ids.includes(id)
+        );
+        const index = following
+          ? ids.indexOf(following)
+          : preceding
+          ? ids.indexOf(preceding) + 1
+          : ids.length;
+        ids.splice(index, 0, elementId);
+        state.elementOrders = state.elementOrders.filter((item) =>
+          item.slideId !== slideId
+        );
+        state.elementOrders.push({ slideId, ids });
+      }
+      if (
         pending.kind === "orphan" || pending.kind === "create-slide" ||
         pending.kind === "create-element"
       ) {

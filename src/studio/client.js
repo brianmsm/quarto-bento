@@ -234,6 +234,8 @@ function showPatches(plan) {
           after = document.createElement("pre");
         title.textContent = step.operation.type === "delete-slide"
           ? `Eliminar ${step.operation.id} del QMD`
+          : step.operation.type === "delete-block"
+          ? `Eliminar elemento ${step.operation.blockId} del QMD`
           : `Estructura · ${step.operation.type}`;
         before.textContent = edit.expected;
         before.className = "before";
@@ -246,7 +248,7 @@ function showPatches(plan) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
-    title.textContent = "QMD propuesto con cambios de diapositivas";
+    title.textContent = "QMD propuesto con los cambios revisados";
     result.textContent = plan.result;
     section.append(title, result);
     $("patches").append(section);
@@ -260,7 +262,7 @@ async function prepareSyncPreview() {
   const boxes = [...$("delete-confirmations").querySelectorAll("input")];
   if (boxes.some((box) => !box.checked)) {
     $("sync-note").textContent =
-      "Confirma las eliminaciones para preparar la propuesta, o restáuralas desde Diapositivas.";
+      "Confirma cada eliminación para preparar la propuesta. Puedes restaurar elementos desde Comparar con QMD y diapositivas desde Diapositivas.";
     return;
   }
   $("sync-note").textContent = "Preparando los cambios propuestos…";
@@ -308,7 +310,7 @@ $("review").onclick = async () => {
     $("delete-confirmations").replaceChildren();
     for (
       const change of saved.pending.filter((item) =>
-        item.kind === "delete-slide"
+        item.kind === "delete-slide" || item.kind === "delete-element"
       )
     ) {
       const label = document.createElement("label"),
@@ -319,7 +321,9 @@ $("review").onclick = async () => {
       label.append(
         checkbox,
         document.createTextNode(
-          ` Confirmo eliminar la diapositiva ${change.target.slideId} y su contenido del QMD`,
+          change.kind === "delete-element"
+            ? ` Confirmo eliminar el elemento ${change.target.elementId} de la diapositiva ${change.target.slideId} y su bloque del QMD`
+            : ` Confirmo eliminar la diapositiva ${change.target.slideId} y su contenido del QMD`,
         ),
       );
       $("delete-confirmations").append(label);
@@ -518,7 +522,12 @@ function showChanges(container, items, selectable = false) {
       for (const action of ["", ...choices]) {
         const option = document.createElement("option");
         option.value = action;
-        option.textContent = actions[action] || "Mantener pendiente";
+        option.textContent =
+          change.kind === "delete-element" && action === "keep-source"
+            ? change.source?.present === false
+              ? "Descartar esta eliminación pendiente; recuperar su fuente desde historial"
+              : "Restaurar elemento con su texto y diseño pendientes"
+            : actions[action] || "Mantener pendiente";
         select.append(option);
       }
       select.onchange = () => {

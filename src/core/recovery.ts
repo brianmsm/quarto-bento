@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { projectPaths } from "./project.ts";
 import { validateSyncApproval } from "./sync.ts";
+import { hashSource } from "../source/mod.ts";
 import {
   type AnnotationSummary,
   validateAnnotationSummary,
@@ -903,6 +904,11 @@ async function inspectSync(
       approval.sourceHash !== j.resultHash ||
       approval.stateRevision !== j.stateRevision + 1 ||
       approval.planHash !== j.planHash ||
+      (approval.deletionStateHash !== undefined &&
+        approval.deletionStateHash !==
+          hashSource(
+            canonical({ ...clone(baseline), revision: baseline.revision + 1 }),
+          )) ||
       !equal(
         approval.expectedPending.map((p) => p.id),
         j.selectedChangeIds,

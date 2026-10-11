@@ -71,6 +71,7 @@ import {
   registryEqual,
 } from "./annotations.ts";
 import { applyStructure, previewStructure } from "../source/structure.ts";
+import { sourceDeletion } from "../source/deletion.ts";
 import type {
   StructureOperation,
   StructurePreview,
@@ -89,6 +90,8 @@ export interface SyncApproval {
   expectedPending: Change[];
   creationChangeIds: string[];
   normalizations: SyncNormalization[];
+  /** Exact post-apply state before any element deletion may retire retained edits. */
+  deletionStateHash?: string;
 }
 export interface SyncApprovalEnvelope {
   format: "qbento-sync-approval/1";
@@ -205,13 +208,17 @@ export function validateSyncApproval(
     typeof a.sourceHash !== "string" || typeof a.planHash !== "string" ||
     !Number.isSafeInteger(a.stateRevision) || a.stateRevision < 1 ||
     !Array.isArray(a.expectedPending) || !Array.isArray(a.creationChangeIds) ||
-    !Array.isArray(a.normalizations)
+    !Array.isArray(a.normalizations) ||
+    (a.deletionStateHash !== undefined &&
+      !/^[a-f0-9]{64}$/.test(a.deletionStateHash))
   ) fail("INVALID_APPROVAL", "Sync approval metadata is malformed.");
   const ids = a.expectedPending.map((p) => p?.id);
   if (
     ids.some((id) => typeof id !== "string") ||
     new Set(ids).size !== ids.length ||
     new Set(a.creationChangeIds).size !== a.creationChangeIds.length ||
+    (a.expectedPending.some((p) => p.kind === "delete-element") &&
+      !a.deletionStateHash) ||
     a.creationChangeIds.some((id) =>
       !a.expectedPending.some((p) =>
         p.id === id && ["create-slide", "create-element"].includes(p.kind)
@@ -261,6 +268,18 @@ export function prepareApprovedSync(
       );
     }
   }
+  const elementDeletions = a.expectedPending.filter((p) =>
+    p.kind === "delete-element"
+  );
+  if (
+    elementDeletions.length &&
+    hashSource(canonical(state)) !== a.deletionStateHash
+  ) {
+    fail(
+      "STALE_APPROVAL",
+      "The saved project changed after approving source-element deletion; preserve the pending edits and recover/review before rendering.",
+    );
+  }
   const prepared = clone(state);
   for (const n of a.normalizations) {
     prepared.pending.find((p) => p.id === n.changeId)!.after = clone(n.after);
@@ -282,6 +301,37 @@ export function prepareApprovedSync(
       )?.elements ?? []
     ) {
       delete prepared.provenance[targetKey({ slideId, elementId: element.id })];
+    }
+  }
+  for (const change of elementDeletions) {
+    const { slideId, elementId } = change.target;
+    const slide = generated.slides.find((item) => item.id === slideId);
+    if (
+      !slideId || !elementId || !slide ||
+      slide.elements.some((item) => item.id === elementId)
+    ) {
+      fail(
+        "STALE_APPROVAL",
+        "Fresh execution must retain the slide and omit exactly the approved source element before its pending content and design are retired.",
+      );
+    }
+    const covers = (target: Change["target"]) =>
+      target.slideId === slideId && target.elementId === elementId;
+    delete prepared.provenance[targetKey(change.target)];
+    delete prepared.ownership[targetKey(change.target)];
+    prepared.overrides = prepared.overrides.filter((item) =>
+      !covers(item.target)
+    );
+    prepared.bentoOnly = prepared.bentoOnly.filter((item) =>
+      !(item.slideId === slideId && item.element.id === elementId)
+    );
+    prepared.pending = prepared.pending.filter((item) => !covers(item.target));
+    for (
+      const order of prepared.elementOrders.filter((item) =>
+        item.slideId === slideId
+      )
+    ) {
+      order.ids = order.ids.filter((id) => id !== elementId);
     }
   }
   return promoteCreated(prepared, generated, a.creationChangeIds);
@@ -460,7 +510,14 @@ async function buildPlan(
     confirmedDeleteIds = options.confirmedDeleteIds ?? [];
   if (
     new Set(ids).size !== ids.length ||
-    confirmedDeleteIds.some((id) => !ids.includes(id))
+    new Set(confirmedDeleteIds).size !== confirmedDeleteIds.length ||
+    confirmedDeleteIds.some((id) =>
+      !ids.includes(id) ||
+      !state.pending.some((p) =>
+        p.id === id &&
+        ["delete-slide", "delete-element"].includes(p.kind)
+      )
+    )
   ) {
     fail(
       "INVALID_SELECTION",
@@ -475,6 +532,20 @@ async function buildPlan(
     }
     return p;
   });
+  if (
+    selected.some((change) =>
+      change.kind === "delete-element" &&
+      state.pending.some((pending) =>
+        pending.kind === "delete-slide" &&
+        pending.target.slideId === change.target.slideId
+      )
+    )
+  ) {
+    fail(
+      "OVERLAPPING_SOURCE_DELETE",
+      "This element belongs to a slide also marked for deletion. Restore the pending element deletion through Compare with QMD before reviewing the slide deletion, or restore the slide before reviewing the element. No QMD changes are proposed.",
+    );
+  }
   const changes: SyncItem[] = [],
     normalizations: SyncNormalization[] = [],
     operations: StructureOperation[] = [],
@@ -497,6 +568,15 @@ async function buildPlan(
   };
   // Existing text edits first, then source creation/deletion, finally the requested final order.
   for (const change of selected) {
+    // Deletion retires this object's whole pending content after fresh execution;
+    // never publish an intermediate text/attribute edit to the source being removed.
+    if (
+      change.kind === "field" &&
+      selected.some((item) =>
+        item.kind === "delete-element" &&
+        canonical(item.target) === canonical(change.target)
+      )
+    ) continue;
     if (change.kind === "field") {
       const key = targetKey(change.target);
       if (
@@ -804,6 +884,71 @@ async function buildPlan(
         kind: "slide-order",
         before: canonical(change.before.value),
         after: canonical(change.after.value),
+        html: "",
+      });
+    } else if (change.kind === "delete-element") {
+      if (!confirmedDeleteIds.includes(change.id)) {
+        fail(
+          "CONFIRM_DELETE_REQUIRED",
+          "Deleting a source element requires its own explicit confirmedDeleteIds selection.",
+        );
+      }
+      const key = targetKey(change.target);
+      const baseline = state.generatedBaseline.slides.find((slide) =>
+        slide.id === change.target.slideId
+      )
+        ?.elements.find((element) => element.id === change.target.elementId);
+      if (
+        !change.target.slideId || !change.target.elementId || !baseline ||
+        change.origin !== "authored" ||
+        state.provenance[key]?.origin !== "authored" ||
+        !change.before.present || change.after.present ||
+        canonical(change.before.value) !== canonical(baseline)
+      ) {
+        fail(
+          "COMPUTED_SYNC_FORBIDDEN",
+          "Element deletion requires exactly one existing authored source object; computed or detached objects cannot delete their producer.",
+        );
+      }
+      const hashes = new Set(
+        Object.values(state.provenance).map((proof) => proof.source?.hash),
+      );
+      if (hashes.size !== 1 || !hashes.has(hashSource(text))) {
+        fail(
+          "STALE_SOURCE",
+          "QMD differs from the executed source baseline. Recalculate and review before deleting a source element; pending edits are retained.",
+        );
+      }
+      const { block } = chooseBlock(text, state, change, [
+        "paragraph",
+        "code",
+        "math",
+      ]);
+      const deletion = sourceDeletion(scanSource(text), block.id);
+      if (
+        block.slideId !== change.target.slideId ||
+        Object.entries(state.provenance).some(([otherKey, proof]) =>
+          otherKey !== key && typeof proof.source?.blockId === "string" &&
+          deletion.removedIds.includes(proof.source.blockId)
+        )
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "This source unit is shared by another object; delete or edit its structure explicitly in QMD.",
+        );
+      }
+      operations.push({
+        type: "delete-block",
+        blockId: block.id,
+        confirmed: true,
+      });
+      changes.push({
+        changeId: change.id,
+        target: change.target,
+        blockId: block.id,
+        kind: "delete-element",
+        before: deletion.expected,
+        after: "",
         html: "",
       });
     } else if (change.kind === "delete-slide") {
@@ -1115,6 +1260,17 @@ export async function applySync(
         ),
         creationChangeIds: verified.creationChangeIds,
         normalizations: verified.normalizations,
+        ...(verified.selectedChangeIds.some((id) =>
+            state.pending.some((p) =>
+              p.id === id && p.kind === "delete-element"
+            )
+          )
+          ? {
+            deletionStateHash: hashSource(
+              canonical({ ...clone(state), revision: state.revision + 1 }),
+            ),
+          }
+          : {}),
       };
       const envelope: SyncApprovalEnvelope = {
         format: "qbento-sync-approval/1",

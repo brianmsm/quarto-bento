@@ -1,6 +1,11 @@
 /** Explicit, review-only structural operations over original QMD source sections. */
 import { hashSource, scanSource, sliceBytes, SourceError } from "./mod.ts";
 import type { SourceBlock, SourceDocument, SourceSlide, Span } from "./mod.ts";
+import {
+  assertDeletionReferences,
+  sourceDeletion,
+  verifySourceDeletion,
+} from "./deletion.ts";
 
 export type StructureOperation =
   | {
@@ -23,6 +28,7 @@ export type StructureOperation =
   }
   | { type: "reorder-slides"; ids: string[] }
   | { type: "delete-slide"; id: string; confirmed: true }
+  | { type: "delete-block"; blockId: string; confirmed: true }
   | { type: "pin-identities"; bindings: { blockId: string; id: string }[] };
 export interface StructuralEdit {
   span: Span;
@@ -78,48 +84,6 @@ function uniqueSlide(doc: SourceDocument, id: string): SourceSlide {
     );
   }
   return slides[0];
-}
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-/** Check authored inline HTML links as well as Markdown references. */
-function hasHtmlReference(text: string, id: string): boolean {
-  for (
-    const tag of text.matchAll(/<[a-z](?:[^"'<>]|"[^"]*"|'[^']*')*>/gi)
-  ) {
-    for (
-      const attribute of tag[0].matchAll(
-        /\s([^\s"'<>/=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g,
-      )
-    ) {
-      if (!["href", "xlink:href"].includes(attribute[1].toLowerCase())) {
-        continue;
-      }
-      const value = (attribute[2] ?? attribute[3] ?? attribute[4]).replace(
-        /&#(?:x([\da-f]+)|(\d+));?|&(num|colon|period|lowbar|hyphen);/gi,
-        (_, hex, decimal, named) => {
-          if (named) {
-            return ({
-              num: "#",
-              colon: ":",
-              period: ".",
-              lowbar: "_",
-              hyphen: "-",
-            } as Record<string, string>)[named.toLowerCase()];
-          }
-          const code = parseInt(hex ?? decimal, hex ? 16 : 10);
-          return code <= 0x10ffff ? String.fromCodePoint(code) : "\ufffd";
-        },
-      ).trim();
-      if (!value.startsWith("#")) continue;
-      try {
-        if (decodeURIComponent(value.slice(1)) === id) return true;
-      } catch {
-        // Invalid percent escapes cannot resolve to this source identity.
-      }
-    }
-  }
-  return false;
 }
 /** A preceding technical marker travels with the heading it identifies. */
 function sectionSpans(doc: SourceDocument): Map<string, Span> {
@@ -394,20 +358,24 @@ function validateStep(
       }
       const rest = sliceBytes(doc.text, { start: 0, end: span.start }) +
         sliceBytes(doc.text, { start: span.end, end: doc.byteLength });
-      for (const block of members.filter((b) => b.explicitId)) {
-        const id = escapeRegex(block.explicitId!);
-        if (
-          new RegExp(
-            `(?:@${id}(?:\\.(?![\\w:.-])|(?![\\w:.-]))|\\]\\(\\s*#${id}(?:\\s|\\)))`,
-          ).test(rest) || hasHtmlReference(rest, block.explicitId!)
-        ) {
-          fail(
-            "shared-reference",
-            `Other source references ${block.explicitId}; deletion requires dependency resolution.`,
-          );
-        }
-      }
+      assertDeletionReferences(
+        rest,
+        members.flatMap((block) => block.explicitId ? [block.explicitId] : []),
+      );
       return [{ span, expected: sliceBytes(doc.text, span), replacement: "" }];
+    }
+    case "delete-block": {
+      if (operation.confirmed !== true) {
+        fail(
+          "confirmation-required",
+          "Deleting source requires an explicit confirmed operation.",
+        );
+      }
+      const { span, expected, replacement } = sourceDeletion(
+        doc,
+        operation.blockId,
+      );
+      return [{ span, expected, replacement }];
     }
     case "pin-identities": {
       const used = new Set(doc.blocks.map((b) => b.id)),
@@ -527,6 +495,9 @@ function verifyResult(
         "Deletion changed unrelated slide boundaries.",
       );
     }
+    sameProducerOrder(before, after);
+  } else if (operation.type === "delete-block") {
+    verifySourceDeletion(before, after, operation.blockId);
     sameProducerOrder(before, after);
   } else {
     // Pinning changes identity metadata, never block content, execution or order.
