@@ -4,7 +4,7 @@ This slice projects an identified `.bento-chart` wrapper with
 `bento-chart-kind="bar"` or `"line"` and exactly one simple data table to a real
 native Bento `chart` object. Verified with Linux, Quarto 1.10.19, R/knitr, Deno
 2.9.6 and Bento revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`. Native
-browser visual acceptance is a separate validation layer.
+browser visual acceptance is recorded separately below.
 
 ## The pinned runtime, rather than the nominal ECharts schema
 
@@ -129,10 +129,36 @@ Run the focused tests with:
 deno test --allow-read --allow-write --allow-env --allow-run tests/chart_test.ts tests/design_test.ts tests/state_test.ts
 ```
 
+## Integrated native acceptance
+
+`examples/native-charts/{deck.qmd,data.csv}` is the reproducible source fixture.
+The coordinator opened its real Studio in explicitly headless Chromium and
+visually inspected the authored bar chart: Alpha's negative Effect, its positive
+Other value, and Beta's zero Effect and positive Other value retained their
+signs, category labels and legend.
+
+Using native position controls, the computed line chart was moved to
+`x=120,y=205,w=1020,h=460` and saved. After changing the CSV from categories
+`[Alpha,Beta]`, values `[-2.5,1.25]` to `[Alpha,Gamma]`, values `[-2.5,4.75]`,
+Recalcular produced the new labels and line. The durable before/after states
+(revisions 3 and 4) had identical geometry, no pending edits and docId
+`468de181-ec65-4ad0-bb29-3014cc56687d`. Native presentation at 1280 by 720 rendered
+the updated chart, and hovering Gamma displayed `N: 4.75`.
+
+Captured and visually inspected local artifacts:
+`output/playwright/native-chart-bars.png`, `native-chart-recomputed.png`, and
+`native-chart-presenter-tooltip.png`. This demonstrates native editor,
+presentation, hover and changed-data preservation for the supported fixture;
+it does not broaden the numeric/schema limits above.
+
+The integration regression additionally executes Quarto with a native chart or
+table nested inside a card. Both refuse before HTML publication, retaining the
+original QMD, until an appropriate internal-layout adapter exists.
+
 The nominal ECharts categorical
 [bar](https://echarts.apache.org/handbook/en/how-to/chart-types/bar/basic-bar/)
 and [axis](https://echarts.apache.org/handbook/en/concepts/axis/) shapes
 informed inspection, but the pinned Bento implementation above is the authority
-for the supported runtime behavior. This slice does not claim native browser
-visual acceptance, general ECharts compatibility, arbitrary fonts or chart
+for the supported runtime behavior. This slice does not claim general ECharts
+compatibility, arbitrary fonts or chart
 formatting, missing-data support, or reverse table/code synchronization.

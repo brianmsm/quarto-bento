@@ -1,0 +1,22 @@
+---
+title: Tablas con datos locales
+---
+
+## Tabla editorial {#editorial}
+
+::: {#authored-table}
+| Grupo | N |
+| :--- | ---: |
+| Alpha | 12 |
+| Beta | 5 |
+:::
+
+## Tabla calculada {#calculated}
+
+::: {#computed-table}
+```{r}
+#| label: table-maker
+#| echo: false
+knitr::kable(read.csv("data.csv"), format="pipe", align=c("l", "r"))
+```
+:::

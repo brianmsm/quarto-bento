@@ -85,3 +85,15 @@ Types whose internal metrics are not adapted (including native tables/charts,
 embeds and raw SVG objects) refuse `COMPONENT_CONTENT_LAYOUT_UNSUPPORTED` inside
 these components. Static computed SVG projected as an image remains supported.
 This prevents later projector branches from silently admitting clipped content.
+
+## Coordinator visual finding: default composition still open
+
+The integrated two-column fixture with a literal heading/body card and an
+R-generated SVG card was rendered in native Chromium and visually inspected.
+`output/playwright/native-components-initial.png` shows that the card's content
+was proportionally reduced again when the completed card entered its column.
+The resulting text and figure were too small, despite fitting inside their
+boxes. This is an outstanding composition issue, not visual acceptance. The
+follow-up must lay out children in their final column frame and recheck both
+code lines and text/figure readability. The earlier safe-sync and provenance
+evidence remains valid within its stated scope.

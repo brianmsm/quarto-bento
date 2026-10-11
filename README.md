@@ -43,9 +43,14 @@ Capture native local edits explicitly with `deno task qbento capture path.qmd
 [edited-copy.html]` before regeneration. A changed uncaptured output is refused.
 
 Currently demonstrated projection: explicit slide headings, supported rich text
-in identified fenced divs, displayed code, and R-generated SVG figures.
+in identified fenced divs, displayed code, identified display equations and
+speaker notes, R-generated SVG figures, plain tables and bounded native charts.
+Reproducible examples include `examples/semantic-roundtrip`,
+`examples/native-tables` and `examples/native-charts`.
 Unknown conversions refuse rather than
-invent a result. Studio supports text/structural review and fresh conflict resolution. The guarded
+invent a result. Studio supports text/structural review, reversible slide actions
+and fresh conflict resolution. Cards and named two-column components have
+executed integration; their default visual composition is being refined. The guarded
 `qbento-html` extension executes Quarto once per render (verified on Linux).
 The static standalone/PDF workflow has [offline browser evidence](docs/evidence/OFFLINE-PDF.md).
 Broader semantic/content adapters, enhanced Presenter and native cross-platform

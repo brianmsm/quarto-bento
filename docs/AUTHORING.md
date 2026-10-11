@@ -8,20 +8,21 @@
 2. **Declarative components:** QMD declares the *semantic role* of a visual object; Studio owns most styling.
 3. **Advanced QMD:** explicitly declare geometry/styles/effects; Studio can subsequently change these with field-level pending sync.
 
-### Example: layout, chart and text card
+### Example: layout, computed figure and text card
 
 ````markdown
 ## Resultados {#resultados}
 
 :::: {#results-grid .bento-layout bento-layout-name="two-column"}
 
-::: {#effects-chart .bento-chart}
+::: {#effects-figure .bento-card}
 
 ```{r}
 #| label: fig-effects
 #| echo: false
+#| dev: svg
 
-plot_effects(modelo)
+plot(c(0.18, 0.32, 0.47))
 ```
 
 :::
@@ -46,6 +47,10 @@ Here `β = .32` is a **literal**, not computed. For data-driven text, use a Quar
 ```
 
 With `beta_indirecto` computed upstream, changing the data updates the displayed value while retaining its visual design.
+
+This example uses a computed SVG image inside a card. Native `.bento-chart`
+instead consumes explicit simple table data and currently belongs outside
+cards/layouts; see its implemented contract below.
 
 ### Component vocabulary (target API)
 
@@ -124,6 +129,39 @@ Texto de la tarjeta.
 Attributes declared explicitly in QMD carry source ownership: when Bento changes their values, Studio shows pending sync for those exact fields. Without explicit attributes, geometry and styling are stored in `.qbento/`. Changes must not silently overwrite either source.
 
 ## ID and grouping conventions
+
+### Tables and native charts (implemented subset)
+
+One plain pipe table in an identified div projects to a native table. Literal
+cells retain their exact text; an identified wrapper around one labelled
+`knitr::kable(..., format="pipe")` producer retains computed provenance.
+Geometry and table-wide styles persist across data changes. Cell edits stay
+recoverable as pending changes; reverse cell-to-QMD synchronization is not yet
+implemented. Rich cells, captions, spans and unfaithful initial layout refuse.
+See [table limits and native evidence](evidence/TABLES.md) and
+`examples/native-tables/deck.qmd`.
+
+For a native chart, declare its kind and give it a table with an empty category
+header and named numeric series:
+
+```markdown
+::: {#effects .bento-chart bento-chart-kind="bar"}
+| | Effect | Other |
+| --- | ---: | ---: |
+| Alpha | -2.5 | 1.25 |
+| Beta | 0 | 3 |
+:::
+```
+
+`bar` and straight `line` are supported in the bounded numeric/label subset in
+[chart evidence](evidence/CHARTS.md). A labelled computed `kable` producer inside
+the same wrapper is also supported; see `examples/native-charts/deck.qmd`.
+Missing values, a meaningful category header that the pinned renderer cannot
+display, excessive precision or ambiguous provenance refuse explicitly. Chart
+options remain semantic: native option edits become pending changes or computed
+conflicts; they cannot freeze old data as visual overrides. Reverse chart-data
+sync remains unsupported. Tables and charts inside card/layout components still
+refuse until their internal sizing is adapted.
 
 ### Displayed code (implemented subset)
 

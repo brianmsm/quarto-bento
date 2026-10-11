@@ -1,0 +1,18 @@
+## Authored bars {#authored}
+
+::: {#effects .bento-chart bento-chart-kind="bar"}
+| | Effect | Other |
+| --- | ---: | ---: |
+| Alpha | -2.5 | 1.25 |
+| Beta | 0 | 3 |
+:::
+
+## Computed line {#computed}
+
+::: {#trend .bento-chart bento-chart-kind="line"}
+```{r}
+#| label: chart-maker
+#| echo: false
+knitr::kable(read.csv("data.csv"), format="pipe", col.names=c("", "N"))
+```
+:::

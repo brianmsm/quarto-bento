@@ -3,8 +3,8 @@
 Verified on Linux with Quarto 1.10.19, Deno 2.9.6 and pinned Bento 1.2.6
 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (2026-10-11). This slice
 covers executed projection, persistent design and provenance. A real native
-Chromium DOM/runtime check verifies one five-row default layout; visual
-acceptance remains a separate validation layer. It does not implement reverse
+Chromium DOM/runtime check verifies one five-row default layout; the coordinator
+also inspected the native two-slide save/recompute workflow below. It does not implement reverse
 synchronization of table cells into QMD.
 
 ## Native contract and fidelity
@@ -139,3 +139,32 @@ state core's conservative semantic classification; edits to those compound
 fields can therefore remain pending/conflicted. The demonstrated design loop
 covers outer geometry and table-wide styles. Splitting cell content from cell
 appearance remains future work and is not a claim of this slice.
+
+## Integrated native save/recompute acceptance
+
+The reproducible input is `examples/native-tables/{deck.qmd,data.csv}`. The
+coordinator copied it to an isolated project, opened Studio, and used native
+Bento controls (no fabricated document mutation) to:
+
+1. Move the computed table to `x=120,y=230`, set width to `1040`, and change its
+   table-wide style from Boxed to Minimal.
+2. Edit the authored table's Alpha cell from `12` to `13` and save. QMD still
+   contained `12`; the rows edit was durable pending content. Review disabled
+   Apply and explained that this reverse conversion is unsupported.
+3. Change only the CSV's Alpha value from `12` to `17` and use Recalcular.
+4. Reopen Studio in an explicitly headless Chromium instance. The computed table
+   displayed `17` with the same `120,230,1040,168` frame and Minimal style. The
+   authored `13` edit remained pending; the original QMD table remained `12`.
+
+The durable state reached revision 5, retaining docId
+`84bc984e-6863-424e-a978-63f585ac3a0a` and exactly one pending authored rows edit.
+Both native three-row tables measured `clientHeight=scrollHeight=168`. The
+coordinator captured and visually inspected
+`output/playwright/native-tables-authored.png`,
+`native-table-sync-refusal.png`, and `native-table-recomputed.png`.
+All rows were visible in the demonstrated default and changed-style layouts.
+Screenshots are local acceptance artifacts, not runtime dependencies.
+
+This is Linux Chromium evidence of real editor behavior, visual review and
+durable state comparison. It does not certify arbitrary resizing, per-cell
+appearance retention, cell reverse sync or native OS file dialogs.
