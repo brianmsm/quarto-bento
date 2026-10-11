@@ -9,6 +9,9 @@ end. Full product acceptance and public v1 release remain pending. See
 
 - Root documentation preserved in Git before code changes (`e7f3f46`).
 - Quarto 1.10.19, Deno 2.9.6, R 4.6.1 on Linux.
+- Current owner-requested validation scope: this local Linux machine only
+  (2026-10-11). Native macOS/Windows and hosted CI validation are deferred; they
+  are not prerequisites for closing this local validation pass.
 - Bento revision and bundled shell digest: `vendor/bento/pin.json`.
 - Isolated managed worktrees separate source mapping, bridge/state, Quarto
   integration, document validation, Studio hardening, math, notes and packaging.

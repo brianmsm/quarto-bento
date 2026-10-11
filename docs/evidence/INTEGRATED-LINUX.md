@@ -66,6 +66,8 @@ editor and rendering engine.
 
 No hosted CI run, macOS/Windows execution, operating-system file-dialog
 acceptance or public release is claimed. The native other-platform preflight and
-packaging gates remain open; the current repository has no configured Git
-remote. The exact public v1 scope and project license remain separate decisions.
-This receipt does not declare the full product target complete.
+packaging gates remain open. The owner explicitly limited current testing to
+this Linux machine; hosted CI and other-platform validation are deferred. The
+current repository has no configured Git remote. The exact public v1 scope and
+project license remain separate decisions. This receipt does not declare the
+full product target complete.
