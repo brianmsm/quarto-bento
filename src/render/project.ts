@@ -496,9 +496,16 @@ export async function projectAst(
             add(element, component.origins[element.id]);
           }
           Object.assign(result.design![slide!.id] ??= {}, component.fields);
-          y = Math.max(...component.elements.map((element) =>
-            Number(element.y) + Number(element.h)
-          )) + 20;
+          // A rescued source baseline keeps the authoritative component frame.
+          // Its unpainted default role heights must not move subsequent content.
+          y = component.appearanceRescued
+            ? Number(component.elements[0].y) +
+              Number(component.elements[0].h) + 20
+            : Math.max(
+              ...component.elements.map((element) =>
+                Number(element.y) + Number(element.h)
+              ),
+            ) + 20;
           contentFrame = previousFrame;
           continue;
         }
