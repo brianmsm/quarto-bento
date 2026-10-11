@@ -54,11 +54,12 @@ to replace existing Quarto configuration or an installed extension. Its ordinary
 remain pending native validation. Having a Windows launcher does not establish
 Windows runtime support. Linux relocation tests exercise `doctor`, `render`,
 `validate`, `init`, and ordinary `quarto render` with a fresh Deno cache and
-access to the source checkout denied for the packaged CLI. With Quarto 1.10.19,
-ordinary extension hooks fail in project-directory paths containing spaces; use
-`qbento render` there. Ordinary integration is tested after relocating the
-installed project into a directory without spaces (the QMD filename retains
-spaces), then removing the portable runtime.
+access to the source checkout denied for the packaged CLI. Ordinary integration
+is tested after relocating the installed project into another directory with
+spaces, removing the generated HTML and removing the portable runtime. Fixed
+project-relative hooks also support spaces and quotes in project/source paths;
+the measured Quarto hook correction is recorded in `docs/evidence/QUARTO.md`
+in the source checkout.
 
 `manifest.json` lists each payload file's relative path, byte count, SHA256 and
 executable flag. The manifest itself is excluded to avoid a recursive self-hash.

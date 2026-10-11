@@ -168,6 +168,7 @@ Deno.test({
       const launcher = resolve(distribution, "bin/qbento");
       const env = {
         DENO_DIR: resolve(directory, "fresh deno cache"),
+        XDG_CACHE_HOME: resolve(directory, "fresh quarto cache"),
         PATH: `${shimDir}:${Deno.env.get("PATH")}`,
         QUARTO_RUN_NO_NETWORK: "true",
       };
@@ -222,10 +223,9 @@ Deno.test({
       );
       // The installed project is self-contained even after the portable runtime is removed.
       await Deno.remove(distribution, { recursive: true });
-      // Quarto 1.10.19 splits extension hook paths containing spaces. Keep
-      // launcher/path coverage above, then validate ordinary integration in its
-      // currently supported project-directory form without changing the QMD name.
-      const ordinaryProject = resolve(directory, "ordinary-project");
+      // Fixed project-relative hooks retain ordinary rendering in a path with
+      // spaces, even after the portable distribution has been removed.
+      const ordinaryProject = resolve(directory, "relocated ordinary project");
       await Deno.remove(output);
       await Deno.rename(project, ordinaryProject);
       const ordinary = await new Deno.Command("quarto", {
