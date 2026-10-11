@@ -1,6 +1,5 @@
 import {
   captureProject,
-  projectPaths,
   readProject,
   renderProject,
   saveProject,
@@ -117,4 +116,48 @@ Deno.test({
       await Deno.remove(dir, { recursive: true });
     }
   },
+});
+
+Deno.test("changed anonymous source refuses to transfer retained geometry to an inserted paragraph", async () => {
+  const { renderProjectFromAst } = await import("../src/core/project.ts");
+  const { hashSource } = await import("../src/source/mod.ts");
+  const dir = await Deno.makeTempDir({ prefix: "qbento-identity-" });
+  try {
+    const source = dir + "/identity.qmd";
+    const original = "## Slide {#slide}\n\nFirst\n\nSecond\n";
+    const ast = (paragraphs: string[]) => ({
+      meta: {},
+      blocks: [{
+        t: "Header",
+        c: [2, ["slide", [], []], [{ t: "Str", c: "Slide" }]],
+      }, ...paragraphs.map((c) => ({ t: "Para", c: [{ t: "Str", c }] }))],
+    });
+    await Deno.writeTextFile(source, original);
+    const initial = await renderProjectFromAst(source, {
+      ast: ast(["First", "Second"]),
+      sourceHash: hashSource(original),
+      assetDirectories: [dir],
+      expectedRevision: null,
+    });
+    const edited = structuredClone(initial.state.emitted);
+    edited.slides[0].elements[1].x = 999;
+    await saveProject(source, edited, initial.state.revision);
+    const changed = original.replace("First", "Inserted\n\nFirst");
+    await Deno.writeTextFile(source, changed);
+    await refuses(
+      () =>
+        renderProjectFromAst(source, {
+          ast: ast(["Inserted", "First", "Second"]),
+          sourceHash: hashSource(changed),
+          assetDirectories: [dir],
+        }),
+      "AMBIGUOUS_IDENTITY",
+    );
+    assert(
+      (await readProject(source)).emitted.slides[0].elements[1].x === 999,
+      "retained state changed",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });

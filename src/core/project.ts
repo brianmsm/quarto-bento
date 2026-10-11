@@ -9,6 +9,7 @@ import {
   captureEdits,
   compose,
   createState,
+  equal,
   markEmitted,
   type ProjectState,
   type ProvenanceMap,
@@ -318,6 +319,7 @@ export async function saveProject(
       );
     }
     await assertOutputUnchanged(state, paths.output);
+    if (equal(state.emitted, doc)) return state;
     return await store.save(captureEdits(state, doc));
   });
 }

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Quarto-Bento Studio</title>
+    <style>
+    body {
+      margin: 0;
+      font: 15px system-ui;
+      color: #e8efed;
+      background: #152c32;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      min-height: 42px;
+    }
+    h1 {
+      font-size: 17px;
+      margin: 0 16px 0 0;
+    }
+    button {
+      font: inherit;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: .5;
+      cursor: default;
+    }
+    #status {
+      margin-left: auto;
+      max-width: 40vw;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 66px);
+      border: 0;
+      background: white;
+    }
+    dialog {
+      width: min(880px,90vw);
+      max-height: 78vh;
+      overflow: auto;
+      border: 0;
+      border-radius: 12px;
+      padding: 24px;
+      color: #172a35;
+    }
+    dialog::backdrop {
+      background: #102a35aa;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #f3f6f5;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    #busy {
+      position: fixed;
+      inset: 66px 0 0;
+      z-index: 20;
+      background: #eff5f0ed;
+      color: #172a35;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    #busy:not([hidden]) {
+      display: flex;
+    }
+    #patches section {
+      margin: 18px 0;
+      border-top: 1px solid #cbd9d6;
+    }
+    .before {
+      border-left: 4px solid #ac4646;
+    }
+    .after {
+      border-left: 4px solid #247367;
+    }
+    #apply {
+      background: #156f65;
+      color: white;
+    }
+    #sync-note {
+      line-height: 1.5;
+    }
+    </style>
+  </head>
+  <body>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="review" disabled>Revisar cambios</button><button id="render" disabled>Recalcular</button><span id="status" role="status">Abriendo…</span></header>
+    <iframe id="editor" src="/deck" title="Editor Bento"></iframe>
+    <div id="busy" hidden
+      role="status">Recalculando. Tus cambios están guardados.</div>
+    <dialog
+      id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="patches"></div><details><summary>Otros cambios pendientes</summary><pre id="changes"></pre></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
+    <script>
+    globalThis.qbentoToken = __QBENTO_TOKEN__;
+    </script>
+    <script type="module" src="/client.js"></script>
+  </body>
+</html>

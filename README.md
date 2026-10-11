@@ -1,6 +1,9 @@
 # Quarto-Bento (working name: `qbento`)
 
-**Status:** Architecture & Design v0.2 — decisions recorded, **not implemented** (2026-10-09).
+**Status:** implementation in progress (2026-10-11). The executed Quarto renderer,
+native Bento bridge, local Studio save, source-patch primitives and persistent
+three-way state core exist. The complete first bidirectional slice and full product
+target are **not yet accepted**. See [implementation ledger](docs/IMPLEMENTATION_STATUS.md).
 
 Quarto-Bento aims to combine **computationally reproducible Quarto presentations** with **Bento's fast visual slide editor**, without losing visual edits when results are regenerated.
 
@@ -12,7 +15,36 @@ Quarto-Bento aims to combine **computationally reproducible Quarto presentations
 - **Bento can edit semantics:** these edits are saved as pending changes and deliberately synchronized to QMD; saving a deck alone does *not* silently rewrite QMD.
 - **Regenerating Quarto updates computed results without discarding retained visual design.** Conflicts are reported; nothing is silently overwritten.
 
-## Intended workflow (commands are proposed, not yet available)
+## Run the current development build
+
+Requires installed Deno 2, Quarto and the language/packages used by your QMD.
+The bundled Bento shell is pinned; ordinary rendering and editing need no cloud
+service or downloaded runtime assets. The project does not manage your R/Python
+environment.
+
+```sh
+deno task qbento doctor
+deno task qbento render fixtures/basic/presentation.qmd
+deno task qbento edit fixtures/basic/presentation.qmd
+deno task qbento status fixtures/basic/presentation.qmd
+deno task test
+```
+
+`edit` prints a loopback Studio URL. Open that address in a browser. **Guardar
+proyecto** saves durable visual and pending semantic edits to `.qbento/` without
+changing QMD. Native Bento's own Save still saves a standalone HTML file.
+Capture native local edits explicitly with `deno task qbento capture path.qmd
+[edited-copy.html]` before regeneration. A changed uncaptured output is refused.
+
+Currently demonstrated projection: explicit slide headings, text in identified
+fenced divs, and R-generated SVG figures. Unknown conversions refuse rather than
+invent a result. Source identity hardening, full semantic synchronization UI,
+ordinary Quarto extension integration, broader content adapters, PDF/Presenter
+and cross-platform packaging remain in progress. The implementation ledger is
+the authority for acceptance evidence; the target documentation below remains
+the intended product contract.
+
+## Intended installed workflow (not all commands are delivered yet)
 
 ```sh
 qbento edit presentation.qmd     # Generate/open Bento Studio
@@ -59,4 +91,7 @@ Given a **compatible execution environment**, the QMD, inputs, and `.qbento/` mu
 6. [ARCHITECTURE.md](docs/ARCHITECTURE.md) — conceptual components and integration boundaries.
 7. [ROADMAP.md](docs/ROADMAP.md) — high-risk experiments, first vertical slice, acceptance tests.
 
-For coding agents, read [AGENTS.md](AGENTS.md) first. **No implementation, CLI, extension, schema, or Studio has yet been delivered by this documentation-only phase.**
+For coding agents, read [AGENTS.md](AGENTS.md) first, then the current
+[implementation ledger](docs/IMPLEMENTATION_STATUS.md). The original design
+documents describe target behavior; do not equate an implemented primitive with
+an accepted end-to-end milestone.

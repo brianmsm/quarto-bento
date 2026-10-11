@@ -1,6 +1,6 @@
 # Agent / next-session handoff
 
-**Project status (2026-10-09): design-only, Architecture & Design v0.2.** Do not claim the described commands, APIs, extension, or Studio are already implemented.
+**Project status (2026-10-11): implementation in progress from Architecture & Design v0.2.** Read `docs/IMPLEMENTATION_STATUS.md` for current code and evidence. Target commands/APIs must not be assumed implemented merely because they appear in design documents; the full first vertical slice is not yet accepted.
 
 1. Read `README.md`, then **`docs/PRODUCT_TARGET.md`** for the finish line, `docs/DECISIONS.md` for agreements, and `docs/ROADMAP.md` for the next action. Consult `docs/WORKFLOWS.md`, `docs/SYNC.md`, `docs/AUTHORING.md`, and `docs/ARCHITECTURE.md` for the relevant implementation area.
 2. Preserve agreed behavior: QMD semantic authority, `.qbento/` visual authority, explicit safe round-trip, recoverable unsynced edits, no silent merge, computed results sourced from execution, fully offline ordinary workflow, Git-friendly rebuilds.
@@ -11,6 +11,6 @@
 7. Start with S0: **QMD → BentoDoc → native HTML edits → stable-ID visual overrides → recompute → preserved design**, including stable Bento `docId` and protection against losing edits in the generated HTML. The complete first implementation milestone must *also* prove Bento-authored edits → safe QMD synchronization.
 8. Never rewrite source or discard unsynced edits on render without a checked, approved operation. Make source patches inspectable and recoverable.
 
-**Immediate next action:** start S0 (then S1/S2) from `docs/ROADMAP.md`; finalize contracts and schemas using test evidence. The product horizon is in `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the exact v1 release boundary is not frozen**; do not claim a full v1 release without confirming its acceptance scope.
+**Immediate next action:** continue the integrated S0/S1/S2/S4 work tracked in `docs/IMPLEMENTATION_STATUS.md`, prove the complete first bidirectional slice, and proceed through the remaining product acceptance gates. Finalize contracts and schemas using test evidence. The product horizon is in `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the exact v1 release boundary is not frozen**; do not claim a full v1 release without confirming its acceptance scope.
 
 Upstream: https://github.com/nyblnet/bento · Quarto: https://quarto.org/

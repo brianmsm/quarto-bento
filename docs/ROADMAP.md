@@ -1,6 +1,6 @@
 # Implementation roadmap and validation gates
 
-**Status:** planning only. Build toward the [product target](PRODUCT_TARGET.md) in **vertical slices**. A small throwaway exporter is not the goal. The final public v1 release boundary must be frozen before shipping, not guessed by an agent.
+**Status:** acceptance roadmap; implementation started 2026-10-11. Current evidence and unfinished work are tracked in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). Build toward the [product target](PRODUCT_TARGET.md) in **vertical slices**. A small throwaway exporter is not the goal. The final public v1 release boundary must be frozen before shipping, not guessed by an agent.
 
 ## Start here: critical feasibility experiments
 

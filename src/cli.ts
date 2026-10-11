@@ -1,5 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1
 import { captureProject, readProject, renderProject } from "./core/project.ts";
+import { applySync, previewSync } from "./core/sync.ts";
+import { recoverProject } from "./core/recovery.ts";
 import { extractDocument } from "./render/html.ts";
 import { startStudio } from "./studio/server.ts";
 const help = `qbento <command> <presentation.qmd> [arguments]
@@ -7,6 +9,8 @@ const help = `qbento <command> <presentation.qmd> [arguments]
 render                 Execute Quarto and retain saved design
 capture [edited.html]   Explicitly capture native local HTML edits
 status | diff          Inspect durable pending changes
+sync [--apply plan.json] Preview source changes or apply an inspected plan
+recover [inspect|finish|rollback] Inspect or explicitly recover an interrupted operation
 edit                   Start local Bento Studio
 validate <deck.html>   Validate the document envelope and stable IDs
 doctor                 Report available runtime versions
@@ -50,6 +54,36 @@ if (import.meta.main) {
           pending: s.pending,
           overrides: s.overrides,
         };
+        break;
+      }
+      case "sync": {
+        if (!source) throw new Error("QMD path required");
+        if (extra === "--apply") {
+          if (!Deno.args[3]) {
+            throw new Error("Inspected JSON plan path required");
+          }
+          result = await applySync(
+            source,
+            JSON.parse(await Deno.readTextFile(Deno.args[3])),
+          );
+        } else if (extra === undefined) result = await previewSync(source);
+        else throw new Error("Use sync source.qmd [--apply plan.json]");
+        break;
+      }
+      case "recover": {
+        if (!source) throw new Error("QMD path required");
+        if (
+          extra !== undefined &&
+          !["inspect", "finish", "rollback"].includes(extra)
+        ) {
+          throw new Error(
+            "Recovery action must be inspect, finish or rollback",
+          );
+        }
+        result = await recoverProject(
+          source,
+          extra as "inspect" | "finish" | "rollback" | undefined,
+        );
         break;
       }
       case "validate": {

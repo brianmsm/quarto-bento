@@ -1,4 +1,5 @@
 import { readProject, renderProject, saveProject } from "../core/project.ts";
+import { applySync, previewSync } from "../core/sync.ts";
 import { spliceDocument } from "../render/html.ts";
 import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
 import type { BentoDoc } from "../state/mod.ts";
@@ -15,6 +16,11 @@ export async function startStudio(source: string, port = 0) {
   const client = await Deno.readTextFile(
     new URL("./client.js", import.meta.url),
   );
+  const template = await Deno.readTextFile(
+    new URL("./index.html", import.meta.url),
+  );
+  const managedBoot = ISOLATION_BOOTSTRAP +
+    "\naddEventListener('beforeunload', e => { if (globalThis.__qbentoManagedReload === true) e.stopImmediatePropagation(); }, true);";
   let origin = "";
   const respond = (
     body: string,
@@ -44,10 +50,10 @@ export async function startStudio(source: string, port = 0) {
       ) return respond('{"error":"Cross-origin request refused"}', 403);
       try {
         if (req.method === "GET" && url.pathname === "/") {
-          const page =
-            `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quarto-Bento Studio</title><style>body{margin:0;font:15px system-ui;color:#e8efed;background:#152c32}header{display:flex;align-items:center;gap:12px;padding:12px 18px}h1{font-size:17px;margin:0 16px 0 0}button{font:inherit;padding:8px 12px;border:0;border-radius:6px;cursor:pointer}button:disabled{opacity:.5;cursor:default}#status{margin-left:auto}iframe{display:block;width:100%;height:calc(100vh - 66px);border:0;background:white}dialog{width:min(800px,90vw);max-height:75vh;overflow:auto}pre{white-space:pre-wrap;word-break:break-word}</style><header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="review" disabled>Revisar cambios</button><button id="render" disabled>Recalcular</button><span id="status" role="status">Abriendo…</span></header><iframe id="editor" src="/deck" title="Editor Bento"></iframe><dialog id="review-dialog"><h2>Cambios pendientes</h2><p>Guardar conserva tus cambios. La sincronización con QMD es una operación separada.</p><pre id="changes"></pre><button id="close">Cerrar</button></dialog><script>window.qbentoToken=${
-              JSON.stringify(token)
-            }</script><script type="module" src="/client.js"></script></html>`;
+          const page = template.replace(
+            "__QBENTO_TOKEN__",
+            JSON.stringify(token),
+          );
           return respond(
             page,
             200,
@@ -61,7 +67,7 @@ export async function startStudio(source: string, port = 0) {
             spliceDocument(
               shell,
               state.emitted as unknown as RenderDoc,
-              ISOLATION_BOOTSTRAP,
+              managedBoot,
               OFFLINE_CSP,
             ),
             200,
@@ -109,6 +115,21 @@ export async function startStudio(source: string, port = 0) {
               revision: state.revision,
               pending: state.pending.length,
             }),
+          );
+        }
+        if (req.method === "POST" && url.pathname === "/api/sync/preview") {
+          return respond(JSON.stringify(await previewSync(source)));
+        }
+        if (req.method === "POST" && url.pathname === "/api/sync/apply") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await req.text();
+          if (text.length > 25_000_000) {
+            return respond('{"error":"Plan too large"}', 413);
+          }
+          return respond(
+            JSON.stringify(await applySync(source, JSON.parse(text))),
           );
         }
         if (req.method === "POST" && url.pathname === "/api/render") {
