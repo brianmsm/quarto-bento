@@ -263,6 +263,46 @@ Deno.test("source endpoints are pending, side anchors and arbitrary decorative c
   equal(saved.pending.length, 0);
   equal(saved.bentoOnly[0].element.id, "decoration");
 });
+Deno.test("graph ancestor/leaf normalization retains original conflict evidence until explicit reconciliation", () => {
+  for (const currentNode of ["a", "c"]) {
+    const original = graphState(),
+      target = { slideId: "slide", elementId: "e/qb-edge" };
+    original.generatedBaseline.slides[0].elements.at(-1)!.from = {
+      el: "c/qb-node",
+      side: "auto",
+    };
+    original.emitted.slides[0].elements.at(-1)!.from = {
+      el: "b/qb-node",
+      side: "top",
+    };
+    original.pending.push({
+      id: JSON.stringify([targetKey(target), "field", ["from"]]),
+      target,
+      path: ["from"],
+      kind: "field",
+      origin: "authored",
+      status: "conflict",
+      before: { present: true, value: { el: "a/qb-node", side: "auto" } },
+      after: { present: true, value: { el: "b/qb-node", side: "top" } },
+      source: { present: true, value: { el: "c/qb-node", side: "auto" } },
+      reason: "QMD changed this endpoint independently.",
+    });
+    const edited = structuredClone(original.emitted);
+    edited.slides[0].elements.at(-1)!.from = {
+      el: currentNode + "/qb-node",
+      side: "top",
+    };
+    const captured = captureEdits(original, edited),
+      pending = captured.pending[0];
+    equal(captured.pending.length, 1);
+    equal(pending.path, ["from", "el"]);
+    equal(pending.before, { present: true, value: "a/qb-node" });
+    equal(pending.after, { present: true, value: currentNode + "/qb-node" });
+    equal(pending.source, { present: true, value: "c/qb-node" });
+    equal(pending.status, "conflict");
+    equal(pending.reason, original.pending[0].reason);
+  }
+});
 Deno.test("capture preserves graph deletion/type changes while strict composition blocks unfaithful publication", () => {
   for (const action of ["delete", "shape", "label-type", "node-type"]) {
     const original = graphState(), edited = structuredClone(original.emitted);

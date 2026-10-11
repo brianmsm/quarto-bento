@@ -64,6 +64,13 @@ export function graphSyncRequest(
       "A source edge endpoint needs an explicit node; removing/detaching endpoints cannot rewrite a faithful source edge.",
     );
   }
+  const saved = get(entity(state.emitted, change.target), [endpoint, "el"]);
+  if (!saved.present || saved.value !== nativeId) {
+    fail(
+      "GRAPH_RELATION_SNAPSHOT",
+      "The pending relationship no longer matches the saved native connector. Reopen Relations or compare with QMD before approving a source patch; all edits remain saved.",
+    );
+  }
   const doc = scanSource(text), graph = sourceGraph(doc, proof.componentId);
   if (
     graph.wrapper.slideId !== change.target.slideId ||

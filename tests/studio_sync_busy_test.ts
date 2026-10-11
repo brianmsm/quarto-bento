@@ -96,6 +96,7 @@ async function client() {
     "globalThis",
     "createBentoBridge",
     "attachRegistryEditor",
+    "attachGraphRelations",
     `${
       shipped.replace(/^import [^\n]+\n/gm, "")
     }\nreturn { prepareSyncPreview };`,
@@ -159,6 +160,7 @@ async function client() {
       bridges.push(bridge);
       return bridge;
     },
+    () => {},
     () => {},
   );
   return {

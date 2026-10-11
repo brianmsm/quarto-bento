@@ -4,6 +4,10 @@ import {
 } from "../core/design-registry.ts";
 import { MAX_DESIGN_REGISTRY_BYTES } from "../render/registry.ts";
 import {
+  readGraphRelations,
+  saveGraphRelation,
+} from "../core/graph-relations.ts";
+import {
   readProject,
   readProjectDiagnostics,
   readProjectPresenter,
@@ -83,6 +87,9 @@ export async function startStudio(source: string, port = 0) {
   const registryClient = await Deno.readTextFile(
     new URL("./registry.js", import.meta.url),
   );
+  const relationsClient = await Deno.readTextFile(
+    new URL("./relations.js", import.meta.url),
+  );
   const template = await Deno.readTextFile(
     new URL("./index.html", import.meta.url),
   );
@@ -160,6 +167,9 @@ export async function startStudio(source: string, port = 0) {
         if (req.method === "GET" && url.pathname === "/registry.js") {
           return respond(registryClient, 200, "text/javascript");
         }
+        if (req.method === "GET" && url.pathname === "/relations.js") {
+          return respond(relationsClient, 200, "text/javascript");
+        }
         if (req.method === "GET" && url.pathname.startsWith("/presenter/")) {
           const page = presenters.get(url.pathname);
           return page
@@ -174,6 +184,26 @@ export async function startStudio(source: string, port = 0) {
         }
         if (req.method === "GET" && url.pathname === "/api/diagnostics") {
           return respond(JSON.stringify(await readProjectDiagnostics(source)));
+        }
+        if (req.method === "GET" && url.pathname === "/api/graphs/relations") {
+          return respond(JSON.stringify(await readGraphRelations(source)));
+        }
+        if (req.method === "POST" && url.pathname === "/api/graphs/relations") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(req, 8192);
+          if (text === null) {
+            return respond('{"error":"Relation request too large"}', 413);
+          }
+          const state = await saveGraphRelation(source, JSON.parse(text));
+          return respond(
+            JSON.stringify({
+              docId: state.docId,
+              revision: state.revision,
+              pending: state.pending.length,
+            }),
+          );
         }
         if (req.method === "GET" && url.pathname === "/api/design-registry") {
           return respond(JSON.stringify(await readProjectRegistry(source)));

@@ -71,6 +71,7 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
       "globalThis",
       "createBentoBridge",
       "attachRegistryEditor",
+      "attachGraphRelations",
       source.replace(/^import [^\n]+\n/gm, "") +
         "\nreturn { prepareSyncPreview, showPatches };",
     );
@@ -93,6 +94,7 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
       },
       { qbentoToken: "local", addEventListener() {} },
       () => ({ save: async () => {}, dispose() {}, dirty: false }),
+      () => {},
       () => {},
     );
     await client.prepareSyncPreview();

@@ -22,7 +22,11 @@ import {
   targetKey,
   validateDoc,
 } from "./json.ts";
-import { assertGraphDocument, graphRelationshipPath } from "./graphs.ts";
+import {
+  assertGraphDocument,
+  graphReceipt,
+  graphRelationshipPath,
+} from "./graphs.ts";
 
 const semanticFields = new Set([
   "html",
@@ -131,6 +135,111 @@ export function createState(
     pending: [],
   };
 }
+/** Source graph anchors have one semantic el and a separate visual side.
+ * Native drag may remove the entire anchor. Collapse ancestor/leaf journals
+ * against the captured snapshot, retaining the original three-way evidence.
+ */
+function normalizeGraphEndpoints(
+  input: ProjectState,
+  state: ProjectState,
+  edited: BentoDoc,
+) {
+  for (const [key, provenance] of Object.entries(input.provenance)) {
+    const proof = graphReceipt(provenance);
+    if (!proof || !["edge", "timeline-link"].includes(proof.role)) continue;
+    const [slideId, elementId] = JSON.parse(key) as [string, string];
+    const target = { slideId, elementId },
+      current = entity(edited, target),
+      baseline = entity(input.generatedBaseline, target);
+    if (!current || !baseline) continue; // Known deletion is a separate pending action.
+    for (const endpoint of ["from", "to"] as const) {
+      const semanticPath = (change: Change) =>
+        change.kind === "field" && equal(change.target, target) &&
+        change.path[0] === endpoint &&
+        (change.path.length === 1 ||
+          change.path.length === 2 && change.path[1] === "el");
+      const old = input.pending.filter(semanticPath),
+        next = state.pending.filter(semanticPath);
+      if (!old.length && !next.length) continue;
+      const leaf = old.find((change) => change.path.length === 2) ??
+          next.find((change) => change.path.length === 2),
+        parent = old.find((change) => change.path.length === 1) ??
+          next.find((change) => change.path.length === 1),
+        conflict = old.find((change) => change.status === "conflict"),
+        anchor = get(current, [endpoint]),
+        sourceAnchor = get(baseline, [endpoint]);
+      // A newly captured leaf uses the latest generated baseline. Older
+      // ancestor/conflict evidence still describes the original edit base.
+      const original = conflict ?? old.find((change) =>
+        change.path.length === 2
+      ) ??
+        old.find((change) => change.path.length === 1) ?? leaf ?? parent!;
+      const originalEl = original.path.length === 2
+        ? original.before
+        : original.before.present && original.before.value &&
+            typeof original.before.value === "object" &&
+            !Array.isArray(original.before.value)
+        ? get(original.before.value, ["el"])
+        : { present: false };
+      const object = anchor.present && anchor.value &&
+        typeof anchor.value === "object" && !Array.isArray(anchor.value);
+      const path = object ? [endpoint, "el"] : [endpoint];
+      let before = originalEl;
+      if (!object) {
+        before = clone(
+          original.path.length === 1
+            ? original.before
+            : parent?.before ?? sourceAnchor,
+        );
+        if (
+          before.present && before.value && typeof before.value === "object" &&
+          !Array.isArray(before.value)
+        ) {
+          set(before.value, ["el"], originalEl);
+        }
+      }
+      const after = get(current, path), generated = get(baseline, path);
+      state.pending = state.pending.filter((change) => !semanticPath(change));
+      if (conflict || !equal(after, generated)) {
+        const evidence = clone(conflict ?? leaf ?? parent!);
+        evidence.id = id(target, path, "field");
+        evidence.path = path;
+        evidence.before = before;
+        evidence.after = after;
+        if (conflict?.source && conflict.path.length !== path.length) {
+          evidence.source =
+            object && conflict.source.present && conflict.source.value &&
+              typeof conflict.source.value === "object" &&
+              !Array.isArray(conflict.source.value)
+              ? get(conflict.source.value, ["el"])
+              : generated;
+        }
+        state.pending.push(evidence);
+      }
+      if (object) {
+        // Reconstructing an anchor must not leave a stale side overlay that
+        // changes the next composed document away from the saved snapshot.
+        const sidePath = [endpoint, "side"], side = get(current, sidePath);
+        let overlay = state.overrides.find((overlay) =>
+          equal(overlay.target, target)
+        );
+        if (overlay) {
+          overlay.fields = overlay.fields.filter((field) =>
+            !equal(field.path, sidePath)
+          );
+        }
+        if (!equal(side, get(baseline, sidePath))) {
+          if (!overlay) {
+            overlay = { target: clone(target), fields: [] };
+            state.overrides.push(overlay);
+          }
+          overlay.fields.push({ path: sidePath, value: side });
+        }
+      }
+    }
+  }
+}
+
 /** Persist edits relative to the actual last emitted/saved document, never relative to stale source. */
 export function captureEdits(
   input: ProjectState,
@@ -362,6 +471,7 @@ export function captureEdits(
       "slide-order",
     );
   }
+  normalizeGraphEndpoints(input, state, edited);
   state.overrides = state.overrides.filter((o) => o.fields.length);
   state.emitted = clone(edited);
   return state;

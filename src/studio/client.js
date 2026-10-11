@@ -1,3 +1,4 @@
+import { attachGraphRelations } from "/relations.js";
 import { attachRegistryEditor } from "/registry.js";
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
@@ -24,6 +25,7 @@ async function api(path, body) {
       "sync/apply",
       "reconcile/apply",
       "slides/action",
+      "graphs/relations",
     ].includes(path)
   ) {
     void refreshDiagnostics();
@@ -92,6 +94,7 @@ function setBusy(value) {
     const id of [
       "save",
       "slides",
+      "relations",
       "designs",
       "review",
       "reconcile",
@@ -691,6 +694,21 @@ $("presenter-dialog").onclose = () => {
 };
 
 attachRegistryEditor({ api, getState: () => state, showError });
+attachGraphRelations({
+  api,
+  getState: () => state,
+  setBusy,
+  showError,
+  saveBefore: async () => {
+    await bridge.save();
+    if (bridge.dirty) {
+      throw new Error(
+        "Hay cambios nuevos sin guardar; vuelve a abrir Relaciones.",
+      );
+    }
+  },
+  reloadEditor,
+});
 
 void refreshDiagnostics();
 

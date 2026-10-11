@@ -171,7 +171,7 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="relations" disabled>Relaciones</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
     <section id="project-diagnostics" hidden role="status" aria-live="polite"
       aria-labelledby="diagnostic-title">
       <h2 id="diagnostic-title">Avisos del proyecto</h2>
@@ -186,6 +186,20 @@
       id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="delete-confirmations"></div><div id="patches"></div><details><summary>Origen y detalle de los cambios</summary><div id="changes"></div></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
     <dialog
       id="slides-dialog"><h2>Diapositivas</h2><p>Ocultar conserva el contenido y lo omite en la presentación y el PDF. Marcar para eliminar guarda una eliminación pendiente; después debes revisarla y confirmarla para modificar QMD. Puedes restaurarla antes de sincronizar.</p><p id="slides-note" role="status"></p><div id="slide-list"></div><button id="slides-close">Cerrar</button></dialog>
+    <dialog id="relations-dialog" aria-labelledby="relations-title">
+      <h2 id="relations-title">Relaciones de diagramas QMD</h2>
+      <p>Elige los nodos por su etiqueta e identidad fuente. Guardar conserva un cambio pendiente; la revisión posterior es el paso que modifica QMD.</p>
+      <form id="relation-form">
+        <p><label for="relation-slide">Diapositiva</label> <select id="relation-slide" required></select></p>
+        <p><label for="relation-graph">Diagrama o secuencia</label> <select id="relation-graph" required></select></p>
+        <p><label for="relation-edge">Conexión</label> <select id="relation-edge" required></select></p>
+        <p><label for="relation-from">Desde</label> <select id="relation-from" required></select></p>
+        <p><label for="relation-to">Hacia</label> <select id="relation-to" required></select></p>
+        <p id="relation-sequence"></p>
+        <p id="relation-note" role="status" aria-live="polite"></p>
+        <button id="relation-save" type="submit">Guardar relación pendiente</button> <button id="relation-close" type="button">Cerrar</button>
+      </form>
+    </dialog>
     <dialog
       id="reconcile-dialog"><h2>Comparar QMD y Bento</h2><p>La comparación ejecuta el QMD. Elige cómo resolver cada diferencia; las demás seguirán pendientes. Estas decisiones guardan el proyecto. Escribir el QMD requiere después revisar y aplicar la sincronización.</p><p id="reconcile-note" role="status"></p><div id="reconcile-changes"></div><button id="resolve" disabled>Guardar decisiones</button> <button id="resolve-close">Cerrar</button></dialog>
     <dialog id="registry-dialog" aria-labelledby="registry-title">

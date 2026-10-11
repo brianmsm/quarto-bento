@@ -13,7 +13,7 @@ Run:
 The installed local Quarto/R and Chromium dependencies are required; ordinary
 editing stays offline. Use Studio Save or explicit HTML capture to persist
 native changes, then the ordinary sync preview/apply to synchronize authored
-labels or diagram endpoints. Save does not rewrite QMD.
+labels. Save does not rewrite QMD.
 
 Native movement, colors, font choices, groups and object stacking remain visual
 state unless a compatible property is declared explicitly in the original QMD.
@@ -35,12 +35,28 @@ the milestone blocks in QMD to change adjacency. Native z-order, positions and
 groups never change sequence. Native endpoint changes on derived timeline links
 stay pending and must be restored before publication.
 
-Diagram endpoint changes save as semantic pending edits to from.el/to.el. Sync
-changes only the exact verified original attribute value. Native anchor side
-stays visual. Foreign/dangling/duplicate relationships, source conflicts, stale
-reviews and prospective unsupported topology refuse without source writes. The
-combined proposed QMD plus retained font/geometry is measured before sync. An
-unverifiable automatic-flow change before a graph requires an independent
+To change a diagram relationship, open **Relaciones** in Studio, choose its
+slide, diagram and connection, then select **Desde** and **Hacia** by their real
+source labels and IDs. **Guardar relación pendiente** durably saves both
+endpoints as pending semantic edits to from.el/to.el; it does not write QMD or
+execute R. Reopen Relaciones to inspect that saved choice. Use **Revisar
+cambios** to inspect the exact old/new source attribute and complete proposed
+QMD, then **Aplicar** and **Recalcular**. Derived timeline relationships are
+shown read-only, with their sequence in QMD order.
+
+Dragging a connector endpoint in the pinned native editor detaches its anchors;
+it does not reassign source relationships. Save retains this pending detachment,
+and synchronization refuses it until you select both nodes explicitly in
+Relaciones or restore the connector. The selector can reconstruct both anchors
+while retaining their saved visual sides. Existing graph members and the
+original source projection must be intact; stale QMD or an endpoint conflict
+requires recalculation or comparison before another relationship action.
+
+Sync changes only the exact verified original attribute value. Native anchor
+side stays visual. Foreign/dangling/duplicate relationships, source conflicts,
+stale reviews and prospective unsupported topology refuse without source writes.
+The combined proposed QMD plus retained font/geometry is measured before sync.
+An unverifiable automatic-flow change before a graph requires an independent
 original y/h frame or review/restoration of the preceding structure.
 
 Node/milestone shapes use the suffix /qb-node; their labels retain /paragraph:1.
