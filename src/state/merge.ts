@@ -824,6 +824,40 @@ export function validateState(value: unknown): asserts value is ProjectState {
     ) fail("Malformed or duplicate pending edit.");
     changeIds.add(p.id);
   }
+  if (s.widgets) {
+    const w = s.widgets,
+      digest = (v: unknown) =>
+        typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
+    if (
+      w.version !== 1 || w.docId !== s.docId ||
+      !/^[a-f0-9-]{36}$/.test(w.generation) ||
+      w.generation !== s.output?.generation || !digest(w.sourceHash) ||
+      !digest(w.runtimeSha256) || !digest(w.licenseSha256) ||
+      !digest(w.presenterSha256) || !Array.isArray(w.entries) ||
+      !w.entries.length || w.entries.length > 8
+    ) fail("Invalid widget generation receipt.");
+    const ids = new Set<string>();
+    for (const [i, entry] of w.entries.entries()) {
+      if (
+        !object(entry) || typeof entry.slideId !== "string" ||
+        typeof entry.elementId !== "string" || ids.has(targetKey(entry)) ||
+        entry.file !== `widget-${i}.json` ||
+        entry.presenter !== `widget-${i}.html` ||
+        !digest(entry.presenterSha256) || !object(entry.receipt) ||
+        entry.receipt.version !== 1 || !digest(entry.receipt.bundleHash) ||
+        !digest(entry.receipt.specHash) ||
+        entry.receipt.runtimeSha256 !== w.runtimeSha256 ||
+        !object(entry.receipt.source) ||
+        entry.receipt.source.sourceHash !== w.sourceHash ||
+        entry.receipt.source.sourceId !== entry.elementId ||
+        entry.receipt.source.slideId !== entry.slideId ||
+        typeof entry.receipt.source.producerId !== "string" ||
+        !digest(entry.receipt.source.chunkHash) ||
+        !digest(entry.receipt.source.outputHash)
+      ) fail("Invalid widget entry receipt.");
+      ids.add(targetKey(entry));
+    }
+  }
   if (
     s.output &&
     (!object(s.output) || typeof s.output.path !== "string" ||

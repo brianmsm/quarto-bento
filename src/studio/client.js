@@ -24,7 +24,9 @@ function setBusy(value) {
   busy = value;
   $("busy").hidden = !value;
   $("editor").inert = value;
-  for (const id of ["save", "slides", "review", "reconcile", "render"]) {
+  for (
+    const id of ["save", "slides", "review", "reconcile", "render", "presenter"]
+  ) {
     $(id).disabled = value;
   }
   if (value) {
@@ -507,3 +509,30 @@ globalThis.addEventListener("beforeunload", (event) => {
     event.returnValue = "";
   }
 });
+
+$("presenter").onclick = async () => {
+  if (busy) return;
+  try {
+    setBusy(true);
+    $("busy").textContent =
+      "Preparando presentación con tus cambios guardados.";
+    await bridge.save();
+    if (bridge.dirty) {
+      throw new Error(
+        "Hay cambios nuevos sin guardar. Vuelve a preparar la presentación.",
+      );
+    }
+    const result = await api("presenter", { revision: state.revision });
+    $("presenter-frame").src = result.url;
+    $("presenter-dialog").showModal();
+    status("Presentación preparada con tus cambios guardados");
+  } catch (error) {
+    showError(error);
+  } finally {
+    setBusy(false);
+  }
+};
+$("presenter-close").onclick = () => $("presenter-dialog").close();
+$("presenter-dialog").onclose = () => {
+  $("presenter-frame").src = "about:blank";
+};

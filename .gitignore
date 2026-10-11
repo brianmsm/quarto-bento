@@ -14,3 +14,5 @@ output/
 **/*.qbento-stage.html
 **/.qbento/quarto-run.json
 **/.qbento/quarto-stage/
+
+**/.qbento/widgets/

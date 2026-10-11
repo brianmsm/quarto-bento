@@ -1,4 +1,9 @@
-import { readProject, renderProject, saveProject } from "../core/project.ts";
+import {
+  readProject,
+  readProjectPresenter,
+  renderProject,
+  saveProject,
+} from "../core/project.ts";
 import { applySync, previewSync } from "../core/sync.ts";
 import { applyReconcile, previewReconcile } from "../core/reconcile.ts";
 import {
@@ -72,6 +77,7 @@ export async function startStudio(source: string, port = 0) {
   const managedBoot = ISOLATION_BOOTSTRAP +
     "\naddEventListener('beforeunload', e => { if (globalThis.__qbentoManagedReload === true) e.stopImmediatePropagation(); }, true);";
   let origin = "";
+  const presenters = new Map<string, string>();
   const respond = (
     body: string,
     status = 200,
@@ -139,6 +145,12 @@ export async function startStudio(source: string, port = 0) {
         if (
           req.method === "GET" && url.pathname === "/client.js"
         ) return respond(client, 200, "text/javascript");
+        if (req.method === "GET" && url.pathname.startsWith("/presenter/")) {
+          const page = presenters.get(url.pathname);
+          return page
+            ? respond(page, 200, "text/html; charset=utf-8")
+            : respond('{"error":"Presenter snapshot expired"}', 404);
+        }
         if (req.headers.get("x-qbento-token") !== token) {
           return respond(
             '{"error":"Invalid session token"}',
@@ -148,6 +160,23 @@ export async function startStudio(source: string, port = 0) {
         if (
           req.method === "GET" && url.pathname === "/api/state"
         ) return respond(JSON.stringify(await readProject(source)));
+        if (req.method === "POST" && url.pathname === "/api/presenter") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(req);
+          if (text === null) {
+            return respond('{"error":"Request too large"}', 413);
+          }
+          const { revision } = JSON.parse(text),
+            html = await readProjectPresenter(source, revision);
+          const path = "/presenter/" + crypto.randomUUID();
+          presenters.set(path, html);
+          while (presenters.size > 2) {
+            presenters.delete(presenters.keys().next().value!);
+          }
+          return respond(JSON.stringify({ url: path }));
+        }
         if (req.method === "POST" && url.pathname === "/api/save") {
           if (
             req.headers.get("content-type") !== "application/json"

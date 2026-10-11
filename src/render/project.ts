@@ -1,3 +1,4 @@
+import { collectPlotlyCandidates } from "../widgets/plotly.ts";
 import {
   assertCompatibleComponentSource,
   projectComponent,
@@ -116,12 +117,35 @@ async function assetData(src: string, assetRoots: string[]): Promise<string> {
     `MISSING_ASSET: ${src} is not within the source/build directory`,
   );
 }
+export interface WidgetProjection {
+  element: Element;
+  origin: Origin;
+  slideId: string;
+  outputHash: string;
+}
 export async function projectAst(
   ast: Ast,
   docId: string,
   assetRoots: string[],
   source?: SourceDocument,
+  widgets: ReadonlyMap<string, WidgetProjection> = new Map(),
 ): Promise<Projection> {
+  const consumedWidgets = new Set<string>();
+  const expectedWidgets = new Map(
+    widgets.size && source
+      ? collectPlotlyCandidates(ast, source).map((c) => [c.source.sourceId, c])
+      : [],
+  );
+  for (const [id, widget] of widgets) {
+    if (
+      !expectedWidgets.has(id) ||
+      expectedWidgets.get(id)!.source.outputHash !== widget.outputHash
+    ) {
+      throw new Error(
+        "WIDGET_PROJECTION_MISMATCH: widget does not match the checked executed AST",
+      );
+    }
+  }
   const document: BentoDoc = {
     format: "bento/slides",
     version: 1,
@@ -350,6 +374,28 @@ export async function projectAst(
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const widget = widgets.get(attr[0]);
+        if (widget) {
+          if (
+            inComponent || computed || !slide || slide.id !== widget.slideId ||
+            consumedWidgets.has(attr[0]) || attr[2].some(([key]) =>
+              key === "bento-element-id"
+            )
+          ) {
+            throw new Error(
+              "WIDGET_PROJECTION_MISMATCH: use a single identified widget wrapper outside components under its original slide",
+            );
+          }
+          const element = structuredClone(widget.element);
+          element.y = y;
+          element.h = Math.min(Number(element.h), Math.max(100, 670 - y));
+          add(element, widget.origin);
+          design(attr, [element]);
+          y += Number(element.h) + 20;
+          consumedWidgets.add(attr[0]);
+          continue;
+        }
+
         const declaration = parseDesignAttributes(attr);
         if (
           declaration.component === "card" || declaration.component === "layout"
@@ -777,6 +823,11 @@ export async function projectAst(
     }
   }
   await walk(ast.blocks);
+  if (consumedWidgets.size !== widgets.size) {
+    throw new Error(
+      "WIDGET_PROJECTION_MISMATCH: not every verified widget was consumed exactly once",
+    );
+  }
   if (!document.slides.length) {
     throw new Error("EMPTY_DECK: source contains no supported content");
   }

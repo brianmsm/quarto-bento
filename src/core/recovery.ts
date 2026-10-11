@@ -1,3 +1,4 @@
+import { assertWidgetFiles } from "./widgets.ts";
 import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { projectPaths } from "./project.ts";
@@ -376,6 +377,19 @@ async function inspect(source: string): Promise<Snapshot> {
   const knownOutput = !output.exists || output.sha256 === journal.sha256 ||
     output.sha256 === journal.previousOutput?.sha256 ||
     output.sha256 === report.files.backup.sha256;
+  let widgetsValid = true;
+  if (report.statePhase === "after" && state?.widgets) {
+    try {
+      await assertWidgetFiles(paths.stateDir, state);
+    } catch (error) {
+      widgetsValid = false;
+      report.diagnostics.push(
+        `Widget resources block finishing this render: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
   const locksSafe = report.locks.every((l) =>
     l.status === "absent" || l.status === "dead"
   );
@@ -397,7 +411,7 @@ async function inspect(source: string): Promise<Snapshot> {
   if (locksSafe && knownOutput) {
     report.available.push("rollback");
     if (
-      report.statePhase === "after" &&
+      widgetsValid && report.statePhase === "after" &&
       (!output.exists || output.sha256 === journal.sha256) &&
       (report.files.staging.exists || output.sha256 === journal.sha256)
     ) report.available.push("finish");
@@ -605,6 +619,7 @@ export async function recoverProject(
         }
       }
       if (action === "finish") {
+        if (state?.widgets) await assertWidgetFiles(paths.stateDir, state);
         if (!report.files.output.exists) {
           await publishNoClobber(j.staging, j.output);
         }

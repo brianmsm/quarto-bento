@@ -1,3 +1,4 @@
+import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
 import { MATH_CODEC_VERSION } from "../render/math.ts";
 import { basename, dirname, resolve } from "node:path";
@@ -167,6 +168,7 @@ export async function projectProjection(
       "SOURCE_CHANGED: QMD changed during execution; render aborted",
     );
   }
+  const widgets = await prepareWidgets(ast, mapping);
   const projected = validateProjectionOrigins(
     mapping,
     await projectAst(
@@ -174,6 +176,7 @@ export async function projectProjection(
       state?.docId ?? crypto.randomUUID(),
       executed?.assetDirectories ?? [build, paths.directory],
       mapping,
+      widgets.projections,
     ),
   );
   const generated = prepareIsolatedDocument(
@@ -264,6 +267,8 @@ export async function projectProjection(
     ownership,
     sourceHash: mapping.hash,
     diagnostics: projected.diagnostics,
+    widgets,
+    mapping,
   };
 }
 export function assertProjectionIdentity(
@@ -341,6 +346,19 @@ async function render(source: string, executed?: ExecutedRender) {
       composed.document,
       assembled,
     );
+    const widgetPublication = await stageWidgets(
+      paths.stateDir,
+      receipt.generation,
+      state.docId,
+      projected.mapping,
+      projected.widgets,
+      composed.document,
+      new Set(
+        state.pending.filter((p) => p.origin === "detached").map((p) =>
+          targetKey(p.target)
+        ),
+      ),
+    );
     // Recheck immediately before publishing: edits during execution must also survive.
     await assertOutputUnchanged(state, paths.output);
     if (
@@ -410,15 +428,16 @@ async function render(source: string, executed?: ExecutedRender) {
         );
       }
     }
-    state = await store.save(
-      await recordPublication(
-        state,
-        composed.document,
-        paths.output,
-        html,
-        receipt,
-      ),
+    state = await recordPublication(
+      state,
+      composed.document,
+      paths.output,
+      html,
+      receipt,
     );
+    if (widgetPublication) state.widgets = widgetPublication;
+    else delete state.widgets;
+    state = await store.save(state);
     // Atomic no-clobber publication refuses an output recreated by a native save.
     await Deno.link(staging, paths.output);
     await syncDirectory(paths.directory);
@@ -439,7 +458,21 @@ async function render(source: string, executed?: ExecutedRender) {
     }
     await Deno.remove(journal);
     await syncDirectory(paths.stateDir);
-    return { output: paths.output, state, diagnostics: projected.diagnostics };
+    return {
+      output: paths.output,
+      state,
+      diagnostics: projected.diagnostics,
+      ...(widgetPublication
+        ? {
+          presenter: resolve(
+            paths.stateDir,
+            "widgets",
+            receipt.generation,
+            "presenter.html",
+          ),
+        }
+        : {}),
+    };
   });
 }
 export async function captureProject(source: string, editedPath?: string) {
@@ -492,4 +525,22 @@ export async function readProject(source: string): Promise<ProjectState> {
   const state = await new StateStore(projectPaths(source).stateDir).load();
   if (!state) throw new Error("NO_BASELINE: render this project first");
   return state;
+}
+
+export async function readProjectPresenter(
+  source: string,
+  revision: number,
+): Promise<string> {
+  return await withProject(source, async (paths, store) => {
+    const state = await store.load();
+    if (!state) throw new Error("NO_BASELINE: render first");
+    if (state.revision !== revision) {
+      throw new StateError(
+        "STALE_REVISION",
+        "Reload before presenting a newer project snapshot.",
+      );
+    }
+    await assertOutputUnchanged(state, paths.output);
+    return await projectPresenter(paths.source, paths.stateDir, state);
+  });
 }

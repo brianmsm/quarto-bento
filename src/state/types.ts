@@ -77,6 +77,23 @@ export interface OutputReceipt {
   publishedDocSha256?: string;
   captureConsumed?: boolean;
 }
+export interface WidgetPublication {
+  version: 1;
+  docId: string;
+  generation: string;
+  sourceHash: string;
+  runtimeSha256: string;
+  licenseSha256: string;
+  presenterSha256: string;
+  entries: {
+    slideId: string;
+    elementId: string;
+    file: string;
+    presenter: string;
+    presenterSha256: string;
+    receipt: JsonObject;
+  }[];
+}
 export interface ProjectState {
   schemaVersion: 1;
   revision: number;
@@ -90,6 +107,7 @@ export interface ProjectState {
   bentoOnly: { slideId: string; element: BentoElement }[];
   pending: Change[];
   output?: OutputReceipt;
+  widgets?: WidgetPublication;
 }
 export class StateError extends Error {
   constructor(public code: string, message: string, public details?: unknown) {

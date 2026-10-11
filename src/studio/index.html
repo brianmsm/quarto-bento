@@ -100,6 +100,16 @@
     #slide-list button {
       margin-right: 8px;
     }
+    #presenter-dialog {
+      width: 95vw;
+      max-width: none;
+      height: 90vh;
+      max-height: 92vh;
+      padding: 12px;
+    }
+    #presenter-frame {
+      height: calc(90vh - 50px);
+    }
     #delete-confirmations label {
       display: block;
       margin: 12px 0;
@@ -107,7 +117,7 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><span id="status" role="status">Abriendo…</span></header>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
     <iframe id="editor" src="/deck" title="Editor Bento"></iframe>
     <div id="busy" hidden
       role="status">Recalculando. Tus cambios están guardados.</div>
@@ -117,6 +127,8 @@
       id="slides-dialog"><h2>Diapositivas</h2><p>Ocultar conserva el contenido y lo omite en la presentación y el PDF. Marcar para eliminar guarda una eliminación pendiente; después debes revisarla y confirmarla para modificar QMD. Puedes restaurarla antes de sincronizar.</p><p id="slides-note" role="status"></p><div id="slide-list"></div><button id="slides-close">Cerrar</button></dialog>
     <dialog
       id="reconcile-dialog"><h2>Comparar QMD y Bento</h2><p>La comparación ejecuta el QMD. Elige cómo resolver cada diferencia; las demás seguirán pendientes. Estas decisiones guardan el proyecto. Escribir el QMD requiere después revisar y aplicar la sincronización.</p><p id="reconcile-note" role="status"></p><div id="reconcile-changes"></div><button id="resolve" disabled>Guardar decisiones</button> <button id="resolve-close">Cerrar</button></dialog>
+    <dialog
+      id="presenter-dialog"><button id="presenter-close">Cerrar presentación</button><iframe id="presenter-frame" title="Presenter con gráficos interactivos"></iframe></dialog>
     <script>
     globalThis.qbentoToken = __QBENTO_TOKEN__;
     </script>

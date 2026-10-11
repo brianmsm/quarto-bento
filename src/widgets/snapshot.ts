@@ -5,6 +5,7 @@ import {
   createPlotlySnapshotPage,
   type PlotlyBundle,
   type PlotlyRuntime,
+  verifyStaticSvg,
 } from "./presenter.ts";
 import { fail, type PlotlyCandidate } from "./plotly.ts";
 export async function snapshotPlotly(
@@ -68,9 +69,48 @@ export async function snapshotPlotly(
         }`,
       );
     }
-    return createPlotlyBundle(candidate, result.svg);
+    return createPlotlyBundle(
+      candidate,
+      canonicalPlotlySvg(result.svg, candidate.specHash),
+    );
   } finally {
     if (timer !== undefined) clearTimeout(timer);
     await Deno.remove(dir, { recursive: true });
   }
+}
+
+/** Plotly assigns random SVG IDs/trace class tokens; never rewrite user label text. */
+export function canonicalPlotlySvg(svg: string, specHash: string): string {
+  verifyStaticSvg(svg);
+  const ids = new Map<string, string>();
+  const tags = (
+    input: string,
+    update: (name: string, value: string) => string,
+  ) =>
+    input.replace(
+      /<[A-Za-z][^<>]*>/g,
+      (tag) =>
+        tag.replace(/\s([\w:-]+)=(["'])(.*?)\2/g, (_, name, quote, value) =>
+          ` ${name}=${quote}${update(name, value)}${quote}`),
+    );
+  tags(svg, (name, value) => {
+    if (name === "id") {
+      if (ids.has(value)) fail("duplicate SVG identity");
+      ids.set(value, `qb-plotly-${specHash.slice(0, 16)}-${ids.size}`);
+    }
+    return value;
+  });
+  svg = tags(svg, (name, value) => {
+    if (name === "id") return ids.get(value)!;
+    if (name === "class") {
+      return value.split(/\s+/).filter((c) => !/^trace[0-9a-f]{6}$/.test(c))
+        .join(" ");
+    }
+    return value.replace(/url\(#([^)]+)\)/g, (_, id) => {
+      if (!ids.has(id)) fail("unbound SVG fragment");
+      return `url(#${ids.get(id)})`;
+    });
+  });
+  verifyStaticSvg(svg);
+  return svg;
 }

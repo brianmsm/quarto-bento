@@ -1,9 +1,12 @@
 # Bounded Plotly adapter and isolated offline Presenter
 
-Status: **independent implementation and executed Linux evidence, 2026-10-11**.
-This is an integration-ready adapter, not acceptance of the full widget product.
-The main renderer/Studio does not yet dispatch widgets to this module or publish
-its sidecars. Unsupported RawBlock output continues to refuse there.
+Status: **integrated bounded implementation with executed Linux evidence,
+2026-10-11**. The renderer, generation state, recovery, installed Quarto
+extension and Studio now dispatch this adapter. The native BentoDoc retains a
+static computed image; the enhanced Presenter offers separate isolated
+interactive views. This does not establish acceptance of arbitrary htmlwidgets
+or the full widget product. Unsupported remaining RawBlock output still refuses
+publication.
 
 ## Executed result
 
@@ -21,8 +24,8 @@ changed the x range from `[0.876058506543495, 3.123941493456505]` to
 `[1.4380292532717474, 2.5619707467282526]`. Switching back displayed the
 original static chart. Both views were visually inspected. Print CSS selected
 the static SVG; a one-page PDF was rasterized and visually inspected (no
-JavaScript in PDF). This verifies the widget Presenter harness, not Bento's
-full-deck Presenter UI.
+JavaScript in PDF). This first evidence verifies the independent widget
+Presenter harness; the integrated Studio validation is described below.
 
 The browser's widget frame reported opaque origin `null`. Reads of
 `parent.document` and `localStorage` threw. A deliberate fetch to
@@ -145,43 +148,102 @@ Static-element and Presenter construction require the same source/receipt
 context. Recomputing hashes inside a modified bundle cannot pass the separately
 retained receipt. The core must obtain that receipt from its checked generation,
 never derive it from the untrusted bundle at load time; `createPlotlyReceipt` is
-for newly captured results. Binding the receipt to project/docId/generation
-publication remains a core hook.
+for newly captured results. The checksummed project state now binds that receipt
+to docId and output generation. A modified bundle cannot supply its own expected
+digest.
 
 `createPlotlyPresenter` is a self-contained, single-widget host with an explicit
 static/interactive switch and static print CSS. Its UI does not grant the widget
-access to Studio/project state. Enhanced full-deck Presenter orchestration is a
-separate integration step.
+access to Studio/project state. `createDeckPresenter` now wraps the pinned
+native read-only Bento player and explicitly selected widget views. Interactive
+widgets remain opaque to the host.
 
-## Minimal integration hooks
+## Integrated publication and Studio
 
-1. After checked Quarto execution, call `collectPlotlyCandidates` with the
-   original source snapshot. It does not require changing `capture.lua`; the
-   needed JSON already survives in RawBlock. Source guards and execution
-   receipts remain in the core.
-2. Resolve the Plotly runtime/license from a compatible local dependency, verify
-   the exact pin, and call `snapshotPlotly`. Do this before publishing a
-   generation; rendering failures must leave the previous published deck/state
-   intact.
-3. Project the returned static element with its computed origin at the original
-   wrapper position, applying existing stable-ID visual overrides. Do not merely
-   remove all raw blocks. Every candidate must be consumed once, and
-   unrecognized output must still refuse.
-4. Publish the JSON bundle as a generation-scoped widget sidecar, tied to
-   source, producer, document and generation receipts. Persist the built
-   Presenter/resource hashes with the same generation. No core sidecar
-   transaction is implemented by this module yet; it returns reviewable values
-   to the caller.
-5. Add an explicit Studio/Presenter action to open the isolated host; standalone
-   Bento and PDF retain the pure-data SVG image. Regeneration replaces the chart
-   and sidecar while preserving the image's visual state.
+`projectProjection` discovers supported widgets from the checked executed AST
+and original source. `prepareWidgets` resolves the pinned runtime from the
+installed R package and snapshots each supported output using local Chromium.
+`projectAst` checks the same executed output hash, consumes every declared
+wrapper exactly once and emits its SVG image with computed producer provenance.
+Unconsumed or ambiguous raw output refuses. No scripts enter BentoDoc, and the
+original QMD/chunk remain untouched. Stable image IDs allow ordinary visual
+position and size overrides to survive recomputation.
+
+Before output publication, `stageWidgets` durably writes an immutable
+`.qbento/widgets/<generation>/` directory containing bundle JSON, pinned JS,
+license, per-widget HTML and a full-deck Presenter. The state commit activates
+its separate receipt, bound to docId and the same output generation as HTML. An
+interrupted staging operation leaves unreferenced resources, never an active
+replacement. Recovery checks resources before allowing finish; rollback restores
+the previous state pointer. Old generations remain available for recovery, and
+are ignored by Git as rebuildable artifacts. No automatic garbage collection is
+implemented.
+
+Studio's **Presentar con gráficos** saves through the existing bridge, refuses
+new concurrent edits or stale revisions, and requests a checked snapshot through
+an authenticated local endpoint. An unpredictable capability URL exposes only
+that cached snapshot, never a filesystem path. Its native deck reflects saved
+visual changes. Widget loading verifies current QMD/producer hashes, bundle,
+runtime and the exact HTML bytes used against the external receipt; uncaptured
+native HTML changes refuse before execution or presentation. Altered computed
+images require explicit resolution/rebuild; detached images remain static and
+are excluded from interactive selection. Hidden/deleted elements are excluded.
+
+The enhanced artifact is self-contained and offline, including runtime/license.
+The ordinary native HTML retains static SVG images for the pinned Bento player
+and its export path. `quarto render` through the installed extension uses the
+already executed AST and executes the QMD producer once. Installation copies the
+widget modules together with the complete runtime and pinned Bento shell.
+
+Current bounded UI and dependencies:
+
+- Up to eight supported Plotly SVG scatter/bar widgets per deck, outside nested
+  components, under an explicit identified wrapper and one labeled chunk.
+- Interactive charts open as separate views selected by slide/element ID. They
+  are not overlaid interactively on the slide's exact saved geometry; the native
+  static deck preserves the complete visual composition.
+- A compatible user-installed R Plotly runtime and Chromium are required for
+  rendering. Presenting the emitted artifact needs no R process or local server.
+- Dependencies are pinned and bundled locally; a project-wide license/security
+  audit and native Windows/macOS qualification remain separate acceptance gates.
+
+## Integrated validation
+
+The new real execution tests cover initial generation, identical-data stable
+SVG, moved/resized SVG preservation after CSV changes, stable docId, unchanged
+QMD, separate trusted receipts, tampered bundle/HTML/current source refusal,
+stale revision, authenticated capability route, uncaptured native HTML guard
+before R execution, finish refusal for modified resources and explicit rollback.
+They also exercise detached static content and substitution on the second HTML
+read. SVG normalization is restricted to attributes; literal user label text
+containing `id=`, `class=` or `url(...)` is preserved. Ordinary Quarto rendering
+through a freshly installed portable extension executes the producer once.
+
+In a real local Studio session with Chromium explicitly headless, the Presenter
+button opened the saved native read-only deck. Its static chart was visually
+inspected in `output/playwright/plotly-studio-deck.png`. The browser context was
+then put offline before activating the nested interactive view. Native hover
+showed `(2, 5)` and native zoom changed the x range from
+`[0.876058506543495, 3.123941493456505]` to
+`[1.4380292532717474, 2.5619707467282526]`. Hover and zoom screenshots are
+`output/playwright/plotly-studio-hover.png` and `plotly-studio-zoom.png`.
+Independent review additionally loaded the native player (`window.bento`,
+`readonly:true`) and nested Plotly sandbox (`ready:true`, origin `null`) in
+separate headless fixtures. Runtime isolation evidence is distinct from visual
+inspection.
+
+The existing pinned Bento editor attempts its update check; CSP blocks that
+request. The native read-only player can log a refused automatic fullscreen
+request because the iframe loads after the originating user gesture. These do
+not prevent local static presentation or Plotly interaction. No desktop windows
+or foreground control were used for this integrated browser validation.
 
 ## Validation
 
 ```sh
-deno test --allow-read --allow-write --allow-run --allow-env \
-  tests/widget_test.ts tests/widget_execution_test.ts
-deno lint src/widgets tests/widget_test.ts tests/widget_execution_test.ts
+deno test --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1 \
+  tests/widget_test.ts tests/widget_execution_test.ts tests/widget_project_test.ts
+deno lint src/widgets src/core/widgets.ts tests/widget_project_test.ts
 deno check src/widgets/*.ts
 ```
 
@@ -193,3 +255,8 @@ QMD/chunk hashes, then validates a bar SVG. It requires the compatible R Plotly
 package, pinned local JS and Chromium; it is skipped when Deno run permission is
 absent, not silently claimed as passed. No full repository suite was run in this
 worktree.
+
+Integrated focused result: **11 widget tests passed**, plus **73 existing state,
+recovery, render and Studio tests passed**. Type checking and scoped lint
+passed. These are subsystem and executed Linux checks, not a full product
+acceptance claim.
