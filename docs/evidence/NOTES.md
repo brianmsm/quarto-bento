@@ -1,5 +1,43 @@
 # Plain speaker-notes round-trip
 
+## New-notes native acceptance after integration
+
+On Linux, the coordinator exercised the shipped Studio and pinned Bento editor
+in headless Chromium. Runtime `442c38e` first demonstrated editing the actual
+notes textarea, Save, browser reopen, pending recomputation, inspected insertion,
+Apply without execution and final recomputation. The saved background and whole
+emitted document were unchanged by source promotion; pending notes reached zero.
+
+Runtime `61977eb` then exercised the repaired producer-identity path: notes on a
+plain-QMD slide before an unlabelled R graphic, followed by creating a native
+title/content slide with its own notes. Studio displayed the `qb-producer`
+identity patch, `insert-slide`, `insert-notes` and source order before approval.
+Each Apply left the R execution counter unchanged; Recalculate executed once.
+Both promotions retained the exact saved document, including native IDs,
+decorative template line, typography, figure and notes, with zero pending edits.
+
+Independent review subsequently approved `c80e436`, which additionally rejects
+producer markers crossing source scope boundaries. After integrating that fix
+with lists and packaging at `eb57c6f`, a fresh reconstruction copied only the
+native fixture's QMD and `.qbento/{project,state}.json`: the complete emitted
+document and `docId` matched exactly, with zero pending edits. The native actions
+above were not relabelled as having run on the later revision.
+
+The integrated focused set passed **52 tests, zero failures, in 1m44s**:
+notes creation/existing notes, lists, source scanning, plain QMD, agent creation,
+agent operations and packaging. This is separate from the historical 430-test
+full-suite receipt. Independent notes review added twelve passing probes,
+including two later unlabelled R producers, changed CSV, retained geometry,
+unselected pending content, stale/forged plans and state-only reconstruction.
+
+Local receipts and source fixtures are retained under
+`output/verification/authoring-eb57c6f/`; inspected native screenshots include
+`output/playwright/notes-final-producer-review.png`,
+`output/playwright/notes-newslide-review.png` and
+`output/playwright/notes-newslide-synced.png`. This proves headless native editor
+interaction and local Linux execution, not foreground OS dialogs or other
+platforms.
+
 Verified on Linux with Quarto 1.10.19, Deno 2.9.6 and the pinned Bento 1.2.6
 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (2026-10-11). This evidence
 covers the core API, executed Quarto projection and native editor workflow

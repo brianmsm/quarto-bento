@@ -16,9 +16,11 @@ in `docs/IMPLEMENTATION_STATUS.md` and `docs/evidence/INTEGRATED-LINUX.md`.
 The audited local workflows and portable development artifact are validated;
 do not repeat the original S0/S1/S2/S4 spikes as if they were unimplemented.
 Respect the bounded codecs and remaining gates in `docs/ACCEPTANCE_GAPS.md`.
-The full-product audit in `docs/PRODUCT_ACCEPTANCE_AUDIT.md` identifies ordinary
-authoring gaps to implement next: new speaker notes, Markdown lists and composed
-tables/charts/KPIs. Safe refusals preserve work but do not close those gates.
+The full-product audit in `docs/PRODUCT_ACCEPTANCE_AUDIT.md` led to integrated
+notes creation, existing Markdown lists and simple composed tables. Their newer
+receipts are in the implementation ledger. Continue list creation/conversion/
+deletion, KPI/chart composition and common execution provenance. Safe refusals
+preserve work but do not close those gates.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains
 `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the

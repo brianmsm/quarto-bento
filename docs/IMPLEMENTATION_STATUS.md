@@ -23,6 +23,27 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+The full-product follow-up now integrates plain speaker-note creation on existing
+and new slides, reviewed retention of unlabelled producer IDs, and native
+Markdown lists backed by QMD. The coordinator completed native notes/list
+Save/reopen/review/Apply/recompute and state-only reconstruction on Linux;
+the combined set at `eb57c6f` passed 52 tests. See [notes](evidence/NOTES.md) and
+[lists](evidence/LISTS.md) for exact runtime revisions and evidence layers.
+Creating/converting/deleting list objects remains in implementation.
+
+Simple tables now compose in measured cards and layouts with unchanged internal
+typography and no box-only scaling. Independent review, real Quarto execution,
+changed-data reconstruction and pinned-renderer DOM/glyph checks passed before
+integration at `1605a37`. See [composed tables](evidence/COMPOSED-TABLES.md).
+KPI/chart composition and the common R/Python producer-receipt improvements
+remain in progress. These additions do not inherit the older full-suite result.
+
+Portable packages additionally pin schema, license/notice and upstream npm
+manifest/lock bytes, verify a 25-entry production dependency inventory and record
+the qbento Git revision/dirty state or explicit unknown provenance. Independent
+packaging checks passed before integration at `7ffab32`; complete OFL text and
+the project's own license decision remain outside that claim.
+
 The native standalone-text creation path is now integrated as well: Save and
 reopen retain the pending object; reviewed sync inserts a bounded identified
 paragraph into the existing source slide; recalculation promotes it while
@@ -67,11 +88,12 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 
 ## Delivered local scope and remaining limits
 
-The full-product audit at `89fc134` identifies additional ordinary authoring
-work: new speaker notes, Markdown lists and composition of adapted results in
-cards/layouts. See the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md).
-The passing integrated receipt below remains evidence for its tested scope;
-it does not close these newly explicit gates.
+The full-product audit at `89fc134` identified additional ordinary authoring
+work. Notes creation, existing Markdown lists and simple table composition have
+since advanced through the evidence above. List creation/conversion/deletion,
+KPI/chart composition and common execution provenance remain active work. See
+the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md). The historical integrated
+receipt below remains evidence only for its tested revision and scope.
 
 The post-suite audit's ordinary-QMD identity, confirmed source-element deletion,
 source KPI, Studio-created card/KPI and diagram/timeline workflows are now

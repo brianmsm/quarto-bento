@@ -336,11 +336,15 @@ Pause for questions.
 ```
 
 The native notes field contains plain text. Save preserves pending changes;
-review and sync replace only the notes body's bytes. Clearing the field retains
-the empty identified div. Rich Markdown, executable inline expressions, multiple
-notes blocks on the same slide and unbound notes refuse this round-trip. Create
-the identified block in QMD first if none exists. The exact whitespace and
-execution limits are documented in [notes evidence](evidence/NOTES.md).
+review and sync replace only an existing notes body's bytes. Clearing the field
+retains the empty identified div. Notes can also be created directly in Bento on
+an existing or newly created slide. Review shows the exact new identified notes
+div and any necessary source identity acquisition before Apply writes QMD.
+Creation requires an unchanged executed source baseline without another notes
+container in that slide. Rich Markdown, executable inline expressions, multiple
+notes containers and ambiguous source refuse this round-trip. The whitespace,
+execution and native acceptance limits are documented in
+[notes evidence](evidence/NOTES.md).
 
 ### Stable identities
 

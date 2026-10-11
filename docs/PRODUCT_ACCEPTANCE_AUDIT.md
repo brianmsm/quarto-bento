@@ -36,6 +36,14 @@ requirements. It did not repeat all native workflows or the complete suite.
 
 ## Next implementation gates
 
+Progress after this baseline audit: notes creation and existing-list editing are
+integrated with native Linux evidence and exact state-only reconstruction at
+`eb57c6f`; simple table composition is integrated at `1605a37` with independent
+review and native DOM checks. See the [implementation ledger](IMPLEMENTATION_STATUS.md).
+The matrix above remains a record of the audited baseline. List creation,
+conversion/deletion and KPI/chart composition remain unfinished, as does the
+common producer-receipt work across execution entry points.
+
 1. **Create plain speaker notes from Studio and the agent API.** Support existing
    slides, reviewed identity acquisition on ordinary QMD and new authored
    slides. Save must preserve pending notes without writing QMD. Preview must

@@ -221,8 +221,12 @@ changes only through explicit reviewed sync.
 
 The operation uses the existing structural source authoring grammar in memory
 before committing. Empty or multiline headings, unsupported rich body markup,
-display equations, nonempty notes or separate `slide.title` metadata require
-explicit QMD authoring. Notes/title may be omitted or set to the empty string.
+display equations or separate `slide.title` metadata require explicit QMD
+authoring. Plain nonempty `notes` are supported on created and existing slides:
+Save retains them as pending, and reviewed sync inserts a notes container when
+none existed in the unchanged executed source. Existing bound notes use their
+body-only patch. Notes may be omitted or empty; `slide.title` must be omitted or
+empty. See [notes creation evidence](evidence/NOTES.md).
 The structural scanner can conservatively refuse table-like text containing a
 pipe (`|`) even when it is intended as a literal paragraph. Images, tables,
 charts, executable producers and declared
@@ -261,7 +265,7 @@ qbento render presentation.qmd
 ```
 
 Existing source-safety limits still apply: unsupported rich content, unverified
-identities, computed conflicts, missing identified notes blocks or unsafe
+identities, computed conflicts, ambiguous notes containers or unsafe
 execution order can refuse a sync/render even though a pending edit was saved.
 Resolve those changes through the current reviewed workflow. Patch neither
 clears pending edits nor grants source-deletion approval.

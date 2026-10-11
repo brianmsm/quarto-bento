@@ -1,5 +1,30 @@
 # Native Markdown lists — implementation evidence
 
+## Integrated native acceptance on Linux
+
+The coordinator ran the shipped Studio and pinned Bento in headless Chromium
+against integrated revision `eb57c6f`. The example's ordinary nested bullets,
+decimal numbered list and loose items with paragraphs were visually inspected.
+The native editor appended text to the final item of the first list; Save kept
+QMD unchanged, and both recomputation with pending edits and browser reopen
+retained the edited native structure, bold/italic text, inline code and link.
+
+Review displayed the heading/list identity patches and the exact bounded list
+replacement. Apply followed by Recalculate yielded zero pending edits and an
+emitted document exactly equal to the saved native document. All source bytes
+from the second slide onward, including the computed inline expression, remained
+unchanged. A fresh copy containing only QMD and the two durable sidecars rebuilt
+the exact whole document with the same `docId`.
+
+Native screenshots were inspected at `output/playwright/lists-native-before.png`,
+`lists-native-review.png`, `lists-native-loose.png` and
+`lists-native-ordered.png`. Local source diffs, receipts and the integrated
+**52-test passing** regression log are under
+`output/verification/authoring-eb57c6f/`. Independent source/core list review
+passed 33 tests, including atomic refusal when a filter removed an authored list
+from a project containing pending edits. The native receipt covers editing
+existing lists; the creation/conversion/deletion limits below remain separate.
+
 This slice extends ordinary QMD authoring with native `ul`/`ol`/`li` text objects.
 The upstream reference is Bento 1.2.6, pinned revision
 `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`. Its

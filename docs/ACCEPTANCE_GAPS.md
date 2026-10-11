@@ -11,9 +11,15 @@ The [requirement-by-requirement audit](PRODUCT_ACCEPTANCE_AUDIT.md) at `89fc134`
 identified ordinary authoring gaps beyond the previously audited local slice:
 creating speaker notes without a prepared QMD block, faithful Markdown list
 round-trip, and composing simple tables/charts/KPIs within cards/layouts.
-These remain implementation gates; documenting a conservative refusal does not
-make the missing ordinary workflow an accepted product exclusion. Local work
-can continue without reopening the owner's deferral of other-platform tests.
+Notes creation and existing-list editing now have native Linux receipts and
+state-only reconstruction, with 52 combined tests passing at `eb57c6f`.
+Simple table composition has independently reviewed real execution and native
+DOM evidence, integrated at `1605a37`. See [notes](evidence/NOTES.md),
+[lists](evidence/LISTS.md) and [composed tables](evidence/COMPOSED-TABLES.md).
+Creating/converting/deleting lists, composing KPI/charts and strengthening the
+common execution producer receipt remain active gates. Documenting a
+conservative refusal does not make a missing ordinary workflow an accepted
+product exclusion. Local work continues under the owner's Linux-only scope.
 
 ## Closed gaps from the audit at `0bf0d9c`
 

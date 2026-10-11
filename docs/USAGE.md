@@ -119,6 +119,19 @@ admite un párrafo del subconjunto de texto compatible; objetos agrupados y
 estructuras ambiguas pueden requerir autoría explícita en QMD. Consulta el
 [alcance y la prueba nativa](evidence/TEXT-INSERTION.md).
 
+En **Notas del orador** puedes escribir notas aunque la diapositiva todavía no
+tenga un bloque de notas en QMD, incluso si acabas de crearla en Bento.
+**Guardar proyecto** conserva ese texto pendiente. **Revisar cambios** muestra
+el bloque `.notes` que se insertará y las identidades técnicas necesarias;
+solo **Aplicar** escribe QMD. Las notas admiten texto plano y párrafos, con los
+[límites de espacios y ejecución documentados](evidence/NOTES.md).
+
+Las listas Markdown existentes, incluidas las anidadas y las numeradas desde 1,
+se conservan como listas nativas editables. Guardar, revisar y sincronizar sigue
+el mismo ciclo explícito. La creación de listas nuevas y la conversión de otros
+objetos requieren todavía el siguiente adaptador; consulta el
+[alcance actual de listas](evidence/LISTS.md).
+
 ## KPI declarados en QMD
 
 El adaptador de fuente `.bento-kpi` admite un componente identificado al nivel
