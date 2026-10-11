@@ -1,0 +1,41 @@
+---
+title: Contenido y cálculo
+---
+
+## Contenido {#contenido}
+
+::: {#intro}
+Use `fit(x)` and [Docs](https://example.org/Case), ~~old~~.
+:::
+
+```{#shown .r font-size="20"}
+modelo <- lm(y ~ x, data = datos)
+summary(modelo)
+```
+
+::: {#equation x="84"}
+<!-- qb:eq-main -->
+$$
+\frac{\alpha + x^{2}}{1+y}
+$$
+:::
+
+::: {#speaker .notes}
+Explicar la ecuación.
+
+Mostrar el cálculo actualizado.
+:::
+
+## Cálculo {#calculo}
+
+::: {#result}
+Figura calculada con datos locales.
+:::
+
+```{r}
+#| label: fig-values
+#| echo: false
+#| dev: svg
+values <- read.csv("data.csv")
+plot(values$x, values$y, type="b", col="#156f65", pch=19)
+```

@@ -30,7 +30,7 @@ Full product acceptance and public v1 release remain pending. See
 | HTML guard in every render entry point | Core render and ordinary Quarto integration tested; native capture receipts reject stale/foreign/consumed generations. Direct Quarto invocation verification currently Linux-only. [Quarto](evidence/QUARTO.md), [capture](evidence/CAPTURE.md). |
 | Verified preview/apply + recoverable source/state transaction | Text/structural plans, exact fragment/hash/state checks, recoverable source transaction and promotion receipts integrated. Interrupted render/sync finish/rollback tested. [Recovery](evidence/RECOVERY.md). |
 | New/order/hide/restore/delete slides safely | New slide/text/order and explicit safe deletion implemented; computed producer ordering/deletion protected. Native new-slide/order/save/reopen/sync tested live; repeated template IDs have an independent real-Quarto regression; hide/restore/delete UI needs further work. [Structural sync](evidence/SYNC-STRUCTURE.md). |
-| Authored text/math/displayed code/notes synchronization | Supported rich text, identified displayed code and plain identified speaker notes round-trip tested, including live native editing. [Inline](evidence/INLINE.md), [displayed code](evidence/DISPLAYED-CODE.md), [notes](evidence/NOTES.md). Display-math codec exists; its integrated native loop is in progress. |
+| Authored text/math/displayed code/notes synchronization | Supported rich text, identified display equations, displayed code and plain identified speaker notes round-trip tested, including live native editing. [Inline](evidence/INLINE.md), [displayed code](evidence/DISPLAYED-CODE.md), [notes](evidence/NOTES.md), [math](evidence/MATH-CODEC.md). A combined native edit/sync/recompute fixture preserves all four and a changed-data SVG; the integrated suite at `ba0843d` passes 202 tests. [Combined evidence](evidence/SEMANTIC-ROUNDTRIP.md). General TeX and inline equations remain unsupported. |
 | Computed provenance and explicit detach | Executed origins verified against original source; generated as-is content refuses ambiguous provenance. Explicit reconciliation supports restore/detach; broader fixtures remain. |
 | QMD visual attributes + annotation levels | Direct-object QMD fields apply to projection, stay source-owned and sync through bounded patches; conflict and native UI checks pass. Components and annotation levels still pending. [Design](evidence/DESIGN.md). |
 | Components, layouts, themes, animation/morph | Pending full supported projections and retention checks. |
@@ -55,7 +55,10 @@ Full product acceptance and public v1 release remain pending. See
   Displayed code preserves content and source-owned typography; executable echoes
   retain computed provenance and cannot reverse-write their producer.
   Plain identified speaker notes now synchronize through their own bounded patch.
-  Native charts/tables, integrated math round-trip, components, widgets,
+  Identified standalone display equations use a bounded LaTeX codec and reviewed
+  body-only patches. Independent review is tightening edge cases against the
+  pinned native math renderer; this is not general TeX support.
+  Native charts/tables, components, widgets,
   Presenter/widgets and cross-platform native packaging remain separate incomplete gates.
 - Capture permits one accepted capture per published generation and refuses
   older HTML after newer Studio edits. Re-render before editing another native
