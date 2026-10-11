@@ -16,10 +16,22 @@ reordered roles, duplicate IDs, nested content and multiple paragraphs refuse.
 Implemented text visual attributes can be declared on role wrappers; coupled
 geometry belongs to the outer component.
 
-```markdown
-:::: {#metric .bento-kpi} ::: {#metric-label bento-role="label"} Observed mean
-::: ::: {#metric-value bento-role="value"} `r sprintf("%.2f", mean(values))` :::
-::: {#metric-detail bento-role="detail"} Calculated from project data. ::: ::::
+```text
+:::: {#metric .bento-kpi}
+
+::: {#metric-label bento-role="label"}
+Observed mean
+:::
+
+::: {#metric-value bento-role="value"}
+`r sprintf("%.2f", mean(values))`
+:::
+
+::: {#metric-detail bento-role="detail"}
+Calculated from project data.
+:::
+
+::::
 ```
 
 Label and detail contain literal authored text in the bounded native inline
@@ -89,6 +101,13 @@ deno test --allow-read --allow-write --allow-env --allow-run \
   --allow-net=127.0.0.1 tests/measurement_test.ts tests/kpi_test.ts \
   tests/kpi_execution_test.ts
 ```
+
+At implementation commit `f0ec53e`, the final focused command passed **11 tests,
+0 failures** in **1 minute 12 seconds**. Source type checking, focused lint and
+format checks also passed. Three separate existing card/layout/code component
+regressions passed **3 tests, 0 failures** in 11 seconds. The canonical example
+rendered with zero pending edits and no diagnostics. These are local execution
+receipts; native visual acceptance remains separate.
 
 The focused tests prove:
 
