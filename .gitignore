@@ -7,3 +7,6 @@ output/
 **/.qbento/build/
 **/.qbento/*.lock
 **/.qbento/*.tmp
+**/.qbento/history/
+/fixtures/basic/.qbento/
+**/*.bento.html.pending-*

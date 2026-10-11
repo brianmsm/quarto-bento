@@ -4,7 +4,7 @@
     "check": "deno check src/**/*.ts",
     "qbento": "deno run --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1 src/cli.ts"
   },
-  "compilerOptions": {"strict": true},
-  "fmt": {"exclude": ["vendor/"]},
-  "lint": {"exclude": ["vendor/"]}
+  "compilerOptions": { "strict": true },
+  "fmt": { "exclude": ["vendor/"] },
+  "lint": { "exclude": ["vendor/"] }
 }

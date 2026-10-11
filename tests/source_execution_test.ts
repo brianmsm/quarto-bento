@@ -25,6 +25,7 @@ Deno.test({
       const render = async () => {
         const result = await new Deno.Command("quarto", {
           cwd: dir,
+          env: { XDG_CACHE_HOME: `${dir}/cache` },
           args: [
             "render",
             "proof.qmd",
