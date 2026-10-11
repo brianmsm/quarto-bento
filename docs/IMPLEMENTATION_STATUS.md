@@ -65,6 +65,13 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 
 ## Known limits under active implementation
 
+The post-suite requirement audit found concrete missing ordinary workflows:
+plain-QMD identity acquisition after reviewed edits, confirmed source-element
+deletion, meaningful Studio-created card/KPI synchronization, and the remaining
+declarative component vocabulary. See the
+[functional acceptance checklist](ACCEPTANCE_GAPS.md). These remain required
+implementation work; the green suite below covers its existing fixtures.
+
 - First-slice evidence is Linux-specific and bounded to the documented fixture.
   Broader structural cases and all later product gates remain active work.
 - `results: asis` can lose computation wrappers in Quarto's executed AST. This
