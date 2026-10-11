@@ -15,7 +15,8 @@ export interface DesignRegistry {
   activeTheme?: string;
 }
 const names = /^[a-z][a-z0-9-]{0,63}$/;
-const maximumBytes = 262144;
+export const MAX_DESIGN_REGISTRY_BYTES = 262144;
+const maximumBytes = MAX_DESIGN_REGISTRY_BYTES;
 function object(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new DesignError("INVALID_DESIGN_REGISTRY", "Expected a JSON object.");
@@ -98,7 +99,10 @@ export function registryDefaults(registry: DesignRegistry): DesignDefaults {
       : {}),
   };
 }
-async function registryBytes(directory: string): Promise<Uint8Array | null> {
+async function designRegistryReady(
+  directory: string,
+  transactionToken?: string,
+): Promise<void> {
   const stateDir = resolve(directory, ".qbento");
   try {
     const info = await Deno.lstat(stateDir);
@@ -109,9 +113,44 @@ async function registryBytes(directory: string): Promise<Uint8Array | null> {
       );
     }
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return null;
+    if (error instanceof Deno.errors.NotFound) return;
     throw error;
   }
+  const journal = resolve(stateDir, "design-save.json");
+  try {
+    const marker = await Deno.lstat(journal);
+    if (
+      !transactionToken || marker.isSymlink || !marker.isFile ||
+      marker.size > 8192 || marker.nlink !== null && marker.nlink > 1
+    ) {
+      throw new DesignError(
+        "DESIGN_REGISTRY_RECOVERY_REQUIRED",
+        "An interrupted registry save is retained at .qbento/design-save.json. Inspect its history receipt and restore or finish the saved registry before loading or recalculating.",
+      );
+    }
+    const receipt = JSON.parse(await Deno.readTextFile(journal));
+    if (receipt.token !== transactionToken) {
+      throw new DesignError(
+        "DESIGN_REGISTRY_RECOVERY_REQUIRED",
+        "Another registry save requires recovery before loading the registry.",
+      );
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
+}
+/** Refuse an unresolved save before other raw registry readers infer absence. */
+export async function assertDesignRegistryReady(
+  directory: string,
+): Promise<void> {
+  await designRegistryReady(directory);
+}
+async function registryBytes(
+  directory: string,
+  transactionToken?: string,
+): Promise<Uint8Array | null> {
+  await designRegistryReady(directory, transactionToken);
+  const stateDir = resolve(directory, ".qbento");
   const path = resolve(stateDir, "design.json");
   try {
     const info = await Deno.lstat(path);
@@ -154,11 +193,12 @@ async function registryBytes(directory: string): Promise<Uint8Array | null> {
     throw error;
   }
 }
-export async function loadDesignRegistry(
+/** Preserve the complete validated registry and its exact-byte freshness token. */
+export async function readDesignRegistry(
   directory: string,
-): Promise<{ defaults: DesignDefaults; hash: string | null }> {
+): Promise<{ registry: DesignRegistry; hash: string | null }> {
   const bytes = await registryBytes(directory);
-  if (!bytes) return { defaults: {}, hash: null };
+  if (!bytes) return { registry: { schemaVersion: 1 }, hash: null };
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -168,17 +208,21 @@ export async function loadDesignRegistry(
       "design.json must contain valid UTF-8 JSON.",
     );
   }
-  return {
-    defaults: registryDefaults(validateDesignRegistry(value)),
-    hash: await sha256(bytes),
-  };
+  return { registry: validateDesignRegistry(value), hash: await sha256(bytes) };
+}
+export async function loadDesignRegistry(
+  directory: string,
+): Promise<{ defaults: DesignDefaults; hash: string | null }> {
+  const snapshot = await readDesignRegistry(directory);
+  return { defaults: registryDefaults(snapshot.registry), hash: snapshot.hash };
 }
 /** CAS includes both absence and exact bytes; native sparse overrides are independent. */
 export async function assertDesignRegistryUnchanged(
   directory: string,
   expected: string | null,
+  transactionToken?: string,
 ): Promise<void> {
-  const bytes = await registryBytes(directory);
+  const bytes = await registryBytes(directory, transactionToken);
   const actual = bytes === null ? null : await sha256(bytes);
   if (actual !== expected) {
     throw new DesignError(

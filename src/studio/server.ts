@@ -1,4 +1,9 @@
 import {
+  readProjectRegistry,
+  saveProjectRegistry,
+} from "../core/design-registry.ts";
+import { MAX_DESIGN_REGISTRY_BYTES } from "../render/registry.ts";
+import {
   readProject,
   readProjectPresenter,
   renderProject,
@@ -19,11 +24,14 @@ export const MAX_STUDIO_BODY_BYTES = 25_000_000;
 
 // A missing or understated Content-Length must not bypass the byte limit.
 // Return null before retaining an excess chunk, and stop reading its stream.
-export async function readStudioBody(req: Request): Promise<string | null> {
+export async function readStudioBody(
+  req: Request,
+  maximumBytes = MAX_STUDIO_BODY_BYTES,
+): Promise<string | null> {
   const declaredLength = req.headers.get("content-length");
   if (
     declaredLength !== null && /^\d+$/.test(declaredLength) &&
-    Number(declaredLength) > MAX_STUDIO_BODY_BYTES
+    Number(declaredLength) > maximumBytes
   ) {
     await req.body?.cancel().catch(() => {});
     return null;
@@ -37,14 +45,14 @@ export async function readStudioBody(req: Request): Promise<string | null> {
       const { value, done } = await reader.read();
       if (done) break;
       const nextBytes = bytes + value.byteLength;
-      if (nextBytes > MAX_STUDIO_BODY_BYTES) {
+      if (nextBytes > maximumBytes) {
         await reader.cancel().catch(() => {});
         return null;
       }
       if (nextBytes > body.byteLength) {
         const expanded = new Uint8Array(
           Math.min(
-            MAX_STUDIO_BODY_BYTES,
+            maximumBytes,
             Math.max(nextBytes, body.byteLength * 2, 65_536),
           ),
         );
@@ -70,6 +78,9 @@ export async function startStudio(source: string, port = 0) {
   );
   const client = await Deno.readTextFile(
     new URL("./client.js", import.meta.url),
+  );
+  const registryClient = await Deno.readTextFile(
+    new URL("./registry.js", import.meta.url),
   );
   const template = await Deno.readTextFile(
     new URL("./index.html", import.meta.url),
@@ -145,6 +156,9 @@ export async function startStudio(source: string, port = 0) {
         if (
           req.method === "GET" && url.pathname === "/client.js"
         ) return respond(client, 200, "text/javascript");
+        if (req.method === "GET" && url.pathname === "/registry.js") {
+          return respond(registryClient, 200, "text/javascript");
+        }
         if (req.method === "GET" && url.pathname.startsWith("/presenter/")) {
           const page = presenters.get(url.pathname);
           return page
@@ -155,6 +169,24 @@ export async function startStudio(source: string, port = 0) {
           return respond(
             '{"error":"Invalid session token"}',
             403,
+          );
+        }
+        if (req.method === "GET" && url.pathname === "/api/design-registry") {
+          return respond(JSON.stringify(await readProjectRegistry(source)));
+        }
+        if (req.method === "POST" && url.pathname === "/api/design-registry") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(
+            req,
+            MAX_DESIGN_REGISTRY_BYTES + 4096,
+          );
+          if (text === null) {
+            return respond('{"error":"Registry too large"}', 413);
+          }
+          return respond(
+            JSON.stringify(await saveProjectRegistry(source, JSON.parse(text))),
           );
         }
         if (

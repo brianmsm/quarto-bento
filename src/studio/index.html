@@ -6,6 +6,9 @@
     <title>Quarto-Bento Studio</title>
     <style>
     body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
       margin: 0;
       font: 15px system-ui;
       color: #e8efed;
@@ -13,6 +16,7 @@
     }
     header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 12px;
       padding: 12px 18px;
@@ -35,12 +39,17 @@
     }
     #status {
       margin-left: auto;
-      max-width: 40vw;
+      max-width: 100%;
+    }
+    #editor-region {
+      flex: 1;
+      min-height: 0;
+      position: relative;
     }
     iframe {
       display: block;
       width: 100%;
-      height: calc(100vh - 66px);
+      height: 100%;
       border: 0;
       background: white;
     }
@@ -64,8 +73,8 @@
       border-radius: 6px;
     }
     #busy {
-      position: fixed;
-      inset: 66px 0 0;
+      position: absolute;
+      inset: 0;
       z-index: 20;
       background: #eff5f0ed;
       color: #172a35;
@@ -75,6 +84,30 @@
     }
     #busy:not([hidden]) {
       display: flex;
+    }
+    .registry-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+      border: 1px solid #cbd9d6;
+      border-radius: 6px;
+    }
+    .registry-row label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .registry-row input {
+      font: inherit;
+      padding: 6px;
+      min-width: 0;
+    }
+    #registry-note {
+      min-height: 2em;
+    }
+    #registry-form > button {
+      margin-top: 12px;
     }
     #patches section {
       margin: 18px 0;
@@ -117,16 +150,30 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
-    <iframe id="editor" src="/deck" title="Editor Bento"></iframe>
-    <div id="busy" hidden
-      role="status">Recalculando. Tus cambios están guardados.</div>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
+    <main id="editor-region">
+      <iframe id="editor" src="/deck" title="Editor Bento"></iframe>
+      <div id="busy" hidden
+        role="status">Recalculando. Tus cambios están guardados.</div>
+    </main>
     <dialog
       id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="delete-confirmations"></div><div id="patches"></div><details><summary>Origen y detalle de los cambios</summary><div id="changes"></div></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
     <dialog
       id="slides-dialog"><h2>Diapositivas</h2><p>Ocultar conserva el contenido y lo omite en la presentación y el PDF. Marcar para eliminar guarda una eliminación pendiente; después debes revisarla y confirmarla para modificar QMD. Puedes restaurarla antes de sincronizar.</p><p id="slides-note" role="status"></p><div id="slide-list"></div><button id="slides-close">Cerrar</button></dialog>
     <dialog
       id="reconcile-dialog"><h2>Comparar QMD y Bento</h2><p>La comparación ejecuta el QMD. Elige cómo resolver cada diferencia; las demás seguirán pendientes. Estas decisiones guardan el proyecto. Escribir el QMD requiere después revisar y aplicar la sincronización.</p><p id="reconcile-note" role="status"></p><div id="reconcile-changes"></div><button id="resolve" disabled>Guardar decisiones</button> <button id="resolve-close">Cerrar</button></dialog>
+    <dialog id="registry-dialog" aria-labelledby="registry-title">
+      <h2 id="registry-title">Layouts y temas del proyecto</h2>
+      <p>Guardar diseños actualiza el registro del proyecto; no cambia QMD ni ejecuta cálculos. Recalcular aplica los valores seleccionados y conserva tu diseño guardado y los cambios pendientes.</p>
+      <p>Los layouts se usan desde QMD con <code>bento-layout-name</code>. Renombrar o eliminar un layout no actualiza sus referencias en QMD; revísalas antes de recalcular. <code>two-column</code> sigue disponible como layout integrado.</p>
+      <form id="registry-form">
+        <h3>Layouts con nombre</h3><div id="registry-layouts"></div><button id="registry-add-layout" type="button">Añadir layout</button>
+        <h3>Temas con nombre</h3><div id="registry-themes"></div><button id="registry-add-theme" type="button">Añadir tema</button>
+        <p><label for="registry-active">Tema activo</label> <select id="registry-active"></select></p>
+        <p id="registry-note" role="status" aria-live="polite"></p>
+        <button id="registry-save" type="submit">Guardar diseños</button> <button id="registry-reload" type="button">Descartar borrador y recargar registro</button> <button id="registry-close" type="button">Cerrar</button>
+      </form>
+    </dialog>
     <dialog
       id="presenter-dialog"><button id="presenter-close">Cerrar presentación</button><iframe id="presenter-frame" title="Presenter con gráficos interactivos"></iframe></dialog>
     <script>

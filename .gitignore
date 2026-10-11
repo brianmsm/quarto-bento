@@ -16,3 +16,7 @@ output/
 **/.qbento/quarto-stage/
 
 **/.qbento/widgets/
+
+**/.qbento/design-save.json
+**/.qbento/.design-stage-*.json
+**/.qbento/.design-link-probe-*

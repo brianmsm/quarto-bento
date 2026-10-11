@@ -1,3 +1,4 @@
+import { attachRegistryEditor } from "/registry.js";
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
 let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
@@ -25,7 +26,15 @@ function setBusy(value) {
   $("busy").hidden = !value;
   $("editor").inert = value;
   for (
-    const id of ["save", "slides", "review", "reconcile", "render", "presenter"]
+    const id of [
+      "save",
+      "slides",
+      "designs",
+      "review",
+      "reconcile",
+      "render",
+      "presenter",
+    ]
   ) {
     $(id).disabled = value;
   }
@@ -554,3 +563,5 @@ $("presenter-close").onclick = () => $("presenter-dialog").close();
 $("presenter-dialog").onclose = () => {
   $("presenter-frame").src = "about:blank";
 };
+
+attachRegistryEditor({ api, getState: () => state, showError });
