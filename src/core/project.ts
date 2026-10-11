@@ -1,3 +1,4 @@
+import { kpiReadabilityDiagnostics } from "../render/kpi.ts";
 import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
@@ -315,7 +316,11 @@ export async function projectProjection(
         }
       }
       provenance[targetKey({ slideId, elementId })] = {
-        origin: block?.origin === "computed" ? "computed" : origin.origin,
+        origin: origin.designOnly
+          ? "authored"
+          : block?.origin === "computed"
+          ? "computed"
+          : origin.origin,
         ...(origin.sourceId ? { semanticId: origin.sourceId } : {}),
         ...(origin.producer ? { producer: origin.producer } : {}),
         source: {
@@ -438,6 +443,10 @@ async function render(source: string, executed?: ExecutedRender) {
     if (!state) state = createState(generated, provenance, projected.ownership);
     const composed = compose(state, generated, provenance, projected.ownership);
     state = composed.state;
+    const kpiDiagnostics = await kpiReadabilityDiagnostics(
+      projected.mapping,
+      composed.document as unknown as RenderDoc,
+    );
     const shell = await Deno.readTextFile(
       new URL("../../vendor/bento/shell.html", import.meta.url),
     );
@@ -570,7 +579,7 @@ async function render(source: string, executed?: ExecutedRender) {
       state,
       diagnostics: refreshOverflowDiagnostics(
         composed.document as unknown as RenderDoc,
-        projected.diagnostics,
+        [...projected.diagnostics, ...kpiDiagnostics],
       ),
       ...(widgetPublication
         ? {

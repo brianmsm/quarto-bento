@@ -4,7 +4,7 @@ export type PandocAttr = [string, string[], [string, string][]];
 export type DesignProperties = Record<string, string | number>;
 export interface DesignDeclaration {
   sourceId: string;
-  component?: "card" | "layout" | "code" | "chart";
+  component?: "card" | "layout" | "code" | "chart" | "kpi";
   chartKind?: "bar" | "line";
   layout?: string;
   properties: DesignProperties;
@@ -166,12 +166,22 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
     else if (components[0] === "bento-layout") result.component = "layout";
     else if (components[0] === "bento-code") result.component = "code";
     else if (components[0] === "bento-chart") result.component = "chart";
+    else if (components[0] === "bento-kpi") result.component = "kpi";
     else throw new DesignError("UNSUPPORTED_COMPONENT", components[0]);
   }
   const seen = new Set<string>();
   for (const [key, value] of attr[2]) {
     if (seen.has(key)) throw new DesignError("DUPLICATE_DESIGN_ATTRIBUTE", key);
     seen.add(key);
+    if (key === "bento-role") {
+      if (result.component || !["label", "value", "detail"].includes(value)) {
+        throw new DesignError(
+          "KPI_SLOT_ROLE",
+          "bento-role belongs to a plain KPI child and must be label, value or detail.",
+        );
+      }
+      continue;
+    }
     if (key === "bento-chart-kind") {
       if (result.component !== "chart" || !["bar", "line"].includes(value)) {
         throw new DesignError(
@@ -236,7 +246,7 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
     !value || typeof value.sourceId !== "string" || !value.properties ||
     !value.bindings ||
     value.component &&
-      !["card", "layout", "code", "chart"].includes(value.component)
+      !["card", "layout", "code", "chart", "kpi"].includes(value.component)
   ) {
     throw new DesignError(
       "INVALID_DECLARATION",

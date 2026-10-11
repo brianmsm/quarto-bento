@@ -141,7 +141,9 @@ export function sourceComponentClass(raw: string): string | undefined {
   const content = /\{([^{}]*)\}[ \t]*$/.exec(raw.split(/\r?\n/)[0])?.[1];
   const tokens = content?.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) ?? [];
   return tokens.find((token) =>
-    [".bento-card", ".bento-layout", ".bento-code"].includes(token)
+    [".bento-card", ".bento-layout", ".bento-code", ".bento-kpi"].includes(
+      token,
+    )
   );
 }
 /** Quarto itself owns layout= and interprets its value as JSON before projection. */

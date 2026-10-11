@@ -1,0 +1,47 @@
+---
+title: "Indicadores reproducibles"
+execute:
+  echo: false
+---
+
+```{r}
+#| label: prepare-metrics
+values <- read.csv("data.csv")$value
+mean_text <- sprintf("%.2f", mean(values))
+```
+
+## Media del grupo {#computed}
+
+:::: {#mean-kpi .bento-kpi}
+
+::: {#mean-label bento-role="label"}
+Media observada
+:::
+
+::: {#mean-value bento-role="value"}
+`r mean_text`
+:::
+
+::: {#mean-detail bento-role="detail"}
+Valor calculado con los datos del proyecto.
+:::
+
+::::
+
+## Resultado literal {#literal}
+
+:::: {#literal-kpi .bento-kpi}
+
+::: {#literal-label bento-role="label"}
+Efecto indirecto
+:::
+
+::: {#literal-value bento-role="value"}
+β = .32
+:::
+
+::: {#literal-detail bento-role="detail"}
+IC 95% [.18, .47]
+:::
+
+::::

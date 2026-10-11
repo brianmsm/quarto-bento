@@ -1,3 +1,5 @@
+import { projectKpi } from "./kpi.ts";
+import { kpiSource } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
 import {
   collectRichTableCandidates,
@@ -452,6 +454,33 @@ export async function projectAst(
         }
 
         const declaration = parseDesignAttributes(attr);
+        if (declaration.component === "kpi") {
+          if (
+            !source || computed || inComponent ||
+            attr[1].some((c) => c === "cell" || c.startsWith("cell-output"))
+          ) {
+            throw new DesignError(
+              "KPI_SOURCE_CONTEXT",
+              "Declare an original standalone KPI outside execution output and nested components.",
+            );
+          }
+          if (!slide) startSlide("qb-introduction");
+          const component = await projectKpi(source, attr, children, {
+            x: 80,
+            y,
+            w: 1120,
+            h: Math.min(470, 680 - y),
+          }, defaults);
+          for (const element of component.elements) {
+            add(element, component.origins[element.id]);
+          }
+          Object.assign(result.design![slide!.id] ??= {}, component.fields);
+          y = Math.max(...component.elements.map((element) =>
+            Number(element.y) + Number(element.h)
+          )) + 20;
+          contentFrame = previousFrame;
+          continue;
+        }
         if (
           declaration.component === "card" || declaration.component === "layout"
         ) {
@@ -899,6 +928,19 @@ export async function projectAst(
 /** Execution modes that erase source/output boundaries cannot be reverse-mapped. */
 export function assertSupportedExecutionSource(source: SourceDocument): void {
   assertCompatibleComponentSource(source);
+  for (
+    const block of source.blocks.filter((block) =>
+      block.kind === "div" && sourceComponentClass(block.raw) === ".bento-kpi"
+    )
+  ) {
+    const binding = kpiSource(source, block.id);
+    if (binding.wrapper.parentId) {
+      throw new DesignError(
+        "KPI_SOURCE_CONTEXT",
+        "Declare KPI components at the top level of their source slide.",
+      );
+    }
+  }
   for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
     if (
       /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
@@ -941,13 +983,19 @@ export function validateProjectionOrigins(
         if (
           candidates.length !== 1 || container.kind !== "div" ||
           !container.stable ||
-          sourceComponentClass(container.raw) !== ".bento-card" ||
-          element.type !== "shape" ||
-          elementId !== `${container.id}/qb-card-background`
+          element.type !== "shape" || element.shape !== "rect" ||
+          !(sourceComponentClass(container.raw) === ".bento-card" &&
+              elementId === `${container.id}/qb-card-background` ||
+            sourceComponentClass(container.raw) === ".bento-kpi" &&
+              elementId === `${container.id}/qb-kpi-background` &&
+              element.groupId === container.id)
         ) {
           throw new Error(
-            "UNMAPPED_COMPONENT_DESIGN: generated card background lacks original container proof",
+            "UNMAPPED_COMPONENT_DESIGN: generated component background lacks original container proof",
           );
+        }
+        if (sourceComponentClass(container.raw) === ".bento-kpi") {
+          kpiSource(source, container.id);
         }
         origins[slideId][elementId] = original;
         continue;

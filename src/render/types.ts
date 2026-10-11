@@ -37,7 +37,7 @@ export interface Origin {
   origin: "authored" | "computed";
   sourceId?: string;
   producer?: string;
-  /** A generated design-only background verified against an original card div. */
+  /** A generated design-only background verified against an original card or KPI div. */
   designOnly?: true;
   /** Stable content receipt from a fresh, source-checked static table capture. */
   richTable?: Json;
