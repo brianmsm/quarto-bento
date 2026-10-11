@@ -1,4 +1,5 @@
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
+import { MATH_CODEC_VERSION } from "../render/math.ts";
 import { basename, dirname, resolve } from "node:path";
 import { executeQuarto } from "../render/quarto.ts";
 import {
@@ -221,6 +222,9 @@ export async function projectProjection(
           ...(block
             ? {
               inlineCodec: INLINE_CODEC_VERSION,
+              ...(block.kind === "math"
+                ? { mathCodec: MATH_CODEC_VERSION }
+                : {}),
               blockId: block.id,
               content: block.content,
               kind: block.kind,

@@ -6,6 +6,7 @@ import {
 } from "../source/notes.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { renderInline as inline } from "./inline.ts";
+import { mathToNativeHtml } from "./math.ts";
 import {
   applyElementDesign,
   DesignError,
@@ -21,6 +22,19 @@ import type {
   Slide,
 } from "./types.ts";
 type Attr = [string, string[], [string, string][]];
+function displayFormula(content: Node[]): string | undefined {
+  if (!content.some((node) => node.t === "Math")) return undefined;
+  const math = content[0]?.c as [{ t: string }, string] | undefined;
+  if (
+    content.length !== 1 || content[0].t !== "Math" ||
+    math?.[0]?.t !== "DisplayMath" || typeof math[1] !== "string"
+  ) {
+    throw new Error(
+      "MIXED_MATH_TEXT: display equations need one standalone formula; inline/mixed math requires a separate supported projection",
+    );
+  }
+  return math[1];
+}
 function images(nodes: Node[]): Node[] {
   const result: Node[] = [];
   const walk = (value: unknown) => {
@@ -158,6 +172,20 @@ export async function projectAst(
     }, origin);
     if (!heading) y += h + 20;
   }
+  function math(id: string, tex: string, origin: Origin) {
+    const html = mathToNativeHtml(tex);
+    const height = Math.min(
+      330,
+      Math.max(110, (tex.trim().split("\n").length + 1) * 44),
+    );
+    text(id, html, false, origin);
+    const element = slide!.elements.at(-1)!;
+    element.h = height;
+    element.fontSize = 32;
+    element.align = "center";
+    element.valign = "middle";
+    y += height - 90;
+  }
   function design(attr: Attr, elements: Element[]) {
     const declaration = parseDesignAttributes(attr);
     if (declaration.component) {
@@ -223,6 +251,7 @@ export async function projectAst(
   async function walk(nodes: Node[], computed = false, parentId?: string) {
     let paragraphIndex = 0;
     let codeIndex = 0;
+    let mathIndex = 0;
     let sourceMarker: string | undefined;
     for (const node of nodes) {
       if (!["Para", "Plain", "RawBlock", "CodeBlock"].includes(node.t)) {
@@ -310,10 +339,17 @@ export async function projectAst(
               "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored text paragraph",
             );
           }
-          text(nativeId, inline(children[0].c as Node[]), false, {
-            origin: "authored",
-            sourceId: `${attr[0]}/paragraph:1`,
-          });
+          const content = children[0].c as Node[];
+          const formula = displayFormula(content);
+          if (formula !== undefined) {
+            math(nativeId, formula, {
+              origin: "authored",
+              sourceId: `${attr[0]}/math:1`,
+            });
+          } else {text(nativeId, inline(content), false, {
+              origin: "authored",
+              sourceId: `${attr[0]}/paragraph:1`,
+            });}
         } else if (attr[1].includes("notes")) {
           if (isComputed) {
             throw new Error(
@@ -363,7 +399,18 @@ export async function projectAst(
       } else if (node.t === "Para" || node.t === "Plain") {
         const content = node.c as Node[];
         const imgs = images(content);
-        if (imgs.length) {
+        const formula = displayFormula(content);
+        if (formula !== undefined) {
+          mathIndex++;
+          const sourceId = sourceMarker ??
+            (parentId ? `${parentId}/math:${mathIndex}` : undefined);
+          sourceMarker = undefined;
+          math(sourceId ?? `qb-math-${++counter}`, formula, {
+            origin: computed ? "computed" : "authored",
+            ...(sourceId ? { sourceId } : {}),
+            ...(computed && parentId ? { producer: parentId } : {}),
+          });
+        } else if (imgs.length) {
           if (content.some((n) => n.t !== "Image" && n.t !== "Space")) {
             throw new Error("MIXED_IMAGE_TEXT: split figure and paragraph");
           }
@@ -526,6 +573,15 @@ export function validateProjectionOrigins(
           !b.parentId && b.content === element.html
         );
       }
+      if (
+        !candidates.length && !original.sourceId && element.type === "text" &&
+        typeof element.html === "string" && element.html.startsWith("$$")
+      ) {
+        candidates = source.blocks.filter((block) =>
+          block.kind === "math" && block.origin === "authored" &&
+          mathToNativeHtml(block.content) === element.html
+        );
+      }
       if (candidates.length !== 1) {
         throw new Error(
           `UNMAPPED_PROVENANCE: element ${elementId} is not uniquely linked to original source; explicitly pin authored identity or use a supported computed output`,
@@ -540,6 +596,23 @@ export function validateProjectionOrigins(
       if (block.kind === "unsupported" || block.kind === "div") {
         throw new Error(
           `UNMAPPED_PROVENANCE: element ${elementId} points to an unsupported source container`,
+        );
+      }
+      if (
+        element.type === "text" && typeof element.html === "string" &&
+        element.html.startsWith("$$") && block.kind !== "math"
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: a display formula needs a separately mapped original math block",
+        );
+      }
+      if (
+        block.kind === "math" &&
+        (element.type !== "text" || typeof element.html !== "string" ||
+          mathToNativeHtml(block.content) !== element.html)
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: executed math differs from the exact authored source formula",
         );
       }
       used.add(block.id);

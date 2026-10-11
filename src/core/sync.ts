@@ -4,6 +4,7 @@ import {
   inlineHtmlToMarkdown,
 } from "../render/inline.ts";
 export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
+import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { basename, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
@@ -290,6 +291,12 @@ function chooseBlock(
       "This saved baseline predates faithful inline projection. Recalculate and review the source before syncing links or inline code.",
     );
   }
+  if (source.kind === "math" && source.mathCodec !== MATH_CODEC_VERSION) {
+    fail(
+      "SOURCE_FORMAT_UNSUPPORTED",
+      "This saved equation lacks a verified display-math baseline; recalculate and review before syncing.",
+    );
+  }
   const doc = scanSource(sourceText),
     matches = doc.blocks.filter((b) => b.id === source.blockId);
   if (matches.length !== 1) {
@@ -330,6 +337,14 @@ function chooseBlock(
     }
   }
   return { block, expected: source.content };
+}
+function assertMappedDisplayMath(html: string): void {
+  if (/\$\$|\\\[/.test(html)) {
+    fail(
+      "UNSUPPORTED_MATH",
+      "A new display equation requires a separately authored QMD math block; this text conversion has no verified math mapping.",
+    );
+  }
 }
 function buildPlan(
   source: string,
@@ -515,17 +530,31 @@ function buildPlan(
           `Change ${change.id} is not authored source text.`,
         );
       }
+      const displayedMath = !displayedCode &&
+        state.provenance[targetKey(change.target)]?.source?.kind === "math";
+      if (!displayedCode && !displayedMath) {
+        assertMappedDisplayMath(change.after.value);
+      }
+      const parsedMath = displayedMath
+        ? parseNativeDisplayMath(change.after.value)
+        : undefined;
       const { block, expected } = chooseBlock(
           text,
           state,
           change,
-          displayedCode ? ["code"] : ["heading", "paragraph"],
+          displayedCode
+            ? ["code"]
+            : displayedMath
+            ? ["math"]
+            : ["heading", "paragraph"],
         ),
         normalized = displayedCode
           ? change.after.value.replace(/\r\n|\r/g, "\n")
-          : canonicalInlineHtml(change.after.value),
+          : parsedMath?.html ?? canonicalInlineHtml(change.after.value),
         after = displayedCode
           ? normalized + "\n"
+          : parsedMath
+          ? parsedMath.tex + "\n"
           : inlineHtmlToMarkdown(change.after.value);
       textRequests.push({ blockId: block.id, expected, replacement: after });
       changes.push({
@@ -577,6 +606,9 @@ function buildPlan(
           "UNSUPPORTED_SYNC",
           "New slide requires a text title and supported text bodies.",
         );
+      }
+      for (const element of texts) {
+        assertMappedDisplayMath(element.html as string);
       }
       const title = inlineHtmlToMarkdown(texts[0].html as string),
         body = texts.slice(1).map((e) =>

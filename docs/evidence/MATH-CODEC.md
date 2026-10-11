@@ -94,3 +94,53 @@ supported command examples produced strict MathML. These checks are runtime
 engine/delimiter evidence; they do not establish browser font, visual layout,
 native edit, save/reopen or integrated safe sync acceptance. The coordinator
 must still integrate projection/sync and perform that UI loop.
+
+## Integrated project loop
+
+`src/render/project.ts` projects a paragraph containing exactly one display
+`Math` as a centered native text object using this codec. A preceding `qb`
+marker identifies the original math block; an enclosing div can identify the
+math ordinal. For an unwrapped anonymous formula, initial mapping requires a
+unique exact original expression; later changed-source identity rules still
+require stable evidence. Authored formula contents must match their original
+mapped math block. Executed computed formulas retain their verified producer and
+never gain authored provenance. Mixed/inline equations and formula syntax
+without a separately mapped original math block explicitly refuse.
+
+Existing single-object wrapper visual attributes apply to the formula and remain
+source-owned. Geometry and typography without QMD declarations use the ordinary
+durable overrides. Provenance records `mathCodec: 1`. Sync reviews only the
+mapped authored formula body and supported attribute patches; native `div`/`br`
+line markup is canonized through the normal approval record so a fresh approved
+render can clear pending changes without silently changing an unapproved native
+edit. Original math delimiters and unrelated QMD bytes remain in place. Creating
+a new equation through ordinary text/new-slide conversion currently refuses and
+requires authoring its math block in QMD first.
+
+```sh
+deno test --allow-read --allow-write --allow-env --allow-run \
+  tests/math_test.ts tests/math_execution_test.ts
+```
+
+The eight integration tests cover:
+
+- real Quarto projection of a stable identified formula; native model edit and
+  save; pending LaTeX/typography surviving a fresh render; exactly bounded CRLF
+  body/attribute sync; clean recompute with the same docId and retained
+  geometry;
+- independent QMD/Bento formula edits, refused overwrite, recoverable pending
+  content, reviewed `keep-bento` reconciliation and subsequent safe sync;
+- real Quarto refusal for mixed math/prose, display math without a mapped math
+  block, and as-is computational output before its producer runs;
+- synthesized executed computed math preserving its producer and refusing sync;
+- mismatching executed/authored formula provenance refusal;
+- ordinary text/new-slide conversion refusing to invent a mathematical source
+  representation;
+- distinct original identities for marked/ordinal math siblings and native
+  equation IDs, including wrapper design bindings.
+
+HTML, source-delimiter, executable-fence and unsupported-command injection
+attempts keep the QMD unchanged. These tests use native JSON edits to exercise
+core save/sync behavior; they do not replace a native contenteditable/browser
+check. Inline math, general TeX, source equation labels/cross-references and new
+Bento-authored equation insertion remain outside this supported subset.
