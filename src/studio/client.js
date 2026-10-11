@@ -266,6 +266,7 @@ function showPatches(plan) {
   }
 }
 async function prepareSyncPreview() {
+  if (busy) return;
   const generation = ++previewGeneration;
   syncPlan = undefined;
   $("apply").disabled = true;
@@ -348,13 +349,19 @@ $("review").onclick = async () => {
   }
 };
 $("apply").onclick = async () => {
-  if (!syncPlan) return;
+  if (!syncPlan || busy) return;
   if (
     [...$("delete-confirmations").querySelectorAll("input")].some((box) =>
       !box.checked
     )
   ) return;
+  setBusy(true);
+  $("busy").textContent = "Aplicando los cambios revisados al QMD…";
+  $("sync-note").textContent = $("busy").textContent;
   $("apply").disabled = true;
+  $("close").disabled = true;
+  $("delete-confirmations").inert = true;
+  previewGeneration++;
   try {
     const receipt = await api("sync/apply", syncPlan);
     state.revision = receipt.revision;
@@ -365,9 +372,19 @@ $("apply").onclick = async () => {
     status("QMD sincronizado; listo para recalcular");
   } catch (error) {
     $("sync-note").textContent = error.message;
+  } finally {
+    setBusy(false);
+    $("close").disabled = false;
+    $("delete-confirmations").inert = false;
+    $("apply").disabled = !syncPlan;
   }
 };
-$("close").onclick = () => $("review-dialog").close();
+$("close").onclick = () => {
+  if (!busy) $("review-dialog").close();
+};
+$("review-dialog").addEventListener("cancel", (event) => {
+  if (busy) event.preventDefault();
+});
 $("review-dialog").addEventListener("close", () => {
   previewGeneration++;
   syncPlan = undefined;
