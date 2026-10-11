@@ -64,9 +64,17 @@ visible banner includes the code, slide, reference and actionable message on
 opening and after Recalc, without representing the warning as a pending edit.
 Read responses use a generation guard: older responses cannot overwrite newer
 warnings, and a failed inspection preserves existing warnings with an
-availability error. Text is inserted with `textContent`. The initial native
-iframe connection also handles a load that completed before client imports,
-without resetting the revision on a duplicate connection.
+availability error. Non-design diagnostics from the last successful Recalc, such
+as `OVERFLOW`, are kept separately for that rendered `docId`/revision. A
+design-only read cannot clear them after iframe reconnection or a design
+refresh. A new successful Recalc replaces them; a different native snapshot
+without a matching render receipt clears them. A failed Recalc retains the last
+successful warnings. This is session-local: reopening Studio does not
+reconstruct or persist unrecorded render diagnostics. The banner includes
+element IDs to identify each overflowing element. Text is inserted with
+`textContent`. The initial native iframe connection also handles a load that
+completed before client imports, without resetting the revision on a duplicate
+connection.
 
 Corrupt state, invalid/unsafe registries and an unresolved
 `.qbento/design-save.json` transaction remain failures. The annotation registry
@@ -92,9 +100,10 @@ exists with the registry either present or absent. The latter preserves exact
 QMD and state bytes, including an already reviewed sync plan.
 
 ```bash
-QBENTO_STUDIO_BROWSER_TEST=1 deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/studio_diagnostics_test.ts tests/studio_test.ts
-# 3 passed on Linux: protected/read-only API, native headless banner/Recalc,
-# and existing stale-save protection; /tmp/qbento-missing-design-studio-final.log
+QBENTO_STUDIO_BROWSER_TEST=1 deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/studio_client_diagnostics_test.ts tests/studio_diagnostics_test.ts tests/studio_test.ts
+# 5 passed on Linux: protected/read-only API, native headless banner/Recalc,
+# existing stale-save protection and complete-client lifecycle regressions;
+# /tmp/qbento-studio-render-warning-final.log
 ```
 
 The optional native test blocks requests outside the local Studio origin, waits
@@ -107,6 +116,15 @@ verified out-of-order client responses, warning preservation on read failure,
 duplicate connections retaining a saved revision, and a real semantic pending
 edit surviving Recalc with its identity and content intact. Hostile Origin and
 unresolved-registry reads/renders refuse without changing QMD/state.
+
+The real API regression appends explicitly identified source paragraphs, obtains
+`OVERFLOW` from Recalc while the design-only read omits it, and obtains a clean
+receipt after returning to the original source. The complete shipped-client
+harness verifies that overflow survives its corresponding reconnect and design
+refresh, design warnings can clear independently, a corrected render clears
+previous overflow, and an unrelated snapshot does not inherit stale warnings.
+This combines real API/projection and synthetic DOM lifecycle evidence; it is
+not a separate headless visual acceptance of overflowing content.
 
 Type checks, lint, formatting and diff checks cover changed modules/tests. No
 full suite, hosted CI or native macOS/Windows claim is made by this slice. The

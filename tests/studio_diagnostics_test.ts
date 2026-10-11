@@ -91,6 +91,40 @@ Deno.test({
         receipt.pending === 0 &&
           receipt.diagnostics[0].code === "MISSING_DESIGN",
       );
+      // The real projection reports overflow; the read-only endpoint is only
+      // design availability. Client lifecycle regressions test their merge.
+      await Deno.writeTextFile(
+        f.source,
+        f.text +
+          Array.from(
+            { length: 9 },
+            (_, i) =>
+              `\n::: {#overflow-${i}}\n<!-- qb:overflow-body-${i} -->\nLine ${i}.\n:::\n`,
+          ).join("\n"),
+      );
+      const overflowResponse = await api("render", {});
+      assert(
+        overflowResponse.status === 200,
+        await overflowResponse.clone().text(),
+      );
+      const overflowing = await overflowResponse.json();
+      assert(
+        overflowing.diagnostics.some((d: { code: string }) =>
+          d.code === "OVERFLOW"
+        ),
+      );
+      assert(
+        !(await (await api("diagnostics")).json()).some((d: { code: string }) =>
+          d.code === "OVERFLOW"
+        ),
+      );
+      await Deno.writeTextFile(f.source, f.text);
+      const corrected = await (await api("render", {})).json();
+      assert(
+        !corrected.diagnostics.some((d: { code: string }) =>
+          d.code === "OVERFLOW"
+        ),
+      );
       const current = await readProject(f.source);
       const edited = structuredClone(current.emitted);
       edited.slides[0].elements[1].x = 222;

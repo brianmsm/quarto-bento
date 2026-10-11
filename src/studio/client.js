@@ -2,7 +2,8 @@ import { attachRegistryEditor } from "/registry.js";
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
 let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
-let diagnosticGeneration = 0, projectDiagnostics = [];
+let diagnosticGeneration = 0, projectDiagnostics = [], renderDiagnostics = [];
+let renderDiagnosticSnapshot;
 let connectedApi, connectedSnapshot;
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
@@ -32,16 +33,30 @@ async function api(path, body) {
 function showDiagnostics(diagnostics) {
   projectDiagnostics = diagnostics;
   $("diagnostic-list").replaceChildren();
-  for (const diagnostic of diagnostics) {
+  const visible = [...renderDiagnostics, ...diagnostics];
+  for (const diagnostic of visible) {
     const item = document.createElement("li");
     item.textContent = `${diagnostic.code}${
       diagnostic.slideId ? ` · ${diagnostic.slideId}` : ""
-    }${
+    }${diagnostic.elementId ? ` · ${diagnostic.elementId}` : ""}${
       diagnostic.reference ? ` · ${diagnostic.reference}` : ""
     }: ${diagnostic.message}`;
     $("diagnostic-list").append(item);
   }
-  $("project-diagnostics").hidden = diagnostics.length === 0;
+  $("project-diagnostics").hidden = visible.length === 0;
+}
+function showRenderDiagnostics(receipt) {
+  // Design inspection can change independently of the last executed projection.
+  // Keep its non-design warnings until another render or a different snapshot.
+  const isDesign = (diagnostic) =>
+    ["MISSING_DESIGN", "UNVERIFIABLE_DESIGN_ANNOTATION"].includes(
+      diagnostic.code,
+    );
+  const diagnostics = receipt.diagnostics ?? [];
+  renderDiagnostics = diagnostics.filter((diagnostic) => !isDesign(diagnostic));
+  renderDiagnosticSnapshot = { docId: state.docId, revision: receipt.revision };
+  ++diagnosticGeneration;
+  showDiagnostics(diagnostics.filter(isDesign));
 }
 async function refreshDiagnostics() {
   const generation = ++diagnosticGeneration;
@@ -109,6 +124,15 @@ function connect() {
     // The initial iframe load may finish before this module's imports load.
     // Poll/load duplicates must not reset a revision already advanced by Save.
     if (connectedApi === editor.bento && connectedSnapshot === snapshot) return;
+    if (
+      renderDiagnosticSnapshot &&
+      (renderDiagnosticSnapshot.docId !== snapshot.docId ||
+        renderDiagnosticSnapshot.revision !== snapshot.revision)
+    ) {
+      renderDiagnostics = [];
+      renderDiagnosticSnapshot = undefined;
+      showDiagnostics(projectDiagnostics);
+    }
     state = {
       docId: snapshot.docId,
       revision: snapshot.revision,
@@ -569,8 +593,7 @@ $("render").onclick = async () => {
     await bridge.save();
     status("Recalculando…");
     const receipt = await api("render", {});
-    ++diagnosticGeneration;
-    showDiagnostics(receipt.diagnostics ?? []);
+    showRenderDiagnostics(receipt);
     state.revision = receipt.revision;
     if (bridge.dirty) {
       throw new Error(
