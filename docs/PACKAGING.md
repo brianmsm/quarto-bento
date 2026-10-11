@@ -74,3 +74,92 @@ declaring terms for Quarto-Bento's own code. This artifact does not assign those
 terms and must not be presented as a publicly licensed release without resolving
 that project decision. Bundled font and third-party notice completeness remains
 part of release review.
+
+## Authored portability CI and local smoke
+
+In the source checkout, [`.github/workflows/portable.yml`](../.github/workflows/portable.yml)
+defines an independent matrix on `ubuntu-24.04`, `macos-15-intel` and `windows-2022`, using
+[GitHub's documented runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+It runs on pull requests, pushes to `main` and manual dispatch. Each job checks
+core and portable-tool types, runtime/tool formatting and lint, the existing
+portable inventory/refusal test, bounded Windows smoke argument tests, and a
+real authored QMD smoke. It does not run the broader computation/R suite,
+install R or TinyTeX, publish a release, or upload a package.
+
+CI preparation explicitly installs **Deno 2.9.6** and **Quarto 1.10.19** in the
+runner. This is CI setup; `qbento`, its launchers and the local smoke continue
+to use dependencies already supplied by the user. The smoke checks the actual
+versions returned by `doctor`; an incorrect installation fails instead of
+silently widening the test baseline. Actions are pinned to release commits
+verified from their primary release pages:
+
+| Action                            | Release                                                              | Immutable commit                           |
+| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| `actions/checkout`                | [v4.2.2](https://github.com/actions/checkout/releases/tag/v4.2.2)    | `11bd71901bbe5b1630ceea73d27597364c9af683` |
+| `denoland/setup-deno`             | [v2.0.5](https://github.com/denoland/setup-deno/releases/tag/v2.0.5) | `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` |
+| `quarto-dev/quarto-actions/setup` | [v2.1.9](https://github.com/quarto-dev/quarto-actions/releases)      | `9e48da27e184aa238fcb49f5db75469626d43adb` |
+
+The setup inputs are described by
+[Deno's action](https://github.com/denoland/setup-deno) and
+[Quarto's pinned setup action](https://raw.githubusercontent.com/quarto-dev/quarto-actions/9e48da27e184aa238fcb49f5db75469626d43adb/setup/action.yml).
+On Windows that action delegates to its PowerShell installation script using
+Scoop and forwards the requested Quarto version. Scoop is temporary CI-runner
+preparation, outside the portable payload and ordinary user workflow; `doctor`
+checks the installed version before the smoke proceeds.
+The ephemeral runner disables Git automatic line-ending conversion before
+checkout so the pinned shell bytes and inventory remain exact on Windows; see
+[Git's line-ending settings](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf).
+Checkout credentials are not persisted and the workflow token has only
+`contents: read`. The install phase needs network access; the authored fixture
+uses no remote inputs, remote/npm Deno imports, or computation packages. A fresh
+cache and `QUARTO_RUN_NO_NETWORK=true` constrain the ordinary test path; these
+checks are not an OS-wide network isolation proof.
+
+Run the same smoke locally, from a source checkout with those installed
+versions:
+
+```sh
+deno run --no-config --no-remote --no-npm --allow-read --allow-write --allow-run --allow-env scripts/portable-check.ts
+```
+
+The script only creates and cleans its own temporary directory. It builds the
+existing package, relocates it into a path with spaces, invokes the actual Unix
+or Windows launcher, and checks `doctor`, `render`, `validate`, failed-command
+exit status, `get`, `patch`, and `init`. Its explicit-ID authored fixture uses
+CRLF and Unicode, without executable chunks. A caller `deno.json` pointing a
+built-in import at a hostile URL must not affect the launchers. Save retains a
+visual override and an authored pending edit while QMD bytes remain unchanged.
+
+For a clean rebuild, the smoke copies only the QMD and
+`.qbento/{project.json,state.json}` into another directory with spaces and
+removes the original project, including generated HTML, execution caches and
+history. Fresh rendering must preserve `docId`, geometry, font size, pending
+identity/content/status and the original QMD bytes. This minimal state inventory
+is sufficient for this text-only fixture; real projects still need their input
+assets and any versioned registry/widget state. It is not a general migration or
+Git packaging command.
+
+After `init`, the installed project moves again and the portable distribution is
+deleted. Linux removes the generated HTML and proves that ordinary
+`quarto render` rebuilds through the self-contained installed extension while
+retaining the saved design and pending edit. On macOS/Windows the current
+ordinary-invocation guard intentionally refuses with
+`QUARTO_EXTENSION_PLATFORM`; the smoke requires that diagnostic and verifies
+unchanged QMD, saved state and existing HTML. The portable CLI smoke remains a
+positive test on all matrix platforms. Windows batch invocation uses explicit
+`cmd.exe /d /s /v:off /c` with bounded quoted tokens; its utility tests check
+construction/refusal, not native Windows behavior. See
+[Microsoft's cmd documentation](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cmd)
+and [Deno command options](https://docs.deno.com/api/deno/subprocess/).
+
+**Local evidence (2026-10-11):** Linux x86_64 with Deno 2.9.6 and Quarto 1.10.19
+passed the complete smoke, including clean state-only reconstruction and
+ordinary Quarto after both project relocation and portable-runtime removal. The
+existing two packaging tests passed in Linux; the two new bounded batch utility
+tests and type/lint/format/shell syntax checks passed. No hosted Action was
+dispatched, and macOS/Windows have not been executed in this session. The
+committed matrix prepares those native validation runs; its existence does not
+establish native support. These are CLI, source-byte and document/state
+assertions, without browser visual evidence, PDF/widget coverage or a v1 release
+claim. Ordinary integration on macOS/Windows remains deliberately unsupported
+until its process/output preflight is implemented and validated there.

@@ -1,0 +1,54 @@
+name: Portable authored workflow
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    name: Authored CLI / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15-intel, windows-2022]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Preserve pinned payload bytes during CI checkout
+        run: git config --global core.autocrlf false
+      - name: Checkout reviewed sources
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned Deno for CI only
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: "2.9.6"
+          cache: false
+      - name: Install pinned Quarto for CI only
+        uses: quarto-dev/quarto-actions/setup@9e48da27e184aa238fcb49f5db75469626d43adb # v2.1.9
+        with:
+          version: "1.10.19"
+          tinytex: false
+      - name: Type check core and portable tools
+        run: |
+          deno task check
+          deno check scripts/package.ts scripts/portable-check.ts tests/portable_check_test.ts
+      - name: Check runtime and portable-tool formatting
+        run: deno fmt --check src scripts/package.ts scripts/portable-check.ts tests/portable_check_test.ts .github/workflows/portable.yml
+      - name: Lint runtime and portable tools
+        run: deno lint src scripts tests/portable_check_test.ts
+      - name: Verify portable inventory and bounded Windows command arguments
+        run: |
+          deno test --allow-read --allow-write --filter 'portable payload' tests/package_test.ts
+          deno test tests/portable_check_test.ts
+      - name: Relocate package and rebuild authored source plus state
+        run: deno run --no-config --no-remote --no-npm --allow-read --allow-write --allow-run --allow-env scripts/portable-check.ts
