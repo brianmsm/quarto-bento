@@ -36,6 +36,8 @@ export interface Origin {
   producer?: string;
   /** A generated design-only background verified against an original card div. */
   designOnly?: true;
+  /** Stable content receipt from a fresh, source-checked static table capture. */
+  richTable?: Json;
 }
 export interface Projection {
   document: BentoDoc;

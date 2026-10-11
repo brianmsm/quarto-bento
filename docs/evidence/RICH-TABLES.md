@@ -1,4 +1,4 @@
-# Computed rich-table static fallback: isolated adapter evidence
+# Computed rich-table static fallback: adapter and integration evidence
 
 The adapter in `src/rich/table.ts` captures the executed HTML/CSS of a bounded
 `gt` table, including the `gt` output of `gtsummary`, as a **2x PNG**. It
@@ -8,11 +8,14 @@ This is raster output, not SVG/vector output and not an editable native table.
 The API returns an explicit `STATIC_TABLE_PNG_FALLBACK` diagnostic explaining
 that content and formatting must be changed in the source producer.
 
-This commit supplies isolated collection, capture, receipts and focused tests.
-It does **not** connect the adapter to `renderProject`, the editor, presenter,
-persisted resource loading or doctor. Product acceptance requires that separate
-integration and native image presentation/layout verification. The receipt alone
-is not an authorization or a proof that an arbitrary persisted file is trusted.
+The adapter is integrated with `renderProject` and the guarded ordinary Quarto
+extension. Each render creates fresh captures, embeds PNG bytes directly in
+native Bento image objects, and publishes the source binding and stable content
+receipt in the checksummed project state. It creates no persisted rich-table
+bundle and never reloads a self-authenticated candidate. Doctor reports the
+optional local Chromium version. Independent review includes a real native Bento
+slideshow smoke check for a simple `gt` fixture; the richer fixture capture and
+integrated state proof are detailed below.
 
 ## Verified environment and supported input
 
@@ -57,10 +60,17 @@ Quarto's captured AST represents the verified output as three adjacent nodes:
 2. A Pandoc `Table` with class `gt_table`, rich cells, spans and table sections.
 3. A raw HTML closing `div`.
 
-The adapter retains all three nodes. It uses the captured Pandoc API version and
-`quarto pandoc --from=json --to=html5 --wrap=none` to write **only this
-fragment**. This HTML writer does not execute R and does not rewrite any QMD
-source. It is separate from the prohibited whole-document Markdown rewriting
+The ordinary extension capture occurs before Quarto's final descaffold pass and
+can add exactly one anonymous `Div` with only class `quarto-scaffold` around
+those three nodes. This exact, attribute-free wrapper is transparent in Quarto
+1.10.19's installed `finalize_combined_1` filter and is accepted. Additional
+classes, attributes, siblings or nested scaffold layers refuse. Both capture
+routes have real execution tests.
+
+The adapter retains all three meaningful nodes. It uses the captured Pandoc API
+version and `quarto pandoc --from=json --to=html5 --wrap=none` to write **only
+this fragment**. This HTML writer does not execute R and does not rewrite any
+QMD source. It is separate from the prohibited whole-document Markdown rewriting
 approach.
 
 Collection rescans the original QMD bytes, verifies the source hash, stable
@@ -124,29 +134,45 @@ hashes, HTML/PNG/text hashes, browser version, CSS dimensions, pixel ratio, row
 and cell counts, and minimum text sizes. These are traceability and change
 checks, not a self-authenticating signature.
 
-Integration must map the resulting image as **computed** from the verified
-producer, keep its source content semantic, and never reverse PNG edits into R
-code or data. It must retain the receipt in the trusted generation state, verify
-it against the current source and execution generation, and verify PNG bytes
-against that external trusted receipt when loading persisted resources. A digest
-stored beside an editable asset does not establish trust. Ordinary geometry can
-follow the visual-ownership rules, while edits to computed content remain
-recoverable explicit conflicts. These state and persisted-load paths are not
-implemented or claimed by this isolated module.
+The integrated projector re-collects candidates against the same executed AST
+and original source, verifies each in-memory output/HTML/PNG receipt and PNG
+header dimensions, and consumes each wrapper exactly once under its original
+slide. The native image identity is `<wrapper>/table-fallback`; its origin and
+semantic binding name the original computed producer. It preserves the natural
+1120-by-height frame without shrinking it. Placement also refuses when preceding
+content leaves insufficient space above the slide's 20-pixel bottom margin.
+
+Fresh raw output/HTML hashes include random `gt` CSS IDs. They are verified
+before projection but deliberately are **not** persisted into semantic
+provenance: otherwise identical recomputations would make reviewed
+reconciliation stale. The published `provenance.source.richTable` contains the
+stable source/wrapper/ producer/chunk binding, PNG/text hashes, dimensions,
+browser and row/cell/font metrics. The generated baseline and emitted PNG remain
+in checksummed state, and the normal output publication receipt protects the
+generated HTML. No raw output is normalized and no label or CSS ID is rewritten.
+A future external bundle loader would require its own trusted receipt; none is
+supplied here.
+
+Native position and size edits follow existing visual ownership and survive
+changed-data render. Native `src` edits are semantic computed conflicts and stay
+recoverable. They cannot be synchronized back into R or CSV. The existing
+reviewed `previewReconcile`/`applyReconcile` path can explicitly detach an
+image; same-input recomputation remains stable, while changed data between
+preview and apply invalidates the plan. Detachment remains visibly labelled
+through render and relocation.
 
 Chromium is an optional dependency only when this fallback is needed. A missing
 executable produces `CHROMIUM_REQUIRED`; a hung operation produces
-`CHROMIUM_TIMEOUT`. Integration should add the corresponding optional browser
-probe to doctor and expose the unsupported/fallback diagnostics before claiming
-this an ordinary workflow. Existing native table and chart paths need no browser
-capture dependency.
+`CHROMIUM_TIMEOUT`. `qbento doctor` now reports `chromium` availability
+alongside Quarto/R. Existing native table/chart and ordinary text paths do not
+start a browser. No package or environment is installed automatically.
 
 ## Evidence and reproduction
 
 Run only the focused tests:
 
 ```sh
-deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/rich_table_test.ts
+deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/rich_table_test.ts tests/rich_table_project_test.ts
 ```
 
 The suite executes real Quarto/R producers, then runs real Chromium headlessly:
@@ -194,3 +220,31 @@ blocked resource attempt appearing in CDP. The deadline probe ended at 1.823
 seconds for a 1.8-second deadline, with no surviving probe PID or profile. This
 is bounded runtime evidence for those probes, not a general browser sandbox
 security certification.
+
+`tests/rich_table_project_test.ts` uses the canonical
+`examples/rich-tables/{deck.qmd,data.csv,participants.csv}` fixture with CRLF
+source and explicit execution counters. It proves complete native PNG
+projection, unchanged-input pixel stability, saved geometry and docId across
+changed CSV, computed image conflicts and refused source sync, successful
+reviewed detach, stale-plan refusal after a data change, uncaptured HTML
+protection before R, and regeneration after moving the project and removing
+generated build/output. The ordinary `quarto render` path separately proves one
+execution per producer, the same HTML guard before execution, capture/recompute
+and preserved design. All source and R code bytes remain unchanged by these
+operations.
+
+Independent integration review changed QMD while the Chromium snapshot was
+starting. Publication refused with `SOURCE_CHANGED`, preserving the prior state
+and HTML bytes. The reviewer also reproduced and revalidated the volatile-hash
+reconciliation issue: after the stable published subset fix, real preview,
+detach, apply and render retained the manual image and detached status with the
+same docId and source. A separate explicit-headless offline native Bento smoke
+check rendered a simple `gt` image at x80/y166/w1120/h183, entered Slideshow and
+visually confirmed its title, values and footnote. Its screenshot is temporary
+review evidence at `/tmp/output/playwright/rich-native-offline.png`. That native
+smoke is distinct from the full rich fixture capture/structural tests and does
+not certify arbitrary later user resizing or cross-platform fonts.
+
+Final focused validation: 6 tests and 4 nested steps passed in 1m24s.
+`deno task check`, targeted lint, and staged whitespace checks passed. No
+full-suite result or cross-platform acceptance is claimed by this slice.

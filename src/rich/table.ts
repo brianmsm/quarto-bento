@@ -60,7 +60,16 @@ function richOutput(node: Node): Node[] | undefined {
     outputs.length !== 1 || outputs[0].t !== "Div" ||
     canonical(attr(outputs[0])) !== canonical(["", ["cell-output-display"], []])
   ) return;
-  return children(outputs[0]);
+  const output = children(outputs[0]);
+  // The ordinary extension captures before Quarto's final descaffold pass.
+  // Quarto 1.10.19 removes exactly this anonymous scaffold without presentation.
+  if (
+    output.length === 1 && output[0].t === "Div" &&
+    canonical(attr(output[0])) === canonical(["", ["quarto-scaffold"], []])
+  ) {
+    return children(output[0]);
+  }
+  return output;
 }
 function looksLikeGt(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(looksLikeGt);

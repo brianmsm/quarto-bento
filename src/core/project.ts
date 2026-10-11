@@ -1,3 +1,4 @@
+import { prepareRichTables } from "../rich/project.ts";
 import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
 import {
   assertDesignRegistryUnchanged,
@@ -255,6 +256,7 @@ export async function projectProjection(
   }
   await assertDesignRegistryUnchanged(paths.directory, registry.hash);
   const widgets = await prepareWidgets(ast, mapping);
+  const richTables = await prepareRichTables(ast, mapping);
   const projected = validateProjectionOrigins(
     mapping,
     await projectAst(
@@ -264,6 +266,7 @@ export async function projectProjection(
       mapping,
       widgets.projections,
       registry.defaults,
+      richTables,
     ),
   );
   const generated = prepareIsolatedDocument(
@@ -311,6 +314,7 @@ export async function projectProjection(
         ...(origin.producer ? { producer: origin.producer } : {}),
         source: {
           hash: mapping.hash,
+          ...(origin.richTable ? { richTable: origin.richTable } : {}),
           ...(declaration ? { design } : {}),
           ...(block
             ? {

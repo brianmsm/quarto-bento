@@ -1,3 +1,8 @@
+import {
+  collectRichTableCandidates,
+  type RichTableSnapshot,
+} from "../rich/table.ts";
+import { richTableElement, verifyRichTableSnapshot } from "../rich/project.ts";
 import { collectPlotlyCandidates } from "../widgets/plotly.ts";
 import {
   assertCompatibleComponentSource,
@@ -132,7 +137,30 @@ export async function projectAst(
   source?: SourceDocument,
   widgets: ReadonlyMap<string, WidgetProjection> = new Map(),
   defaults: DesignDefaults = {},
+  richTables: ReadonlyMap<string, RichTableSnapshot> = new Map(),
 ): Promise<Projection> {
+  const expectedRichTables = new Map(
+    source
+      ? collectRichTableCandidates(ast, source).map(
+        (candidate) => [candidate.source.sourceId, candidate],
+      )
+      : [],
+  );
+  if (expectedRichTables.size !== richTables.size) {
+    throw new Error(
+      "RICH_TABLE_PROJECTION_MISMATCH: every executed rich table needs exactly one fresh verified capture",
+    );
+  }
+  for (const [id, snapshot] of richTables) {
+    const expected = expectedRichTables.get(id);
+    if (!expected) {
+      throw new Error(
+        "RICH_TABLE_PROJECTION_MISMATCH: unexpected capture identity",
+      );
+    }
+    await verifyRichTableSnapshot(expected, snapshot);
+  }
+  const consumedRichTables = new Set<string>();
   const theme = designTheme(defaults);
   const consumedWidgets = new Set<string>();
   const expectedWidgets = new Map(
@@ -373,6 +401,33 @@ export async function projectAst(
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const richTable = richTables.get(attr[0]);
+        if (richTable) {
+          if (
+            inComponent || computed || !slide ||
+            slide.id !== richTable.candidate.source.slideId ||
+            consumedRichTables.has(attr[0])
+          ) {
+            throw new Error(
+              "RICH_TABLE_PROJECTION_MISMATCH: use one original standalone rich table wrapper under its original slide",
+            );
+          }
+          const { element, origin } = richTableElement(richTable);
+          if (y + Number(element.h) > 700) {
+            throw new Error(
+              "UNSUPPORTED_RICH_TABLE: complete table cannot fit after preceding content; move it to a separate slide instead of clipping or shrinking",
+            );
+          }
+          element.y = y;
+          add(element, origin);
+          result.diagnostics.push({
+            ...richTable.diagnostic,
+            elementId: element.id,
+          });
+          y += Number(element.h) + 20;
+          consumedRichTables.add(attr[0]);
+          continue;
+        }
         const widget = widgets.get(attr[0]);
         if (widget) {
           if (
@@ -823,6 +878,11 @@ export async function projectAst(
     }
   }
   await walk(ast.blocks);
+  if (consumedRichTables.size !== richTables.size) {
+    throw new Error(
+      "RICH_TABLE_PROJECTION_MISMATCH: not every checked rich table was consumed exactly once",
+    );
+  }
   if (consumedWidgets.size !== widgets.size) {
     throw new Error(
       "WIDGET_PROJECTION_MISMATCH: not every verified widget was consumed exactly once",

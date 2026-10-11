@@ -139,7 +139,8 @@ if (import.meta.main) {
           deno: Deno.version.deno,
           os: Deno.build.os,
         };
-        for (const executable of ["quarto", "Rscript"]) {
+        // Chromium is optional: only computed rich-table/Plotly capture needs it.
+        for (const executable of ["quarto", "Rscript", "chromium"]) {
           try {
             const r = await new Deno.Command(executable, {
               args: ["--version"],

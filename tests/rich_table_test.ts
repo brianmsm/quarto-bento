@@ -77,6 +77,18 @@ Deno.test("rich table provenance rescans exact source and rejects ambiguous outp
   eq(candidate.source.sourceId, "rich");
   eq(candidate.source.producerId, "rich-maker");
   eq(candidate.source.slideId, "results");
+  const scaffolded = fakeAst();
+  const display = nodes(nodes(scaffolded.blocks[0])[0])[0];
+  (display.c as [unknown, Node[]])[1] = [
+    div("", ["quarto-scaffold"], nodes(display)),
+  ];
+  eq(collectRichTableCandidates(scaffolded, doc), [candidate]);
+  ((nodes(display)[0].c as unknown[][])[0][1] as string[]).push("hidden");
+  await refuses(
+    () => collectRichTableCandidates(scaffolded, doc),
+    "UNSUPPORTED_RICH_TABLE",
+  );
+
   const forged = { ...doc, blocks: [], slides: [] };
   eq(collectRichTableCandidates(ast, forged), [candidate]);
   await refuses(

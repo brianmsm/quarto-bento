@@ -1,0 +1,32 @@
+---
+title: Rich computed tables
+engine: knitr
+---
+
+## Grouped results {#results}
+
+::: {#grouped-table}
+```{r}
+#| label: grouped-maker
+#| echo: false
+values <- read.csv("data.csv", check.names=FALSE)
+gt::gt(values) |>
+  gt::tab_header(title=gt::md("**Grouped results**"), subtitle="Measured offline") |>
+  gt::tab_spanner(label="Statistics", columns=c(N, Mean)) |>
+  gt::fmt_number(columns=Mean, decimals=2) |>
+  gt::tab_footnote(footnote="Observed values", locations=gt::cells_column_labels(columns=N)) |>
+  gt::tab_source_note(source_note="Source: local input")
+```
+:::
+
+## Summary by arm {#summary}
+
+::: {#summary-table}
+```{r}
+#| label: summary-maker
+#| echo: false
+participants <- read.csv("participants.csv", na.strings="NA")
+gtsummary::tbl_summary(participants, by=arm, missing="ifany") |>
+  gtsummary::bold_labels()
+```
+:::
