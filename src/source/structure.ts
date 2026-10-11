@@ -1,0 +1,437 @@
+/** Explicit, review-only structural operations over original QMD source sections. */
+import { hashSource, scanSource, sliceBytes, SourceError } from "./mod.ts";
+import type { SourceBlock, SourceDocument, SourceSlide, Span } from "./mod.ts";
+
+export type StructureOperation =
+  | {
+    type: "insert-slide";
+    id: string;
+    title: string;
+    body: string;
+    afterId?: string | null;
+  }
+  | { type: "reorder-slides"; ids: string[] }
+  | { type: "delete-slide"; id: string; confirmed: true }
+  | { type: "pin-identities"; bindings: { blockId: string; id: string }[] };
+export interface StructuralEdit {
+  span: Span;
+  expected: string;
+  replacement: string;
+}
+export interface StructureStep {
+  operation: StructureOperation;
+  beforeHash: string;
+  afterHash: string;
+  edits: StructuralEdit[];
+}
+export interface StructurePreview {
+  version: 1;
+  sourceHash: string;
+  resultHash: string;
+  operations: StructureOperation[];
+  steps: StructureStep[];
+  result: string;
+}
+const encode = new TextEncoder();
+const decode = new TextDecoder("utf-8", { fatal: true });
+const idPattern = /^[A-Za-z][\w:.-]*$/;
+function fail(code: string, message: string): never {
+  throw new SourceError(code, message);
+}
+function assertIdentity(id: string): void {
+  if (!idPattern.test(id)) {
+    fail("invalid-id", `Invalid source identity: ${id}.`);
+  }
+}
+function assertDocument(doc: SourceDocument): void {
+  if (doc.diagnostics.length) {
+    fail(
+      "ambiguous-structure",
+      "Resolve source diagnostics before structural changes.",
+    );
+  }
+  const ids = doc.blocks.map((b) => b.id);
+  if (new Set(ids).size !== ids.length) {
+    fail("duplicate-id", "Source identities must be unique.");
+  }
+}
+function uniqueSlide(doc: SourceDocument, id: string): SourceSlide {
+  const slides = doc.slides.filter((s) => s.id === id);
+  if (slides.length !== 1) {
+    fail("missing-slide", `Slide ${id} is missing or ambiguous.`);
+  }
+  if (!slides[0].stable) {
+    fail(
+      "unstable-slide",
+      "Pin slide identity explicitly before changing source order.",
+    );
+  }
+  return slides[0];
+}
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+/** A immediately preceding technical marker travels with the heading it identifies. */
+function sectionSpans(doc: SourceDocument): Map<string, Span> {
+  const starts = doc.slides.map((slide) => {
+    const before = sliceBytes(doc.text, { start: 0, end: slide.span.start });
+    const marker = before.match(
+      /(?:^|\n)([ \t]*<!--[ \t]*qb:([A-Za-z][\w:.-]*)[ \t]*-->[ \t]*(?:\r\n|\n))$/,
+    );
+    if (marker && marker[2] === slide.id) {
+      return slide.span.start - encode.encode(marker[1]).length;
+    }
+    return slide.span.start;
+  });
+  return new Map(
+    doc.slides.map((
+      slide,
+      index,
+    ) => [slide.id, {
+      start: starts[index],
+      end: starts[index + 1] ?? doc.byteLength,
+    }]),
+  );
+}
+function replace(doc: SourceDocument, edits: StructuralEdit[]): string {
+  const sorted = [...edits].sort((a, b) => a.span.start - b.span.start);
+  for (let i = 0; i < sorted.length; i++) {
+    const edit = sorted[i];
+    if (
+      !Number.isInteger(edit.span.start) || !Number.isInteger(edit.span.end) ||
+      edit.span.start < 0 || edit.span.end < edit.span.start ||
+      edit.span.end > doc.byteLength
+    ) fail("invalid-span", "Invalid structural edit span.");
+    if (i && edit.span.start <= sorted[i - 1].span.end) {
+      fail("overlapping-patches", "Structural edit spans overlap.");
+    }
+    if (sliceBytes(doc.text, edit.span) !== edit.expected) {
+      fail("stale-fragment", "Structural source fragment changed.");
+    }
+  }
+  let bytes = encode.encode(doc.text);
+  for (const edit of sorted.reverse()) {
+    const inserted = encode.encode(edit.replacement);
+    const next = new Uint8Array(
+      bytes.length - (edit.span.end - edit.span.start) + inserted.length,
+    );
+    next.set(bytes.subarray(0, edit.span.start));
+    next.set(inserted, edit.span.start);
+    next.set(bytes.subarray(edit.span.end), edit.span.start + inserted.length);
+    bytes = next;
+  }
+  return decode.decode(bytes);
+}
+function producerOrder(doc: SourceDocument): string[] {
+  return doc.blocks.filter((b) => b.origin === "computed").map((b) =>
+    JSON.stringify([b.kind, b.explicitId ?? null, b.raw])
+  );
+}
+function sameProducerOrder(
+  before: SourceDocument,
+  after: SourceDocument,
+): void {
+  if (
+    JSON.stringify(producerOrder(before)) !==
+      JSON.stringify(producerOrder(after))
+  ) {
+    fail(
+      "execution-order",
+      "Structural edit would change executable or computed source order.",
+    );
+  }
+}
+function generatedSlide(
+  doc: SourceDocument,
+  operation: Extract<StructureOperation, { type: "insert-slide" }>,
+): string {
+  assertIdentity(operation.id);
+  if (!operation.title.trim() || /[\r\n]|\{[^}]*\}/.test(operation.title)) {
+    fail("invalid-slide", "A new slide requires a single-line authored title.");
+  }
+  const titleDoc = scanSource(`## ${operation.title} {#${operation.id}}\n`);
+  if (
+    titleDoc.blocks.length !== 1 || titleDoc.blocks[0].kind !== "heading" ||
+    titleDoc.blocks[0].content !== operation.title ||
+    !titleDoc.blocks[0].editable || titleDoc.blocks[0].id !== operation.id
+  ) fail("invalid-slide", "Title contains structural or executable syntax.");
+  const body = operation.body.replace(/\r\n|\r|\n/g, "\n").trim();
+  const bodyDoc = scanSource(body);
+  if (
+    bodyDoc.diagnostics.length || (body && bodyDoc.blocks.length === 0) ||
+    bodyDoc.blocks.some((b) =>
+      b.kind !== "paragraph" || !b.editable || b.explicitId
+    ) || /<!--|-->|\{\{[<%]/.test(body)
+  ) {
+    fail(
+      "invalid-slide",
+      "New slide body supports authored paragraphs only; structural or executable syntax must be authored explicitly in QMD.",
+    );
+  }
+  // Scanner ignores front matter/comments: require all non-whitespace body bytes belong to paragraphs.
+  let cursor = 0;
+  for (const block of bodyDoc.blocks) {
+    if (sliceBytes(body, { start: cursor, end: block.span.start }).trim()) {
+      fail("invalid-slide", "Body contains unmapped source syntax.");
+    }
+    cursor = block.span.end;
+  }
+  if (sliceBytes(body, { start: cursor, end: bodyDoc.byteLength }).trim()) {
+    fail("invalid-slide", "Body contains unmapped source syntax.");
+  }
+  const pieces = [`## ${operation.title} {#${operation.id}}`];
+  bodyDoc.blocks.forEach((block, index) =>
+    pieces.push(
+      `<!-- qb:${operation.id}-text-${index + 1} -->\n${block.content}`,
+    )
+  );
+  const result = (pieces.join("\n\n") + "\n\n").replace(/\n/g, doc.newline);
+  const existing = new Set(doc.blocks.map((b) => b.id));
+  const generated = scanSource(result);
+  for (const block of generated.blocks) {
+    if (existing.has(block.id)) {
+      fail("duplicate-id", `Source identity ${block.id} already exists.`);
+    }
+  }
+  return result;
+}
+function validateStep(
+  doc: SourceDocument,
+  operation: StructureOperation,
+): StructuralEdit[] {
+  assertDocument(doc);
+  const spans = sectionSpans(doc);
+  switch (operation.type) {
+    case "insert-slide": {
+      const section = generatedSlide(doc, operation);
+      let offset = doc.byteLength;
+      if (operation.afterId === null) {
+        offset = doc.slides.length
+          ? spans.get(doc.slides[0].id)!.start
+          : doc.byteLength;
+      } else if (operation.afterId !== undefined) {
+        offset = spans.get(uniqueSlide(doc, operation.afterId).id)!.end;
+      }
+      const before = sliceBytes(doc.text, { start: 0, end: offset });
+      const prefix = before && !/(?:\r?\n){2}$/.test(before)
+        ? (/(?:\r?\n)$/.test(before) ? doc.newline : doc.newline + doc.newline)
+        : "";
+      return [{
+        span: { start: offset, end: offset },
+        expected: "",
+        replacement: prefix + section,
+      }];
+    }
+    case "reorder-slides": {
+      if (
+        operation.ids.length !== doc.slides.length ||
+        new Set(operation.ids).size !== operation.ids.length ||
+        operation.ids.some((id) => !spans.has(id))
+      ) {
+        fail(
+          "invalid-order",
+          "Reorder must contain every current slide exactly once.",
+        );
+      }
+      for (const id of operation.ids) uniqueSlide(doc, id);
+      if (!doc.slides.length) return [];
+      const start = spans.get(doc.slides[0].id)!.start;
+      const replacement = operation.ids.map((id) =>
+        sliceBytes(doc.text, spans.get(id)!)
+      ).join("");
+      return [{
+        span: { start, end: doc.byteLength },
+        expected: sliceBytes(doc.text, { start, end: doc.byteLength }),
+        replacement,
+      }];
+    }
+    case "delete-slide": {
+      if (operation.confirmed !== true) {
+        fail(
+          "confirmation-required",
+          "Deleting source requires an explicit confirmed operation.",
+        );
+      }
+      const slide = uniqueSlide(doc, operation.id), span = spans.get(slide.id)!;
+      const members = doc.blocks.filter((b) =>
+        b.span.start >= span.start && b.span.start < span.end
+      );
+      if (
+        members.some((b) => b.origin === "computed" || b.kind === "unsupported")
+      ) {
+        fail(
+          "unsafe-delete",
+          "Cannot delete computed producers or source with unverified shared dependencies.",
+        );
+      }
+      const rest = sliceBytes(doc.text, { start: 0, end: span.start }) +
+        sliceBytes(doc.text, { start: span.end, end: doc.byteLength });
+      for (const block of members.filter((b) => b.explicitId)) {
+        const id = escapeRegex(block.explicitId!);
+        if (
+          new RegExp(`(?:@${id}(?![\\w:.-])|\\]\\(\\s*#${id}(?:\\s|\\)))`).test(
+            rest,
+          )
+        ) {
+          fail(
+            "shared-reference",
+            `Other source references ${block.explicitId}; deletion requires dependency resolution.`,
+          );
+        }
+      }
+      return [{ span, expected: sliceBytes(doc.text, span), replacement: "" }];
+    }
+    case "pin-identities": {
+      const used = new Set(doc.blocks.map((b) => b.id)),
+        seen = new Set<string>();
+      return operation.bindings.map(({ blockId, id }) => {
+        assertIdentity(id);
+        if (seen.has(blockId) || used.has(id)) {
+          fail(
+            "duplicate-id",
+            "Identity pinning repeats or collides with an existing source identity.",
+          );
+        }
+        const matches = doc.blocks.filter((b) => b.id === blockId);
+        if (matches.length !== 1) {
+          fail("ambiguous-source", `Cannot uniquely identify ${blockId}.`);
+        }
+        const block = matches[0];
+        if (block.stable) {
+          fail(
+            "already-pinned",
+            `Block ${blockId} already has an explicit identity.`,
+          );
+        }
+        if (block.kind === "unsupported") {
+          fail("unmapped", "Cannot pin an unsupported source construct.");
+        }
+        used.add(id);
+        seen.add(blockId);
+        return {
+          span: { start: block.span.start, end: block.span.start },
+          expected: "",
+          replacement: `<!-- qb:${id} -->${doc.newline}`,
+        };
+      });
+    }
+    default:
+      return fail("unsupported-operation", "Unknown structural operation.");
+  }
+}
+function verifyResult(
+  before: SourceDocument,
+  after: SourceDocument,
+  operation: StructureOperation,
+): void {
+  assertDocument(after);
+  if (operation.type === "reorder-slides") {
+    if (
+      JSON.stringify(after.slides.map((s) => s.id)) !==
+        JSON.stringify(operation.ids)
+    ) {
+      fail(
+        "ambiguous-boundary",
+        "Slide boundaries cannot be moved without altering original bytes; add an explicit blank-line boundary in QMD first.",
+      );
+    }
+    sameProducerOrder(before, after);
+  } else if (operation.type === "insert-slide") {
+    if (
+      after.slides.length !== before.slides.length + 1 ||
+      !after.slides.some((s) => s.id === operation.id)
+    ) {
+      fail(
+        "invalid-slide",
+        "Insertion did not create exactly one source slide.",
+      );
+    }
+    sameProducerOrder(before, after);
+  } else if (operation.type === "delete-slide") {
+    if (after.slides.length !== before.slides.length - 1) {
+      fail(
+        "ambiguous-boundary",
+        "Deletion changed unrelated slide boundaries.",
+      );
+    }
+    sameProducerOrder(before, after);
+  } else {
+    // Pinning changes identity metadata, never block content, execution or order.
+    const content = (blocks: SourceBlock[]) =>
+      blocks.map((b) => [
+        b.kind,
+        b.kind === "div"
+          ? b.content.replace(
+            /^[ \t]*<!--[ \t]*qb:[A-Za-z][\w:.-]*[ \t]*-->[ \t]*(?:\r\n|\n)/gm,
+            "",
+          )
+          : b.content,
+        b.origin,
+        b.level,
+      ]);
+    if (
+      JSON.stringify(content(before.blocks)) !==
+        JSON.stringify(content(after.blocks))
+    ) fail("unsafe-pin", "Marker insertion changed parsed source semantics.");
+    for (const binding of operation.bindings) {
+      if (!after.blocks.some((b) => b.id === binding.id && b.stable)) {
+        fail(
+          "unsafe-pin",
+          "Inserted identity did not survive a fresh source scan.",
+        );
+      }
+    }
+  }
+}
+/** Preview sequential explicit structural changes. No source or sidecar files are written. */
+export function previewStructure(
+  document: SourceDocument,
+  operations: StructureOperation[],
+): StructurePreview {
+  if (hashSource(document.text) !== document.hash) {
+    fail("stale-source", "Source snapshot changed.");
+  }
+  let current = scanSource(document.text);
+  const steps: StructureStep[] = [];
+  for (const supplied of operations) {
+    const operation = structuredClone(supplied);
+    const edits = validateStep(current, operation);
+    const result = replace(current, edits), after = scanSource(result);
+    verifyResult(current, after, operation);
+    steps.push({
+      operation,
+      beforeHash: current.hash,
+      afterHash: after.hash,
+      edits,
+    });
+    current = after;
+  }
+  return {
+    version: 1,
+    sourceHash: document.hash,
+    resultHash: current.hash,
+    operations: structuredClone(operations),
+    steps,
+    result: current.text,
+  };
+}
+/** Replays and verifies an approved preview against the unchanged original snapshot. */
+export function applyStructure(
+  currentText: string,
+  preview: StructurePreview,
+): string {
+  if (preview.version !== 1 || hashSource(currentText) !== preview.sourceHash) {
+    fail(
+      "stale-source",
+      "Source changed after structural preview; review again.",
+    );
+  }
+  const verified = previewStructure(
+    scanSource(currentText),
+    preview.operations,
+  );
+  if (JSON.stringify(verified) !== JSON.stringify(preview)) {
+    fail("invalid-preview", "Structural preview was modified after review.");
+  }
+  return verified.result;
+}
