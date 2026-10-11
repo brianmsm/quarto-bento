@@ -1,9 +1,14 @@
+import {
+  assertDesignRegistryUnchanged,
+  loadDesignRegistry,
+} from "../render/registry.ts";
 import { basename, dirname, resolve } from "node:path";
 import { extractDocument } from "../render/html.ts";
 import { hashSource, scanSource } from "../source/mod.ts";
 import { assertCompatibleComponentSource } from "../render/components.ts";
 import { assertOutputUnchanged, sha256, StateError } from "../state/mod.ts";
 import {
+  assertSourceThemeReferences,
   projectPaths,
   renderProjectFromAst,
   withProject,
@@ -16,6 +21,7 @@ interface QuartoRun {
   token: string;
   source: string;
   sourceHash: string;
+  designHash?: string | null;
   revision: number | null;
   backupHash: string | null;
   process: { pid: number; startTime: string };
@@ -114,6 +120,9 @@ async function readReceipt(path: string): Promise<QuartoRun> {
     value.version !== 1 || typeof value.token !== "string" ||
     !/^[a-f0-9-]{36}$/.test(value.token) ||
     typeof value.source !== "string" || typeof value.sourceHash !== "string" ||
+    !(value.designHash === undefined || value.designHash === null ||
+      typeof value.designHash === "string" &&
+        /^[a-f0-9]{64}$/.test(value.designHash)) ||
     !(value.revision === null || Number.isInteger(value.revision)) ||
     !(value.backupHash === null || typeof value.backupHash === "string") ||
     !Number.isInteger(value.process?.pid) ||
@@ -141,9 +150,11 @@ export async function beforeQuartoRender(): Promise<void> {
   }
   const process = await assertSafeQuartoInvocation(source);
   assertCompatibleComponentSource(scanSource(await Deno.readTextFile(source)));
+  const registry = await loadDesignRegistry(dirname(source));
   await inspectOutput(source);
   await withProject(source, async (paths, store) => {
     const state = await store.load();
+    if (state) assertSourceThemeReferences(state.emitted, state.ownership);
     await checkOutput(state, paths.output);
     const receipt = resolve(paths.stateDir, receiptName);
     const run: QuartoRun = {
@@ -151,6 +162,7 @@ export async function beforeQuartoRender(): Promise<void> {
       token: crypto.randomUUID(),
       source,
       sourceHash: hashSource(await Deno.readTextFile(source)),
+      designHash: registry.hash,
       revision: state?.revision ?? null,
       backupHash: null,
       process,
@@ -223,11 +235,15 @@ export async function afterQuartoRender(): Promise<void> {
       "STALE_QUARTO_AST: stage was not produced by this execution",
     );
   }
+  if (run.designHash !== undefined) {
+    await assertDesignRegistryUnchanged(paths.directory, run.designHash);
+  }
   const result = await renderProjectFromAst(run.source, {
     ast: captured.ast,
     sourceHash: run.sourceHash,
     assetDirectories: [dirname(resolve(staged[0])), paths.directory],
     expectedRevision: run.revision,
+    designHash: run.designHash,
   });
   await Deno.remove(receipt);
   console.log(`Bento output created: ${result.output}`);

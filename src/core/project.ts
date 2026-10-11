@@ -1,4 +1,8 @@
 import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
+import {
+  assertDesignRegistryUnchanged,
+  loadDesignRegistry,
+} from "../render/registry.ts";
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
 import { MATH_CODEC_VERSION } from "../render/math.ts";
 import { basename, dirname, resolve } from "node:path";
@@ -139,12 +143,88 @@ export interface ExecutedRender {
   sourceHash: string;
   assetDirectories: string[];
   expectedRevision?: number | null;
+  designHash?: string | null;
 }
 export async function renderProjectFromAst(
   source: string,
   executed: ExecutedRender,
 ) {
   return await render(source, executed);
+}
+/** Palette references are derivations, and must never bypass source ownership. */
+export function assertSourceThemeReferences(
+  document: BentoDoc,
+  ownership: OwnershipMap,
+  allowOwned = false,
+): void {
+  const semantic = new Set([
+    "id",
+    "type",
+    "html",
+    "text",
+    "content",
+    "src",
+    "svg",
+    "data",
+    "option",
+    "preset",
+    "source",
+    "rows",
+    "header",
+    "columns",
+    "cells",
+    "code",
+    "language",
+    "grammarName",
+    "latex",
+    "notes",
+    "title",
+    "url",
+  ]);
+  for (
+    const resource of [
+      "poster",
+      "asset",
+      "grammarAssetId",
+      "themeAssetId",
+      "view",
+      "doc",
+      "elements",
+      "layouts",
+      "themeRefs",
+    ]
+  ) semantic.add(resource);
+  function check(holder: JsonObject, key: string) {
+    const refs = holder.themeRefs;
+    if (!refs || typeof refs !== "object" || Array.isArray(refs)) return;
+    const owned = ownership[key] ?? [];
+    for (const path of Object.keys(refs)) {
+      const root = path.split(".")[0];
+      if (semantic.has(root)) {
+        throw new Error(
+          "UNSUPPORTED_THEME_REFERENCE: palette references cannot derive semantic content, identity or resources.",
+        );
+      }
+      if (!allowOwned && owned.includes("themeRefs")) {
+        throw new Error(
+          "UNMAPPED_DESIGN: a native palette reference on a source-owned object is retained pending; remove the reference or resolve it explicitly before recomputing.",
+        );
+      }
+    }
+  }
+  for (const slide of document.slides) {
+    check(slide, targetKey({ slideId: slide.id }));
+    for (const element of slide.elements) {
+      check(element, targetKey({ slideId: slide.id, elementId: element.id }));
+    }
+  }
+  // Pinned Bento also derives references on native reusable slide templates.
+  for (const layout of (document.layouts ?? []) as JsonObject[]) {
+    check(layout, "");
+    for (const element of (layout.elements ?? []) as JsonObject[]) {
+      check(element, "");
+    }
+  }
 }
 /** Execute and project one source snapshot; callers hold the project operation lock. */
 export async function projectProjection(
@@ -156,6 +236,11 @@ export async function projectProjection(
   const text = await Deno.readTextFile(paths.source),
     mapping = scanSource(text);
   assertSupportedExecutionSource(mapping);
+  const registry = await loadDesignRegistry(paths.directory);
+  if (state) assertSourceThemeReferences(state.emitted, state.ownership);
+  if (executed?.designHash !== undefined) {
+    await assertDesignRegistryUnchanged(paths.directory, executed.designHash);
+  }
   if (executed && mapping.hash !== executed.sourceHash) {
     throw new Error(
       "SOURCE_CHANGED: QMD differs from the executed source snapshot",
@@ -168,6 +253,7 @@ export async function projectProjection(
       "SOURCE_CHANGED: QMD changed during execution; render aborted",
     );
   }
+  await assertDesignRegistryUnchanged(paths.directory, registry.hash);
   const widgets = await prepareWidgets(ast, mapping);
   const projected = validateProjectionOrigins(
     mapping,
@@ -177,6 +263,7 @@ export async function projectProjection(
       executed?.assetDirectories ?? [build, paths.directory],
       mapping,
       widgets.projections,
+      registry.defaults,
     ),
   );
   const generated = prepareIsolatedDocument(
@@ -189,7 +276,10 @@ export async function projectProjection(
       const declaration = projected.design?.[slideId]?.[elementId];
       const design: JsonObject = {};
       if (declaration) {
-        ownership[targetKey({ slideId, elementId })] = declaration.ownedPaths;
+        ownership[targetKey({ slideId, elementId })] = [
+          ...declaration.ownedPaths,
+          ...(declaration.ownedPaths.length ? ["themeRefs"] : []),
+        ];
         const element = generated.slides.find((s) => s.id === slideId)!.elements
           .find((e) => e.id === elementId)!;
         for (const [field, binding] of Object.entries(declaration.bindings)) {
@@ -261,11 +351,13 @@ export async function projectProjection(
       },
     };
   }
+  if (state) assertSourceThemeReferences(state.emitted, ownership);
   return {
     document: generated,
     provenance,
     ownership,
     sourceHash: mapping.hash,
+    designHash: registry.hash,
     diagnostics: projected.diagnostics,
     widgets,
     mapping,
@@ -368,6 +460,7 @@ async function render(source: string, executed?: ExecutedRender) {
         "SOURCE_CHANGED: QMD changed during projection; publication aborted",
       );
     }
+    await assertDesignRegistryUnchanged(paths.directory, projected.designHash);
     const staging = paths.output + ".pending-" + crypto.randomUUID();
     await writeDurable(staging, html);
     await syncDirectory(paths.directory);
@@ -410,6 +503,7 @@ async function render(source: string, executed?: ExecutedRender) {
         "SOURCE_CHANGED: QMD changed while preparing publication; recover the retained transaction",
       );
     }
+    await assertDesignRegistryUnchanged(paths.directory, projected.designHash);
     if (await exists(paths.output)) {
       // Rename preserves even a native save arriving after the last hash check.
       // Keep this recoverable copy; never discard it as part of publication.
@@ -489,6 +583,7 @@ export async function captureProject(source: string, editedPath?: string) {
     }
     const html = await Deno.readTextFile(target);
     const doc = await verifyCapture(state, html);
+    assertSourceThemeReferences(doc, {}, true);
     state = captureEdits(state, doc);
     if (target === paths.output) {
       state = await markEmitted(state, doc, paths.output, html);
@@ -507,6 +602,7 @@ export async function saveProject(
   revision: number,
 ) {
   assertProjectDocument(doc);
+  assertSourceThemeReferences(doc, {}, true);
   return await withProject(source, async (paths, store) => {
     const state = await store.load();
     if (!state) throw new Error("NO_BASELINE: render first");

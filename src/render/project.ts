@@ -24,7 +24,9 @@ import { mathToNativeHtml } from "./math.ts";
 import {
   applyElementDesign,
   componentFrames,
+  type DesignDefaults,
   DesignError,
+  designTheme,
   type Frame,
   parseDesignAttributes,
 } from "./design.ts";
@@ -129,7 +131,9 @@ export async function projectAst(
   assetRoots: string[],
   source?: SourceDocument,
   widgets: ReadonlyMap<string, WidgetProjection> = new Map(),
+  defaults: DesignDefaults = {},
 ): Promise<Projection> {
+  const theme = designTheme(defaults);
   const consumedWidgets = new Set<string>();
   const expectedWidgets = new Map(
     widgets.size && source
@@ -154,12 +158,7 @@ export async function projectAst(
       ? inline(ast.meta.title.c as Node[]).replace(/<[^>]+>/g, "")
       : "Untitled",
     size: { width: 1280, height: 720 },
-    theme: {
-      background: "#ffffff",
-      color: "#172a35",
-      accent: "#156f65",
-      fontFamily: "Arial, sans-serif",
-    },
+    theme,
     slides: [],
   };
   const result: Projection = {
@@ -179,7 +178,7 @@ export async function projectAst(
     }
     slide = {
       id,
-      background: "#ffffff",
+      background: theme.background,
       transition: "fade",
       notes: "",
       elements: [],
@@ -211,9 +210,9 @@ export async function projectAst(
       opacity: 1,
       html,
       fontSize: heading ? 42 : 26,
-      fontFamily: "Arial, sans-serif",
+      fontFamily: theme.fontFamily,
       fontWeight: heading ? 700 : 400,
-      color: "#172a35",
+      color: theme.color,
       align: "left",
       valign: "top",
       lineHeight: 1.25,
@@ -480,7 +479,7 @@ export async function projectAst(
             declaration,
             base,
             semantic.length,
-            {},
+            defaults,
             declaration.component === "card"
               ? semantic.map(rowHeight)
               : undefined,
@@ -499,6 +498,7 @@ export async function projectAst(
             declaration,
             placement.frame,
             fields,
+            defaults,
           );
           for (const id of component.decorativeIds) {
             if (slide!.elements.slice(0, index).some((e) => e.id === id)) {
@@ -779,7 +779,7 @@ export async function projectAst(
           opacity: 1,
           fontSize: 24,
           fontFamily: "ui-monospace, monospace",
-          color: "#172a35",
+          color: theme.color,
           align: "left",
           valign: "top",
           lineHeight: 1.25,

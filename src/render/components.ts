@@ -2,6 +2,7 @@ import {
   applyComponentDesign,
   componentFrames,
   type DesignDeclaration,
+  type DesignDefaults,
   DesignError,
   type Frame,
 } from "./design.ts";
@@ -15,9 +16,11 @@ export function projectComponent(
   declaration: DesignDeclaration,
   frame: Frame,
   existing: Fields,
+  defaults: DesignDefaults = {},
 ): { elements: Element[]; fields: Fields; decorativeIds: string[] } {
   if (declaration.component === "layout") {
-    const slots = componentFrames(declaration, frame, groups.length).children;
+    const slots =
+      componentFrames(declaration, frame, groups.length, defaults).children;
     groups.forEach((group, i) => {
       const width = Math.max(...group.map((e) => Number(e.x) + Number(e.w))) -
         Math.min(...group.map((e) => Number(e.x)));
@@ -38,7 +41,10 @@ export function projectComponent(
       }
     });
   }
-  const projected = applyComponentDesign(groups, declaration, { frame });
+  const projected = applyComponentDesign(groups, declaration, {
+    ...defaults,
+    frame,
+  });
   const fields: Fields = {};
   const original = new Map(
     groups.flat().map((element) => [element.id, element]),

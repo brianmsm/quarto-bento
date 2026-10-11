@@ -238,3 +238,11 @@ Both a wrapper `::: {.bento-chart}` and a cell-class mapping are candidates for 
 ## Advanced source-side design
 
 User-supplied QMD design attributes (including roles, layouts, coordinates, animation declarations) are allowed. Studio changes to **those specific sourced properties** must be reported as divergence and can be synced back. Source-owned explicit attributes and sidecar-owned other properties must compose deterministically.
+
+## Local layout and theme registry
+
+The implemented optional `.qbento/design.json` registry selects a basic theme
+and reusable named column layouts. Use `bento-layout-name` in QMD; keep explicit
+QMD design ownership separate from native sparse overrides. See the
+[registry schema and authority contract](DESIGN_REGISTRY.md) and
+[executed/native evidence](evidence/DESIGN_REGISTRY.md).

@@ -730,6 +730,6 @@ export function applyComponentDesign(
 /** Theme values are pure JSON defaults; native edits remain ordinary sidecar fields. */
 export function designTheme(
   defaults: DesignDefaults = {},
-): Record<string, Json> {
+): DesignTheme & Record<string, Json> {
   return { ...(validateDesignDefaults(defaults).theme ?? defaultTheme) };
 }
