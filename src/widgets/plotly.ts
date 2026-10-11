@@ -1,3 +1,4 @@
+import { producerOutputChildren } from "../render/producer-capture.ts";
 import { canonical } from "../state/json.ts";
 /** Bounded, data-only adapter for executed R Plotly htmlwidgets. */
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
@@ -295,7 +296,12 @@ export function collectPlotlyCandidates(
     if (/results\s*[:=]\s*["']?asis|asis_output\s*\(/i.test(chunk.raw)) {
       fail("explicit asis output cannot establish widget provenance");
     }
-    let current = (nodes[0].c as [unknown, Node[]])[1];
+    let current = producerOutputChildren(
+      ast,
+      (nodes[0].c as [unknown, Node[]])[1],
+      source.hash,
+      chunk.id,
+    );
     for (const className of ["cell", "cell-output-display"]) {
       if (current.length !== 1 || current[0].t !== "Div") {
         fail(

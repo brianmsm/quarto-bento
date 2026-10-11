@@ -1,0 +1,37 @@
+---
+title: Python computation with retained Bento design
+engine: knitr
+---
+
+## Python results {#results}
+
+::: {#finding}
+Python computes this figure from the accompanying CSV.
+
+```{python}
+#| label: fig-values
+#| echo: false
+#| dev: svg
+import csv
+import os
+import matplotlib.pyplot as plt
+
+svg_epoch = os.environ.setdefault("SOURCE_DATE_EPOCH", "0")
+plt.rcParams["svg.hashsalt"] = "qbento-python-computation"
+
+with open("data.csv", newline="") as data:
+    values = [float(row["value"]) for row in csv.DictReader(data)]
+
+lines = plt.plot(values, marker="o")
+title = plt.title("Values from data.csv")
+plt.show()
+```
+
+## Computed total {#summary}
+
+```{python}
+#| label: python-total
+#| echo: true
+print("Computed sum:", sum(values))
+```
+

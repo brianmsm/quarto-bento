@@ -234,16 +234,24 @@ Deno.test("rich projection rejects stale capture wrong slide duplicate wrapper a
     const stale = structuredClone(snapshots);
     stale.get("grouped-table")!.receipt.source.sourceHash = "f".repeat(64);
     await refuses(() => project(ast, stale), "RICH_TABLE_PROJECTION_MISMATCH");
-    const duplicate = structuredClone(ast);
+    // Preserve the trusted execution AST; a serialized clone correctly loses
+    // its private producer receipt trust before these adapter-specific checks.
+    const duplicate = ast;
     duplicate.blocks.push(
       structuredClone(duplicate.blocks.find((b) => b.t === "Div")!),
     );
     await refuses(() => project(duplicate), "duplicate executed wrapper");
-    const wrong = structuredClone(ast);
+    duplicate.blocks.pop();
+    const wrong = ast;
+    const originalHeading = (wrong.blocks.find((b) =>
+      b.t === "Header"
+    )!.c as unknown[][])[1][0];
     (wrong.blocks.find((b) => b.t === "Header")!.c as unknown[][])[1][0] =
       "other-slide";
     await refuses(() => project(wrong), "RICH_TABLE_PROJECTION_MISMATCH");
-    const content = structuredClone(ast);
+    (wrong.blocks.find((b) => b.t === "Header")!.c as unknown[][])[1][0] =
+      originalHeading;
+    const content = ast;
     const second = content.blocks.findIndex((b) =>
       b.t === "Header" && (b.c as unknown[][])[1][0] === "summary"
     );
@@ -256,6 +264,7 @@ Deno.test("rich projection rejects stale capture wrong slide duplicate wrapper a
       })),
     );
     await refuses(() => project(content), "cannot fit after preceding content");
+    content.blocks.splice(second + 1, 4);
     eq(await count(dir), 2);
   } finally {
     await Deno.remove(dir, { recursive: true });

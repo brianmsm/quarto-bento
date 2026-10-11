@@ -103,7 +103,7 @@ async function filesIn(directory: string): Promise<string[]> {
       throw new Error(`UNSAFE_PACKAGE_INPUT: symbolic link ${path}`);
     }
     if (stat.isDirectory) files.push(...await filesIn(path));
-    else if (stat.isFile && /\.(ts|js|html|lua)$/.test(entry.name)) {
+    else if (stat.isFile && /\.(ts|js|html|lua|R)$/.test(entry.name)) {
       files.push(path);
     } else {
       throw new Error(`UNSAFE_PACKAGE_INPUT: unexpected runtime file ${path}`);

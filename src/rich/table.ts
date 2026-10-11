@@ -1,3 +1,4 @@
+import { producerOutputChildren } from "../render/producer-capture.ts";
 /** Computed gt HTML tables only: preserve executed rich content as a static PNG. */
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
 import { canonical } from "../state/json.ts";
@@ -49,8 +50,7 @@ function attr(node: Node): [string, string[], unknown[]] {
 function children(node: Node): Node[] {
   return (node.c as [unknown, Node[]])[1];
 }
-function richOutput(node: Node): Node[] | undefined {
-  const contents = children(node);
+function richOutput(contents: Node[]): Node[] | undefined {
   if (
     contents.length !== 1 || contents[0].t !== "Div" ||
     canonical(attr(contents[0])) !== canonical(["", ["cell"], []])
@@ -114,7 +114,15 @@ export function collectRichTableCandidates(
             "this slice requires a standalone wrapper declared exactly as ::: {#id}",
           );
         }
-        const producer = tableProducer(source, id), blocks = richOutput(node);
+        const producer = tableProducer(source, id),
+          blocks = richOutput(
+            producerOutputChildren(
+              ast,
+              children(node),
+              source.hash,
+              producer.id,
+            ),
+          );
         if (
           !blocks || blocks.length !== 3 || blocks[0].t !== "RawBlock" ||
           blocks[1].t !== "Table" || blocks[2].t !== "RawBlock"

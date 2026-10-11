@@ -1,3 +1,4 @@
+import { producerReceipt } from "./producer-capture.ts";
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
 import { kpiSource, kpiSourceAttributes } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
@@ -255,6 +256,9 @@ export async function projectAst(
     fixed: new Set<string>(),
     omitted: new Set<string>(),
   };
+  // A producer may emit code through several transparent execution wrappers.
+  // Count across those wrappers while keeping different slides/producers apart.
+  const computedCodeIndexes = new Map<string, number>();
   function startSlide(id: string): Slide {
     if (document.slides.some((s) => s.id === id)) {
       throw new Error(`DUPLICATE_ID: ${id}`);
@@ -378,7 +382,12 @@ export async function projectAst(
     slide.elements[slide.elements.findIndex((e) => e.id === element.id)] =
       applied.element;
   }
-  async function figure(node: Node, computed: boolean, parentId?: string) {
+  async function figure(
+    node: Node,
+    computed: boolean,
+    parentId?: string,
+    producerId = parentId,
+  ) {
     const [attr, , target] = node.c as [Attr, Node[], [string, string]];
     const id = attr[0] || parentId || `qb-image-${++counter}`;
     add({
@@ -395,7 +404,7 @@ export async function projectAst(
     }, {
       origin: computed ? "computed" : "authored",
       sourceId: id,
-      ...(computed ? { producer: id } : {}),
+      ...(computed ? { producer: producerId ?? id } : {}),
     });
     y += 420;
   }
@@ -909,29 +918,34 @@ export async function projectAst(
             "UNSUPPORTED_TABLE: captions and table floats need a faithful associated caption mapping; use an uncaptioned table with a non-tbl producer label for this slice",
           );
         }
-        // Quarto can remove ordinary cell labels. An exact, unique echoed
-        // original code body is evidence for its producer, never for authorship.
-        let sourceParent = attr[0] || parentId;
-        if (!attr[0] && attr[1].includes("cell") && source) {
-          const echoes = children.filter((child) =>
-            child.t === "CodeBlock" &&
-            (child.c as [Attr, string])[0][1].includes("cell-code")
-          );
-          if (echoes.length === 1) {
-            const content = (echoes[0].c as [Attr, string])[1];
-            const candidates = source.blocks.filter((block) =>
-              block.kind === "chunk" &&
-              block.content.replace(/\r\n|\r/g, "\n").split("\n").filter((
-                  line,
-                ) => !/^\s*#\|/.test(line)
-                ).join("\n").replace(/\n$/, "") === content
+        const token = attr[2].find(([key]) => key === "qbento-producer-proof")
+          ?.[1];
+        if (attr[1].includes("qbento-execution") || token !== undefined) {
+          if (!source || token === undefined) {
+            throw new Error(
+              "INVALID_PRODUCER_RECEIPT: missing original source or token",
             );
-            if (candidates.length === 1) sourceParent = candidates[0].id;
-            else {throw new Error(
-                "UNMAPPED_PROVENANCE: echoed cell code does not identify one original producer",
-              );}
           }
+          const proof = producerReceipt(ast, source.hash, token);
+          const producer = source.blocks.find((block) =>
+            block.id === proof.id && block.kind === "chunk"
+          );
+          if (!producer || producer.slideId !== proof.slideId) {
+            throw new Error(
+              "INVALID_PRODUCER_RECEIPT: original producer scope changed",
+            );
+          }
+          await walk(children, true, proof.id, inComponent);
+          contentFrame = previousFrame;
+          if (groups && slide === groupSlide) {
+            groups.push(slide!.elements.slice(groupStart));
+          }
+          continue;
         }
+        // Unlabelled execution wrappers never infer producers from displayed code.
+        const sourceParent = computed && parentId
+          ? parentId
+          : attr[0] || parentId;
         const isComputed = computed ||
           attr[1].some((c) => c === "cell" || c.startsWith("cell-output"));
         const nativeId = attr[2].find(([name]) => name === "bento-element-id")
@@ -1012,7 +1026,7 @@ export async function projectAst(
           attr[1].includes("quarto-float") && images(children).length
         ) {
           for (const img of images(children)) {
-            await figure(img, isComputed, attr[0]);
+            await figure(img, isComputed, attr[0], sourceParent);
           }
         } else await walk(children, isComputed, sourceParent, inComponent);
         design(
@@ -1091,8 +1105,15 @@ export async function projectAst(
         y += Number(element.h) + 20;
       } else if (node.t === "CodeBlock") {
         const [attr, content] = node.c as [Attr, string];
-        const sourceId = attr[0] || sourceMarker ||
-          (parentId ? `${parentId}/code:${++codeIndex}` : undefined);
+        let sourceId = attr[0] || sourceMarker;
+        if (!sourceId && parentId) {
+          if (computed) {
+            const key = JSON.stringify([slide?.id, parentId]);
+            const index = (computedCodeIndexes.get(key) ?? 0) + 1;
+            computedCodeIndexes.set(key, index);
+            sourceId = `${parentId}/code:${index}`;
+          } else sourceId = `${parentId}/code:${++codeIndex}`;
+        }
         sourceMarker = undefined;
         const languages = attr[1].filter((name) =>
           !["sourceCode", "cell-code", "bento-code"].includes(name)
@@ -1343,12 +1364,15 @@ export function validateProjectionOrigins(
       if (original.origin === "computed") {
         const producer = original.producer ??
           (candidates[0]?.kind === "chunk" ? candidates[0].id : undefined);
+        const producerBlock = source.blocks.find((b) =>
+          b.id === producer && b.kind === "chunk"
+        );
         if (
-          !producer ||
-          !source.blocks.some((b) => b.id === producer && b.kind === "chunk")
+          !producer || !producerBlock || !originalSlides.has(slideId) ||
+          producerBlock.slideId !== originalSlides.get(slideId)
         ) {
           throw new Error(
-            `UNMAPPED_PROVENANCE: computed element ${elementId} has no verified original producer`,
+            `UNMAPPED_PROVENANCE: computed element ${elementId} has no verified original producer on its source slide; capture a fresh original execution receipt through qbento render or the guarded Quarto integration`,
           );
         }
         origins[slideId][elementId] = { ...original, producer };
