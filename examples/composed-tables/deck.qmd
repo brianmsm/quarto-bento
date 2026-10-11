@@ -1,0 +1,32 @@
+## Data {#data}
+
+::::: {#grid .bento-layout bento-layout-name="two-column"}
+
+:::: {#left .bento-card}
+
+### Table
+
+::: {#values}
+| Group | N |
+| :--- | ---: |
+| Alpha | 12 |
+| Beta | 5 |
+:::
+
+Below.
+
+::::
+
+:::: {#right .bento-card}
+
+::: {#computed}
+```{r}
+#| label: maker
+#| echo: false
+knitr::kable(read.csv("data.csv"), format="pipe", align=c("l", "r"))
+```
+:::
+
+::::
+
+:::::

@@ -14,10 +14,10 @@ function assert(v: unknown, message = "assertion failed"): asserts v {
   if (!v) throw new Error(message);
 }
 
-Deno.test("integrated native tables and charts refuse unadapted component placement", async () => {
+Deno.test("integrated native charts refuse unadapted component placement", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-component-native-" });
   try {
-    for (const kind of ["table", "chart"]) {
+    for (const kind of ["chart"]) {
       const projectDir = `${dir}/${kind}`;
       await Deno.mkdir(projectDir);
       const source = `${projectDir}/deck.qmd`;
@@ -381,7 +381,7 @@ Deno.test("card code rows retain all eight lines at native font size and excessi
 });
 
 Deno.test("component layout rejects native types with unadapted internal metrics", () => {
-  for (const type of ["table", "chart", "embed", "svg", "video"]) {
+  for (const type of ["chart", "embed", "svg", "video"]) {
     try {
       applyComponentDesign([[{
         id: "unadapted",

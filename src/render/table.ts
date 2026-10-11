@@ -1,4 +1,5 @@
 /** Faithful rectangular plain-text subset of Pandoc tables -> pinned native Bento tables. */
+import type { Frame } from "./design.ts";
 import { escapeHtml } from "./html.ts";
 import type { Element, Node } from "./types.ts";
 export const TABLE_CODEC_VERSION = 1;
@@ -125,12 +126,17 @@ export function plainTable(node: Node): PlainTable {
   if (!rows.length || rows.length > 2000) fail("Use between 1 and 2000 rows.");
   return { header: array(headRows).length === 1, columns, rows };
 }
-export function projectTable(node: Node, id: string, y = 166): Element {
+export function projectTable(
+  node: Node,
+  id: string,
+  y = 166,
+  frame?: Frame,
+): Element {
   const table = plainTable(node);
   const fontSize = 18, cellPadX = 16, cellPadY = 11, borderWidth = 1;
   // Match native line-height/padding/border before adding a small rounding margin.
   // A conservative single-line width gate avoids claiming unmeasured wrapping.
-  const width = 1120,
+  const width = frame?.w ?? 1120,
     totalWeight = table.columns.reduce((sum, column) => sum + column.width, 0);
   for (const [rowIndex, row] of table.rows.entries()) {
     for (const [columnIndex, cell] of row.entries()) {
@@ -152,7 +158,10 @@ export function projectTable(node: Node, id: string, y = 166): Element {
   const rowHeight = Math.ceil(fontSize * 1.3 + cellPadY * 2 + borderWidth * 2) +
     8;
   const height = Math.max(100, table.rows.length * rowHeight);
-  if (y < 0 || y + height > 720) {
+  if (
+    !Number.isFinite(width) || width <= 0 || y < 0 || y + height > 720 ||
+    frame && (y < frame.y || y + height > frame.y + frame.h + .01)
+  ) {
     throw new Error(
       "UNSUPPORTED_TABLE_LAYOUT: the complete table does not fit in the remaining slide area; split it into smaller source tables rather than clipping rows.",
     );
@@ -160,7 +169,7 @@ export function projectTable(node: Node, id: string, y = 166): Element {
   return {
     id,
     type: "table",
-    x: 80,
+    x: frame?.x ?? 80,
     y,
     w: width,
     h: height,

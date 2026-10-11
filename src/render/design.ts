@@ -447,6 +447,12 @@ function placed(elements: Element[], frame: Frame): Element[] {
   }
   // Uniform fit retains aspect ratio and relative positioning within a semantic child.
   const scale = Math.min(1, frame.w / width, frame.h / height);
+  if (scale < 1 && original.some((element) => element.type === "table")) {
+    throw new DesignError(
+      "COMPONENT_CONTENT_OVERFLOW",
+      "A native table must fit its final frame without scaling its box; use a wider or taller component.",
+    );
+  }
   return original.map((e) => {
     const fitted: Element = {
       ...structuredClone(e),
@@ -568,7 +574,7 @@ export function applyComponentDesign(
   declaration: DesignDeclaration,
   defaults: DesignDefaults = {},
 ): ComponentProjection {
-  const supported = new Set(["text", "code", "image", "shape"]);
+  const supported = new Set(["text", "code", "image", "shape", "table"]);
   const unsupported = children.flat().find((element) =>
     !supported.has(element.type)
   );

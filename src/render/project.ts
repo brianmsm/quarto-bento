@@ -609,6 +609,35 @@ export async function projectAst(
             );
           };
           const rowHeight = (child: Node): number => {
+            // A table can be wrapped by source and execution divs. Inspect the
+            // whole subtree; never select one descendant and drop its siblings.
+            const tableHeight = (value: Node): number | undefined => {
+              if (value.t === "Table") {
+                return Number(
+                  projectTable(value, "measurement", 0, {
+                    x: 0,
+                    y: 0,
+                    w: frameWidth,
+                    h: 720,
+                  }).h,
+                );
+              }
+              if (value.t !== "Div") return undefined;
+              const [attributes, nested] = value.c as [Attr, Node[]];
+              if (attributes[1].includes("bento-chart")) return undefined;
+              const semantic = nested.filter((n) => n.t !== "RawBlock");
+              const measured = semantic.map(tableHeight);
+              if (measured.every((h) => h === undefined)) return undefined;
+              if (semantic.length !== 1) {
+                throw new DesignError(
+                  "COMPONENT_TABLE_SUBTREE",
+                  "A table wrapper must contain only the table and transparent execution wrappers; move sibling text/code into separate card children.",
+                );
+              }
+              return measured[0];
+            };
+            const measuredTable = tableHeight(child);
+            if (measuredTable !== undefined) return measuredTable;
             if (images([child]).length) return -1;
             const explicitSize = Number(declaration.properties.fontSize);
             if (child.t === "Header") {
@@ -918,7 +947,7 @@ export async function projectAst(
         }
         tableSources.add(block.id);
         const id = computed ? `${block.id}/table:1` : `${parentId}/table`;
-        const element = projectTable(node, id, y);
+        const element = projectTable(node, id, y, contentFrame);
         if (!computed) validateAuthoredTable(source, block.id, element);
         add(element, {
           origin: computed ? "computed" : "authored",
