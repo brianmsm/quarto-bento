@@ -41,7 +41,24 @@ platforms.
 Verified on Linux with Quarto 1.10.19, Deno 2.9.6 and the pinned Bento 1.2.6
 revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (2026-10-11). This evidence
 covers the core API, executed Quarto projection and native editor workflow
-described below. Presenter visual acceptance remains separate.
+described below. The additional Presenter check is recorded next.
+
+### Native Presenter follow-up
+
+With Studio runtime `28207a9`, the coordinator reopened the final native fixture
+rendered at `61977eb`, opened Bento's own presenter window and started its native
+presentation. The existing-slide note and the new-slide note were both visible
+as plain text, including Unicode β. Advancing with the native Next control
+changed the current slide and its notes together. Both screenshots were visually
+inspected; the source still matched the archived accepted QMD byte for byte and
+the R execution counter remained 3. Opening and navigating this presentation
+did not recompute the document.
+
+The receipt is `output/verification/notes-presenter-28207a9/receipt.json`;
+screenshots are `output/playwright/notes-presenter-existing.png` and
+`output/playwright/notes-presenter-created.png`. This is the pinned native Bento
+Presenter in headless Chromium on Linux. A physical second monitor and
+foreground desktop window behavior were not exercised.
 
 ## Supported source and native representation
 

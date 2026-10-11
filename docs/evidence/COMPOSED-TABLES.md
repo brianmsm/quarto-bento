@@ -65,6 +65,13 @@ six-test run, full source type check, and lint/format checks for changed
 TypeScript files are recorded in the local receipt directory above. No full
 project suite was rerun for this isolated lane.
 
+After integration at runtime `1605a37` (documentation `28207a9`), the coordinator
+ran `composed_tables_test.ts`, `components_execution_test.ts` and `table_test.ts`
+together: **25 tests passed, zero failures, in 1m47s**. The integrated receipt
+is `output/verification/tables-integrated-1605a37/`. This is a focused integration
+result, separate from the older full-suite result. The coordinator also visually
+inspected the initial and changed-data native captures described below.
+
 ## Native evidence
 
 Tests use real installed headless Chromium and the shipped pinned Bento shell,
