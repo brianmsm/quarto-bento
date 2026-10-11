@@ -115,3 +115,47 @@ The checks in this document establish source/core/native-document runtime
 behavior. The contributor did not open a headed browser or claim new pixel
 inspection here; native Studio interaction is validated separately by the
 integration owner.
+
+## Native Studio acceptance after integration
+
+The coordinator exercised the real Bento editor through headless Chromium on
+Linux at 1280 × 720, then reopened Studio with integrated commit `7ce0d14`. The
+temporary two-slide fixture was `/tmp/qbento-text-insertion-native-final`, with
+document identity `2fa9cb99-715c-4600-8df5-93d7c772a4c0`.
+
+The native add-text control created object `t-mv3ui7x8-32hq4`. Its content was
+edited to “Texto añadido desde Bento: conclusión β.” and its native controls set
+position `180/350`, size `900/120` and font size `28 pt` (stored by Bento as
+`37.33 px`). Save reached revision 2 with one pending `create-element`; QMD
+remained byte-identical. The server was closed and reopened before review.
+
+Studio's review proposed this exact source insertion before the second slide:
+
+```qmd
+::: {#qb-text-02665bb22e954c2f1e91038a bento-element-id="t-mv3ui7x8-32hq4"}
+Texto añadido desde Bento: conclusión β.
+:::
+```
+
+The two optional `.qbento-design` annotations were also displayed and reviewed
+in that plan. Apply followed by Recalculate reached revision 4 with zero pending
+edits and the same `docId`. Removing the exact inserted block and the two
+reviewed classes from the resulting QMD reproduced the original source
+byte-for-byte; no other source change occurred.
+
+The complete saved native text object, including ID, geometry, font, color,
+alignment and remaining style fields, equaled its pre-sync value. The entire
+second native slide also equaled its saved value. The new text had verified
+authored provenance under the inserted source container. Another page reload
+retained the content and enabled controls with “Proyecto abierto”.
+
+The coordinator visually inspected these captures:
+
+- `output/playwright/text-insertion-native-saved.png`
+- `output/playwright/text-insertion-native-preview.png`
+- `output/playwright/text-insertion-native-recalculated.png`
+
+The final inserted text was readable at its saved position. These are native
+Bento UI and visual checks in Linux headless Chromium; they do not establish
+macOS/Windows behavior or operating-system dialog acceptance. The final QMD
+SHA-256 was `9ea9cdf0a2b64f74c632b466d70fb75f48e34e7cb52dcd27da49b5727b0a726c`.

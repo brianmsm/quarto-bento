@@ -96,6 +96,14 @@ su QMD. Marcarla para eliminar conserva una operación pendiente que puede
 restaurarse antes de sincronizar. Eliminar código productor, referencias u otros
 casos ambiguos puede ser rechazado con un diagnóstico.
 
+También puedes añadir un cuadro de texto independiente en una diapositiva
+existente. **Guardar proyecto** lo conserva como pendiente; **Revisar cambios**
+propone insertarlo como un bloque identificado al final de esa sección del QMD.
+Tras aplicar y recalcular, conserva su posición, tamaño y estilo. La inserción
+admite un párrafo del subconjunto de texto compatible; objetos agrupados,
+estructuras ambiguas o identidades débiles pueden requerir autoría explícita en
+QMD. Consulta el [alcance y la prueba nativa](evidence/TEXT-INSERTION.md).
+
 ## Anotaciones y diseños reutilizables
 
 Las anotaciones informativas del QMD se controlan con
@@ -109,10 +117,15 @@ omisión.
 
 Si el QMD conserva una de esas trazas pero faltan los datos de diseño
 correspondientes, Studio muestra `MISSING_DESIGN` al abrir y recalcular. Puedes
-ver una presentación base, pero eso no recupera la apariencia original.
-Restaura los archivos indicados desde Git o una copia de seguridad, o revisa
+ver una presentación base, pero eso no recupera la apariencia original. Restaura
+los archivos indicados desde Git o una copia de seguridad, o revisa
 explícitamente una traza que ya no corresponda al proyecto. Guardar y renderizar
 no eliminan automáticamente la anotación del QMD.
+
+Después de recalcular, `OVERFLOW` identifica las cajas que sobrepasan
+verticalmente la altura de la diapositiva, con el diseño guardado ya aplicado.
+Corrige la posición o el tamaño y vuelve a recalcular. El aviso comprueba las
+cajas; no mide texto recortado, sombras, rotación o desbordamiento horizontal.
 
 Abre **Diseños y temas** para añadir o cambiar layouts con nombre y temas
 básicos reutilizables. Selecciona el tema activo explícitamente. **Guardar
@@ -124,8 +137,8 @@ visuales declarados explícitamente en QMD mantienen su autoridad.
 Los layouts se seleccionan en QMD con `bento-layout-name`. Renombrar o eliminar
 un layout en el formulario requiere revisar esas referencias. Si el registro
 cambió en otro editor, el guardado se rechaza y conserva el borrador: revísalo
-antes de pulsar **Descartar borrador y recargar registro**. También puedes editar
-el JSON siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
+antes de pulsar **Descartar borrador y recargar registro**. También puedes
+editar el JSON siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
 
 ## Cambiar datos y reconstruir
 
@@ -197,12 +210,12 @@ deno task qbento render /ruta/a/mi-presentacion/deck.qmd
 
 `get` y `patch` permiten leer un snapshot y aplicar lotes JSON limitados, con
 identidad y revisión obligatorias. Sigue el [contrato de la API](AGENT-API.md):
-un parche guarda estado y no sincroniza ni ejecuta el QMD implícitamente.
-La operación `slide.create` admite una diapositiva con texto y formas decorativas
-y puede combinarse con edición o movimiento en el mismo lote. Exige un cálculo
-que corresponda al QMD actual; si devuelve `STALE_SOURCE`, recalcula y vuelve a
-leer el snapshot antes de preparar el lote. La nueva diapositiva se convierte
-en QMD sólo después de revisar y aplicar su plan de sincronización.
+un parche guarda estado y no sincroniza ni ejecuta el QMD implícitamente. La
+operación `slide.create` admite una diapositiva con texto y formas decorativas y
+puede combinarse con edición o movimiento en el mismo lote. Exige un cálculo que
+corresponda al QMD actual; si devuelve `STALE_SOURCE`, recalcula y vuelve a leer
+el snapshot antes de preparar el lote. La nueva diapositiva se convierte en QMD
+sólo después de revisar y aplicar su plan de sincronización.
 
 `init` instala la extensión local para usar `quarto render` ordinario. Se niega
 a reemplazar configuración existente; el modo `--extension-only` copia la
@@ -221,8 +234,8 @@ proyecto Quarto existente.
 | `UNSUPPORTED_SYNC` o `UNMAPPED_DESIGN` | Conserva el cambio pendiente. Examina el diagnóstico y el subconjunto de contenido admitido; no se puede asumir una conversión segura.                                                        |
 | Transacción interrumpida               | Ejecuta `recover deck.qmd inspect`, revisa el estado y elige explícitamente `finish` o `rollback` si el diagnóstico lo permite. Para el wrapper de Quarto, consulta también `quarto-recover`. |
 | Estado corrupto o identidad distinta   | Conserva los archivos y sus backups para investigar. Borrar `.qbento/` pierde el vínculo con el diseño y los cambios pendientes.                                                              |
-| `DESIGN_REGISTRY_RECOVERY_REQUIRED`    | Conserva el marcador y las versiones del registro. Sigue la [recuperación manual del registro](evidence/STUDIO-REGISTRY.md); el comando genérico `recover` no gestiona ese journal. |
-| `MISSING_DESIGN`                      | Restaura el diseño externo indicado desde Git o un backup. Generar una presentación base no demuestra que su apariencia anterior haya sido recuperada. |
+| `DESIGN_REGISTRY_RECOVERY_REQUIRED`    | Conserva el marcador y las versiones del registro. Sigue la [recuperación manual del registro](evidence/STUDIO-REGISTRY.md); el comando genérico `recover` no gestiona ese journal.           |
+| `MISSING_DESIGN`                       | Restaura el diseño externo indicado desde Git o un backup. Generar una presentación base no demuestra que su apariencia anterior haya sido recuperada.                                        |
 
 Los límites de contenido y las pruebas que todavía faltan se mantienen en el
 [registro de implementación](IMPLEMENTATION_STATUS.md).

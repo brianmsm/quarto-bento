@@ -63,4 +63,7 @@ An implementing agent **may** choose internal algorithms, module structure, test
 
 A stage is complete only when its workflows can be executed end-to-end from a clean working tree, its failure paths have tests, its changes are documented, and the results are reproducible **under compatible dependencies**. A final v1 release additionally needs its scope frozen and validated across the supported platforms.
 
-**Next action:** begin S0, record actual limitations and decisions; do not treat the current architecture mockups or CLI examples as already implemented.
+**Next action:** continue the remaining acceptance gates recorded in
+[the implementation ledger](IMPLEMENTATION_STATUS.md), retaining the demonstrated
+Linux workflows. This document defines the target; implementation and platform
+claims require the corresponding evidence in that ledger.

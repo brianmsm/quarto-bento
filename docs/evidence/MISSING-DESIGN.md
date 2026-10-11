@@ -134,12 +134,12 @@ deliberately excluded from this diagnostic commit.
 
 ## Coordinator native acceptance
 
-At integrated `6225391`, the coordinator used a real Quarto-generated source-only
-fixture at `/tmp/qbento-missing-design-native-final/deck.qmd`, containing an
-identified slide with `.qbento-design` and no recovered visual state. Chromium
-headless displayed the actionable banner and native editor on opening, after
-**Recalcular**, and after a page reload. The control remained enabled after
-startup. The original QMD remained byte-identical, SHA-256
+At integrated `6225391`, the coordinator used a real Quarto-generated
+source-only fixture at `/tmp/qbento-missing-design-native-final/deck.qmd`,
+containing an identified slide with `.qbento-design` and no recovered visual
+state. Chromium headless displayed the actionable banner and native editor on
+opening, after **Recalcular**, and after a page reload. The control remained
+enabled after startup. The original QMD remained byte-identical, SHA-256
 `5b2d1be9175fae9d14d212ac61202ceaf0cb96cbc9bd10e973ccd16df79dbc02`;
 recalculation advanced revision 1 to 2, retained
 `docId=a4758376-9f2c-494a-b78d-f624f97e03b0` and left zero pending changes.
@@ -151,3 +151,29 @@ Screenshots of the actual canvas and warning were inspected at 1280 × 720 and
 above the editor, without overlap. Native canvas zoom adjusts to the available
 area. This is browser evidence on Linux; no desktop focus interaction or other
 operating-system validation occurred.
+
+## Coordinator overflow-banner acceptance
+
+At `ee53267`, a second real fixture at
+`/tmp/qbento-overflow-native-final/deck.qmd` contained eight identified authored
+paragraphs. Recalculate reached revision 2 and displayed three `OVERFLOW`
+warnings with distinct element IDs. The warnings remained after the native
+iframe reconnected and the design-only diagnostics refreshed. QMD remained
+byte-identical, with zero pending edits and document identity
+`b130a88b-37c3-4ab3-9ef2-1bf560af2a96`.
+
+An intermediate source attempt that removed paragraphs was refused by the
+existing `AMBIGUOUS_IDENTITY` guard; the last successful warnings remained
+visible and the state revision did not advance. The successful correction
+retained all eight paragraphs and their IDs, adding explicit QMD positions
+`y=150+65*(i-1)`, height `54` and font size `24`. Recalculate reached revision 3
+with all title/paragraph boxes inside the frame and the warning banner hidden.
+No pending edits were consumed.
+
+The coordinator inspected
+`output/playwright/overflow-parent-after-reconnect.png` and
+`output/playwright/overflow-parent-corrected.png` in Linux headless Chromium.
+These captures establish the visible banner lifecycle on the real native editor.
+The subsequent [composed-geometry correction](COMPOSED-OVERFLOW.md) separately
+verifies that saved native overrides also replace obsolete overflow warnings and
+that new warnings target only currently overflowing boxes.

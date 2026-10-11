@@ -58,8 +58,8 @@ access to the source checkout denied for the packaged CLI. Ordinary integration
 is tested after relocating the installed project into another directory with
 spaces, removing the generated HTML and removing the portable runtime. Fixed
 project-relative hooks also support spaces and quotes in project/source paths;
-the measured Quarto hook correction is recorded in `docs/evidence/QUARTO.md`
-in the source checkout.
+the measured Quarto hook correction is recorded in `docs/evidence/QUARTO.md` in
+the source checkout.
 
 `manifest.json` lists each payload file's relative path, byte count, SHA256 and
 executable flag. The manifest itself is excluded to avoid a recursive self-hash.
@@ -77,8 +77,9 @@ part of release review.
 
 ## Authored portability CI and local smoke
 
-In the source checkout, [`.github/workflows/portable.yml`](../.github/workflows/portable.yml)
-defines an independent matrix on `ubuntu-24.04`, `macos-15-intel` and `windows-2022`, using
+In the source checkout,
+[`.github/workflows/portable.yml`](../.github/workflows/portable.yml) defines an
+independent matrix on `ubuntu-24.04`, `macos-15-intel` and `windows-2022`, using
 [GitHub's documented runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 It runs on pull requests, pushes to `main` and manual dispatch. Each job checks
 core and portable-tool types, runtime/tool formatting and lint, the existing
@@ -105,9 +106,9 @@ The setup inputs are described by
 On Windows that action delegates to its PowerShell installation script using
 Scoop and forwards the requested Quarto version. Scoop is temporary CI-runner
 preparation, outside the portable payload and ordinary user workflow; `doctor`
-checks the installed version before the smoke proceeds.
-The ephemeral runner disables Git automatic line-ending conversion before
-checkout so the pinned shell bytes and inventory remain exact on Windows; see
+checks the installed version before the smoke proceeds. The ephemeral runner
+disables Git automatic line-ending conversion before checkout so the pinned
+shell bytes and inventory remain exact on Windows; see
 [Git's line-ending settings](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf).
 Checkout credentials are not persisted and the workflow token has only
 `contents: read`. The install phase needs network access; the authored fixture
@@ -163,3 +164,10 @@ establish native support. These are CLI, source-byte and document/state
 assertions, without browser visual evidence, PDF/widget coverage or a v1 release
 claim. Ordinary integration on macOS/Windows remains deliberately unsupported
 until its process/output preflight is implemented and validated there.
+
+The coordinator repeated the complete Linux smoke after integration `c225546`,
+including the new composed-diagnostics runtime module. The portable inventory
+contained 69 payload files; all launcher, retained-pending-edit, state-only
+rebuild and relocated ordinary-Quarto assertions passed with process exit 0. The
+local receipt is `/tmp/qbento-portable-c225546.log`. This extends the Linux
+receipt, without changing the other-platform qualification boundary above.

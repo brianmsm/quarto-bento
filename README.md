@@ -76,12 +76,15 @@ Examples use their accompanying CSV inputs. The rich-table example also uses
 `participants.csv`. Bounded `gt`/`gtsummary` output is captured as a complete 2x
 PNG with its source formatting; native slide and offline PDF inspection are
 recorded in [rich-table evidence](docs/evidence/RICH-TABLES.md). Rendering that
-fallback requires an installed Chromium. Unknown conversions refuse rather
-than invent a result. Studio supports text/structural review, reversible slide
-actions and fresh conflict resolution. See the bounded
-[component evidence](docs/evidence/COMPONENTS.md). The guarded `qbento-html`
-extension executes Quarto once per render (verified on Linux). The static
-standalone/PDF workflow has
+fallback requires an installed Chromium. Unknown conversions refuse rather than
+invent a result. Studio supports text/structural review, reversible slide
+actions and fresh conflict resolution. New standalone native text can be
+reviewed and inserted into an existing identified QMD slide, then regenerated
+with its saved geometry and style; see the
+[insertion scope and native acceptance](docs/evidence/TEXT-INSERTION.md). See
+the bounded [component evidence](docs/evidence/COMPONENTS.md). The guarded
+`qbento-html` extension executes Quarto once per render (verified on Linux). The
+static standalone/PDF workflow has
 [offline browser evidence](docs/evidence/OFFLINE-PDF.md). Supported Plotly
 scatter/bar output now produces a static SVG in native Bento and a separate
 isolated interactive view through Studio's **Presentar con gráficos**. Saved
@@ -128,8 +131,9 @@ QMD with saved visual state.
 Studio's **Diseños y temas** edits the project's named layouts and basic themes.
 **Guardar diseños** updates `.qbento/design.json`; **Recalcular** applies its
 defaults while preserving saved overrides and pending content. Explicit QMD
-attributes retain their authority. See the [registry contract](docs/DESIGN_REGISTRY.md)
-and [save/conflict/recovery evidence](docs/evidence/STUDIO-REGISTRY.md).
+attributes retain their authority. See the
+[registry contract](docs/DESIGN_REGISTRY.md) and
+[save/conflict/recovery evidence](docs/evidence/STUDIO-REGISTRY.md).
 
 ### Proposed project files
 
