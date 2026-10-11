@@ -343,7 +343,7 @@ export async function projectAst(
       x: contentFrame?.x ?? 160,
       y,
       w: contentFrame?.w ?? 880,
-      h: contentFrame?.h ?? Math.min(400, 670 - y),
+      h: contentFrame?.h ?? Math.max(100, Math.min(400, 670 - y)),
       rotation: 0,
       opacity: 1,
       src: await assetData(target[0], assetRoots),

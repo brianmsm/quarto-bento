@@ -48,3 +48,44 @@ Eight existing projection tests also pass.
 Type checking, lint, formatting and diff checks pass for the five changed code
 and test files. No full-suite, browser visual, hosted CI or native macOS/Windows
 claim is made here. The coordinating integration owns the final acceptance run.
+
+## Multiple computed images in one slide
+
+A second runtime regression reproduced a separate failure in the same path. Two
+real Quarto R chunks with visible code and SVG plots placed the second image
+after the available canvas space. Before the fix, projection failed with
+`BentoContractError: /slides/0/elements/4/h: Below minimum 0`, before saved
+geometry could be composed and the figure moved.
+
+Default image frames now use a 100 px minimum when the remaining vertical space
+is exhausted, while retaining the existing explicit `contentFrame.h` and the
+natural 400 px height when that much space remains. The minimum permits Bento to
+load the deck and lets the final composed-geometry diagnostic report an image
+that still extends below the slide. It does not shrink content or clear
+overflow automatically.
+
+The real Quarto regression verifies two computed image elements have positive
+heights and that initial `OVERFLOW` targets match exactly the elements whose
+bottom edge is below the 720 px canvas, including the second figure. It then
+saves all source-backed geometry inside the canvas, changes the CSV inputs and
+renders again. Both computed images retain their exact saved geometry and
+producer identities, the document `docId` stays stable, the SVG data changes,
+the source QMD remains byte-identical, and the overflow warning clears. A final
+save that leaves one code object at `y=700` retains one warning for that
+object only.
+
+Focused Linux verification:
+
+```bash
+deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/overflow_execution_test.ts
+# 3 passed, 0 failed
+deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/overflow_test.ts tests/render_test.ts
+# 11 passed, 0 failed
+deno fmt src/render/project.ts tests/overflow_test.ts tests/overflow_execution_test.ts
+# 3 files checked
+```
+
+The AST regression separately checks the natural 400 px image frame when
+sufficient space is available. These checks validate source projection,
+geometry persistence and diagnostics; they are not a visual inspection of the
+native Bento canvas and do not claim full-suite or other-platform acceptance.

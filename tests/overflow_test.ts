@@ -1,5 +1,6 @@
 import { refreshOverflowDiagnostics } from "../src/render/diagnostics.ts";
-import type { Diagnostic, Slide } from "../src/render/types.ts";
+import { projectAst } from "../src/render/project.ts";
+import type { Ast, Diagnostic, Slide } from "../src/render/types.ts";
 function assert(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
@@ -47,4 +48,41 @@ Deno.test("overflow follows supported native page height and exact vertical box 
     slides,
   }, smaller);
   assert(larger.length === 0);
+});
+
+Deno.test("default image frames retain 400px height when enough canvas space remains", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-image-frame-" });
+  try {
+    await Deno.writeTextFile(
+      dir + "/figure.svg",
+      '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"></svg>',
+    );
+    const ast: Ast = {
+      meta: {},
+      blocks: [
+        {
+          t: "Header",
+          c: [2, ["slide", [], []], [{ t: "Str", c: "Figure" }]],
+        },
+        {
+          t: "Para",
+          c: [{
+            t: "Image",
+            c: [
+              ["", [], []],
+              [{ t: "Str", c: "Plot" }],
+              ["figure.svg", ""],
+            ],
+          }],
+        },
+      ],
+    };
+    const projection = await projectAst(ast, "stable-doc-id", [dir]);
+    const image = projection.document.slides[0].elements.find((element) =>
+      element.type === "image"
+    )!;
+    assert(image.h === 400, JSON.stringify(image));
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
