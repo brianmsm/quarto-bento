@@ -1,4 +1,9 @@
 import {
+  conversionEdits,
+  type TextConversion,
+  verifyConversion,
+} from "./text-conversion.ts";
+import {
   type ComponentInsertion,
   generatedComponent,
   verifyComponentInsertion,
@@ -14,6 +19,7 @@ import {
 } from "./deletion.ts";
 
 export type StructureOperation =
+  | TextConversion
   | { type: "insert-notes"; slideId: string; id: string; text: string }
   | ComponentInsertion
   | {
@@ -22,6 +28,8 @@ export type StructureOperation =
     title: string;
     body: string;
     bodyIds?: string[];
+    /** Native element boundaries, preventing adjacent lists from merging. */
+    bodyFragments?: string[];
     /** Slide-local Bento IDs, distinct from globally unique QMD block IDs. */
     bodyElementIds?: string[];
     titleElementId?: string;
@@ -33,6 +41,7 @@ export type StructureOperation =
     id: string;
     elementId: string;
     markdown: string;
+    textKind?: "paragraph" | "list";
   }
   | { type: "reorder-slides"; ids: string[] }
   | { type: "delete-slide"; id: string; confirmed: true }
@@ -184,10 +193,30 @@ function generatedSlide(
   ) fail("invalid-slide", "Title contains structural or executable syntax.");
   const body = operation.body.replace(/\r\n|\r|\n/g, "\n").trim();
   const bodyDoc = scanSource(body);
+  if (operation.bodyFragments) {
+    if (operation.bodyFragments.join("\n\n") !== body) {
+      fail("invalid-slide", "Body fragments disagree with the reviewed body.");
+    }
+    bodyDoc.blocks = operation.bodyFragments.map((fragment) => {
+      const parsed = scanSource(fragment), block = parsed.blocks[0];
+      if (
+        parsed.diagnostics.length || parsed.blocks.length !== 1 ||
+        !["paragraph", "list"].includes(block.kind) || !block.editable ||
+        block.explicitId || block.parentId || block.content !== fragment
+      ) {
+        fail(
+          "invalid-slide",
+          "Each native body fragment must be exactly one authored paragraph or list.",
+        );
+      }
+      return block;
+    });
+  }
   if (
     bodyDoc.diagnostics.length || (body && bodyDoc.blocks.length === 0) ||
     bodyDoc.blocks.some((b) =>
-      b.kind !== "paragraph" || !b.editable || b.explicitId
+      !(operation.bodyFragments ? ["paragraph", "list"] : ["paragraph"])
+        .includes(b.kind) || !b.editable || b.explicitId
     ) || /<!--|-->|\{\{[<%]/.test(body)
   ) {
     fail(
@@ -197,13 +226,16 @@ function generatedSlide(
   }
   // Scanner ignores front matter/comments: require all non-whitespace body bytes belong to paragraphs.
   let cursor = 0;
-  for (const block of bodyDoc.blocks) {
+  for (const block of operation.bodyFragments ? [] : bodyDoc.blocks) {
     if (sliceBytes(body, { start: cursor, end: block.span.start }).trim()) {
       fail("invalid-slide", "Body contains unmapped source syntax.");
     }
     cursor = block.span.end;
   }
-  if (sliceBytes(body, { start: cursor, end: bodyDoc.byteLength }).trim()) {
+  if (
+    !operation.bodyFragments &&
+    sliceBytes(body, { start: cursor, end: bodyDoc.byteLength }).trim()
+  ) {
     fail("invalid-slide", "Body contains unmapped source syntax.");
   }
   if (operation.titleElementId !== undefined) {
@@ -262,7 +294,9 @@ function generatedText(
   const parsed = scanSource(body), block = parsed.blocks[0];
   if (
     parsed.diagnostics.length || parsed.blocks.length !== 1 ||
-    block.kind !== "paragraph" || !block.editable || block.explicitId ||
+    block.kind !== (operation.textKind ?? "paragraph") ||
+    !["paragraph", "list"].includes(block.kind) || !block.editable ||
+    block.explicitId ||
     block.parentId || block.content !== body ||
     /<!--|-->|\{\{[<%]/.test(body)
   ) {
@@ -288,6 +322,8 @@ function validateStep(
   assertDocument(doc);
   const spans = sectionSpans(doc);
   switch (operation.type) {
+    case "convert-text":
+      return conversionEdits(doc, operation);
     case "insert-slide": {
       const section = generatedSlide(doc, operation);
       let offset = doc.byteLength;
@@ -457,6 +493,9 @@ function verifyResult(
       );
     }
     sameProducerOrder(before, after);
+  } else if (operation.type === "convert-text") {
+    verifyConversion(before, after, operation);
+    sameProducerOrder(before, after);
   } else if (operation.type === "insert-notes") {
     verifyNotesInsertion(
       before,
@@ -475,7 +514,7 @@ function verifyResult(
     );
     const wrapper = added.find((block) => block.id === operation.id);
     const paragraph = added.find((block) =>
-      block.id === `${operation.id}/paragraph:1`
+      block.id === `${operation.id}/${operation.textKind ?? "paragraph"}:1`
     );
     const prior = before.blocks.map((
       block,
@@ -499,7 +538,8 @@ function verifyResult(
     if (
       added.length !== 2 || wrapper?.kind !== "div" || wrapper.parentId ||
       !wrapper.stable || wrapper.slideId !== operation.slideId ||
-      paragraph?.kind !== "paragraph" || paragraph.origin !== "authored" ||
+      paragraph?.kind !== (operation.textKind ?? "paragraph") ||
+      paragraph.origin !== "authored" ||
       !paragraph.editable || paragraph.slideId !== operation.slideId ||
       paragraph.content.replace(/\r\n/g, "\n") !==
         operation.markdown.replace(/\r\n|\r/g, "\n") ||

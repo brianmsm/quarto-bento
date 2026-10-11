@@ -475,7 +475,7 @@ Deno.test({
             op: "element.patch",
             slideId: "fresh",
             elementId: "fresh-body",
-            fields: { html: "<ul><li>Unsupported body</li></ul>" },
+            fields: { html: "<blockquote>Unsupported body</blockquote>" },
           }],
         }, "UNSUPPORTED_HTML"],
       ];

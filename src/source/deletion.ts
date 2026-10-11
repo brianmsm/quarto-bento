@@ -97,7 +97,7 @@ export interface SourceDeletion {
   replacement: "";
 }
 /** A plain wrapper may provide identity/design, but cannot stand for a semantic component. */
-function pureWrapper(
+export function pureWrapper(
   doc: SourceDocument,
   parent: SourceBlock,
   block: SourceBlock,
@@ -184,11 +184,12 @@ export function sourceDeletion(
   const block = matches[0];
   if (
     matches.length !== 1 || !block.editable || block.origin !== "authored" ||
-    !["paragraph", "code", "math"].includes(block.kind) || !block.slideId
+    !["paragraph", "list", "code", "math"].includes(block.kind) ||
+    !block.slideId
   ) {
     fail(
       "unsafe-element-delete",
-      "Only one verified authored paragraph, displayed code or display equation can be deleted; headings and computed producers require explicit QMD authoring.",
+      "Only one verified authored paragraph, list, displayed code or display equation can be deleted; headings and computed producers require explicit QMD authoring.",
     );
   }
   let unit = block;

@@ -22,7 +22,12 @@ import {
   renderInline,
 } from "../render/inline.ts";
 export { canonicalInlineHtml, inlineHtmlToMarkdown } from "../render/inline.ts";
-import { LIST_CODEC_VERSION, parseNativeList } from "../render/lists.ts";
+import {
+  authoredText,
+  LIST_CODEC_VERSION,
+  parseNativeList,
+  renderList,
+} from "../render/lists.ts";
 import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
 import { graphSyncRequest, preflightGraphSync } from "./graph-sync.ts";
 import {
@@ -109,6 +114,10 @@ import {
   registryEqual,
 } from "./annotations.ts";
 import { applyStructure, previewStructure } from "../source/structure.ts";
+import {
+  convertedBlockId,
+  type TextConversion,
+} from "../source/text-conversion.ts";
 import { sourceDeletion } from "../source/deletion.ts";
 import type {
   StructureOperation,
@@ -584,6 +593,8 @@ function acquiredProvenance(
     kind: block.kind,
     stable: block.stable,
   };
+  delete source.listCodec;
+  if (block.kind === "list") source.listCodec = LIST_CODEC_VERSION;
   delete source.parentId;
   delete source.siblings;
   if (block.parentId) {
@@ -623,7 +634,8 @@ function identityAcquisition(
     if (
       selected.some((change) =>
         change.kind === "delete-slide" && change.target.slideId === slideId ||
-        change.kind === "delete-element" && targetKey(change.target) === key
+        change.kind === "delete-element" && targetKey(change.target) === key &&
+          block?.kind !== "list"
       )
     ) continue;
     const element = state.generatedBaseline.slides.find((slide) =>
@@ -764,8 +776,10 @@ async function assertInsertedInline(markdown: string, expected: string) {
   const parsed = JSON.parse(new TextDecoder().decode(result.stdout));
   if (
     !Array.isArray(parsed.blocks) || parsed.blocks.length !== 1 ||
-    parsed.blocks[0].t !== "Para" ||
-    renderInline(parsed.blocks[0].c as Node[]) !== expected
+    !["Para", "BulletList", "OrderedList"].includes(parsed.blocks[0].t) ||
+    (parsed.blocks[0].t === "Para"
+        ? renderInline(parsed.blocks[0].c as Node[])
+        : renderList(parsed.blocks[0])) !== expected
   ) {
     fail(
       "UNSUPPORTED_TEXT_INSERTION",
@@ -780,6 +794,11 @@ async function buildPlan(
   selectedChangeIds?: string[],
   options: SyncOptions = {},
 ): Promise<SyncPlan> {
+  const conversions: {
+    change: Change;
+    operation: TextConversion;
+    blockId: string;
+  }[] = [];
   const ids = selectedChangeIds ?? state.pending.map((p) => p.id),
     confirmedDeleteIds = options.confirmedDeleteIds ?? [];
   if (
@@ -1199,6 +1218,43 @@ async function buildPlan(
       }
       const displayedList =
         state.provenance[targetKey(change.target)]?.source?.kind === "list";
+      const beforeKind = state.provenance[targetKey(change.target)]?.source
+        ?.kind;
+      if (["paragraph", "list"].includes(String(beforeKind))) {
+        const converted = authoredText(change.after.value);
+        if (converted.kind !== beforeKind) {
+          const { block, expected } = chooseBlock(text, state, change, [
+            String(beforeKind),
+          ]);
+          const current = scanSource(identityResult),
+            id = acquiredIds.get(block.id) ?? block.id;
+          const operation: TextConversion = {
+            type: "convert-text",
+            blockId: id,
+            expected,
+            markdown: converted.markdown,
+            from: beforeKind as "paragraph" | "list",
+            to: converted.kind,
+            nativeId: change.target.elementId!,
+          };
+          const nextId = convertedBlockId(current, operation);
+          previewStructure(current, [operation]);
+          await assertInsertedInline(converted.markdown, converted.html);
+          conversions.push({ change, operation, blockId: nextId });
+          operations.push(operation);
+          changes.push({
+            changeId: change.id,
+            target: change.target,
+            blockId: block.id,
+            kind: "convert-text",
+            before: expected,
+            after: converted.markdown,
+            html: converted.html,
+          });
+          addNormalization(change, { present: true, value: converted.html });
+          continue;
+        }
+      }
       const parsedList = displayedList
         ? parseNativeList(change.after.value)
         : undefined;
@@ -1261,8 +1317,7 @@ async function buildPlan(
       const mapping = scanSource(text);
       assertTextCreationSource(state, mapping, change, acquiredIds);
       assertMappedDisplayMath(element.html);
-      const markdown = inlineHtmlToMarkdown(element.html),
-        html = canonicalInlineHtml(element.html);
+      const { markdown, html, kind: textKind } = authoredText(element.html);
       const blockId = `qb-text-${
         hashSource(canonical([change.target.slideId, element.id])).slice(0, 24)
       }`;
@@ -1272,6 +1327,7 @@ async function buildPlan(
         id: blockId,
         elementId: change.target.elementId!,
         markdown,
+        textKind,
       };
       // Validate boundaries/identities before consulting Pandoc's fragment reader.
       previewStructure(scanSource(identityResult), [operation]);
@@ -1332,13 +1388,18 @@ async function buildPlan(
       }
       const title = inlineHtmlToMarkdown(texts[0].html as string),
         body = texts.slice(1).map((e) =>
-          inlineHtmlToMarkdown(e.html as string)
+          authoredText(e.html as string).markdown
         );
+      for (const element of texts.slice(1)) {
+        const parsed = authoredText(element.html as string);
+        await assertInsertedInline(parsed.markdown, parsed.html);
+      }
       operations.push({
         type: "insert-slide",
         id: slide.id,
         title,
         body: body.join("\n\n"),
+        bodyFragments: body,
         titleElementId: texts[0].id,
         bodyElementIds: texts.slice(1).map((e) => e.id),
       });
@@ -1356,7 +1417,7 @@ async function buildPlan(
         normalized.notes = normalizeNotesText(slide.notes as string);
       }
       for (const e of normalized.elements) {
-        if (e.type === "text") e.html = canonicalInlineHtml(e.html as string);
+        if (e.type === "text") e.html = authoredText(e.html as string).html;
       }
       addNormalization(change, { present: true, value: normalized });
       changes.push({
@@ -1417,16 +1478,18 @@ async function buildPlan(
       }
       const { block } = chooseBlock(text, state, change, [
         "paragraph",
+        "list",
         "code",
         "math",
       ]);
       // The executed proof above is checked against the unchanged source. Structural
       // ownership uses the reviewed identity phase, which can pin a plain heading.
       const deletionSource = scanSource(identityResult);
+      const deletionId = acquiredIds.get(block.id) ?? block.id;
       const deletionBlock = deletionSource.blocks.find((candidate) =>
-        candidate.id === block.id
+        candidate.id === deletionId
       );
-      const deletion = sourceDeletion(deletionSource, block.id);
+      const deletion = sourceDeletion(deletionSource, deletionId);
       if (
         deletionBlock?.slideId !== change.target.slideId ||
         Object.entries(state.provenance).some(([otherKey, proof]) =>
@@ -1441,7 +1504,7 @@ async function buildPlan(
       }
       operations.push({
         type: "delete-block",
-        blockId: block.id,
+        blockId: deletionId,
         confirmed: true,
       });
       changes.push({
@@ -1606,10 +1669,18 @@ async function buildPlan(
       const entry = Object.entries(state.provenance).find(([, proof]) =>
         proof.source?.blockId === binding.blockId
       );
+      if (
+        entry && selected.some((change) =>
+          change.kind === "delete-element" &&
+          targetKey(change.target) === entry[0]
+        )
+      ) continue;
       const block = document.blocks.find((block) =>
-          block.id === binding.newBlockId
+          block.id ===
+            (conversions.find((c) => c.operation.blockId === binding.newBlockId)
+              ?.blockId ?? binding.newBlockId)
         ),
-        html = inline.get(binding.newBlockId)?.html;
+        html = inline.get(block?.id ?? binding.newBlockId)?.html;
       if (!entry || !block || typeof html !== "string") {
         fail(
           "AMBIGUOUS_IDENTITY",
@@ -1625,16 +1696,20 @@ async function buildPlan(
       });
     }
     for (const patch of identities.patches) {
-      const index = identities.bindings.findIndex((binding) =>
-        binding.blockId === patch.blockId
+      const binding = identityBindings.find((binding) =>
+        binding.before.source?.blockId === patch.blockId
       );
-      const binding = index >= 0 ? identityBindings[index] : undefined;
+      const removed = selected.find((change) =>
+        change.kind === "delete-element" &&
+        state.provenance[targetKey(change.target)]?.source?.blockId ===
+          patch.blockId
+      );
       const producer = document.blocks.find((block) =>
         block.id === patch.blockId
       );
       changes.push({
         changeId: `identity:${patch.blockId}`,
-        target: binding?.target ??
+        target: binding?.target ?? removed?.target ??
           { ...(producer?.slideId ? { slideId: producer.slideId } : {}) },
         blockId: patch.blockId,
         kind: "source-identity",
@@ -1642,6 +1717,63 @@ async function buildPlan(
         after: patch.replacement,
         html: "",
       });
+    }
+  }
+  if (conversions.length) {
+    const document = scanSource(result),
+      proofs = await readSourceInline(document);
+    for (const conversion of conversions) {
+      const target = conversion.change.target;
+      if (
+        identityBindings.some((binding) =>
+          targetKey(binding.target) === targetKey(target)
+        )
+      ) continue;
+      const before = state.provenance[targetKey(target)],
+        block = document.blocks.find((b) => b.id === conversion.blockId),
+        html = proofs.get(conversion.blockId)?.html;
+      if (
+        !block ||
+        html !== authoredText(conversion.change.after.value as string).html
+      ) {
+        fail(
+          "UNSUPPORTED_SYNC",
+          "Converted source does not exactly preserve approved native content.",
+        );
+      }
+      identityBindings.push({
+        target,
+        before: clone(before),
+        after: acquiredProvenance(before, block, document),
+        expectedHtml: html,
+      });
+    }
+  }
+  // Conversion may be reviewed together with source-owned visual attributes.
+  // Bind the approval to those final exact declarations, not their old values.
+  if (conversions.length) {
+    const document = scanSource(result);
+    for (const conversion of conversions) {
+      const binding = identityBindings.find((item) =>
+        targetKey(item.target) === targetKey(conversion.change.target)
+      );
+      const design = binding?.after.source?.design;
+      if (design && typeof design === "object" && !Array.isArray(design)) {
+        for (const declaration of Object.values(design)) {
+          if (
+            declaration && typeof declaration === "object" &&
+            !Array.isArray(declaration) &&
+            typeof declaration.blockId === "string" &&
+            typeof declaration.attribute === "string"
+          ) {
+            declaration.value = sourceDesignAttribute(
+              document,
+              declaration.blockId,
+              declaration.attribute,
+            );
+          }
+        }
+      }
     }
   }
   await preflightGraphSync(state, text, result);
@@ -1661,7 +1793,8 @@ async function buildPlan(
     ...(notes ? { notes } : {}),
     ...(graphs ? { graphs } : {}),
     ...(structure ? { structure } : {}),
-    ...(identities ? { identities, identityBindings } : {}),
+    ...(identities ? { identities } : {}),
+    ...((identities || identityBindings.length) ? { identityBindings } : {}),
     annotations,
     designRegistry,
     result,

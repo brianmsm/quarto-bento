@@ -168,3 +168,16 @@ export function parseNativeList(
   };
   return { html: emitHtml(root), markdown: emitMarkdown(root) };
 }
+
+/** One standalone native body object, never a concatenation of unrelated blocks. */
+export function authoredText(
+  html: string,
+): { kind: "list" | "paragraph"; html: string; markdown: string } {
+  return /^<(?:ul|ol)>/i.test(html.trim())
+    ? { kind: "list", ...parseNativeList(html) }
+    : {
+      kind: "paragraph",
+      html: canonicalInlineHtml(html),
+      markdown: inlineHtmlToMarkdown(html),
+    };
+}

@@ -21,3 +21,16 @@ existente. Listas numeradas usan decimales desde 1 y puntos. Otros comienzos,
 marcadores alfabéticos/romanos, checkboxes, imágenes y bloques de código requieren
 adaptadores distintos y se rechazan explícitamente. El shell Bento fijado elimina
 atributos `start`, `type` y `value`; no se simula su soporte mediante texto plano.
+
+
+También puedes crear un objeto de texto con una lista nativa y guardarlo, tanto
+en una diapositiva existente como en una nueva. Revisa su inserción en QMD antes
+de aplicar y recalcular. Los objetos consecutivos conservan sus identidades
+separadas aunque ambos sean listas de viñetas.
+
+Una lista existente puede convertirse en un párrafo y un párrafo independiente
+en una lista mediante el mismo flujo de guardado y revisión. Para eliminar una
+lista, guarda la eliminación, revisa la operación y confírmala expresamente;
+antes de aplicarla puedes recuperar texto y diseño desde Comparar con QMD.
+Contenido computado, componentes y contenedores compartidos requieren editar
+su fuente y conservan sus guardas habituales.

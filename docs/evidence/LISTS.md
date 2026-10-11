@@ -103,13 +103,61 @@ three spaces, mixed nested list types, loose paragraphs, marked sibling
 review/rebuild and a real deletion filter. These checks refuse dropped or altered
 semantics before publishing HTML.
 
-The codec synchronizes existing source-backed list objects. Converting unrelated
-paragraph objects into lists, inserting new native-only list objects, and deleting
-an entire source list through the existing element-deletion workflow remain
-explicitly unsupported operations; pending content is retained for source review.
+The initial codec covered existing source-backed lists. The later authored-list
+creation, conversion and deletion slice below extends that scope through explicit
+reviewed structural operations.
 
 The post-review combined run passed **27/27** (eleven list tests, eleven source
 scanner tests and five plain-QMD tests) in **1 minute 22 seconds**, with zero
 failures. Focused lint/format and `git diff --check` also passed. The independent
 reviewer's original marker, indented-root and filter probes were rerun successfully
 against the corrected implementation.
+
+
+## Authored list creation, conversion and deletion
+
+Native list objects can now be saved as pending authored content on an existing
+slide and in a newly created slide (including the JSON agent API). Each body
+object keeps its own source wrapper and native identity; adjacent lists of the
+same type are not silently combined. Review reparses each new body with Pandoc
+without executing QMD and requires exact canonical native content. Save leaves
+QMD unchanged; Apply writes the inspected source transaction; only render executes
+code and clears approved pending changes after fresh verification.
+
+An existing independent authored paragraph can become a list and a list can become
+one paragraph. Conversion is a dedicated structural operation over the verified
+source unit, rather than relaxing ordinary paragraph patches. The source/native
+identity is preserved with the existing technical marker or an explicit native
+binding in its plain wrapper. Source-owned visual attributes can be reviewed
+alongside conversion and are checked against the final exact declarations.
+Plain QMD acquires identities only in the review plan. Computed values, component
+roles, shared wrappers and nested ambiguous containers refuse conversion.
+
+Lists also use the existing recoverable source-element deletion workflow. Removing
+a list from the saved deck retains its pending text and visual design; Compare
+with QMD can restore them. Source deletion still requires explicit confirmation,
+backs up original QMD and retires pending state only after fresh execution proves
+the approved omission. A previously unlabelled plain list is bound through the
+reviewed identity phase before its exact unit is deleted. Computed producers and
+referenced/shared source units remain protected.
+
+Independent review found a wrapper containing its own child technical marker:
+adding a second native binding made that valid source ambiguous on regeneration.
+Conversion now retains the existing marker directly, and a regression verifies
+both directions with a simultaneously edited source-owned `x` attribute. Original
+attribute parsing prevents quoted text from impersonating a native identity.
+
+`tests/list_authoring_test.ts` exercises creation on existing/new agent-created
+slides, separate adjacent list identities, plain/identified/marker conversions,
+source-owned geometry, restore and confirmed deletion, plain-list deletion,
+computed and executable refusals, stale or modified plans, CRLF/Unicode,
+unchanged producer bytes and zero execution during review/Apply. The source/core
+checks do not by themselves claim native browser interaction acceptance for
+these newly added operations.
+
+Validation for this authoring slice: the eight focused suites
+(`source_structure`, `text_insertion`, `sync_structure`, `agent_create`,
+`notes_creation`, `element_deletion`, `lists`, `list_authoring`) passed
+**63/63, 0 failures in 4m34s** with real local Quarto. The focused TypeScript,
+lint, formatting and whitespace checks also passed. Native interaction for
+new list creation, conversion and deletion remains a separate acceptance step.

@@ -16,6 +16,7 @@ import {
   assertProjectDocument,
   BENTO_CONTRACT_REVISION,
 } from "../render/validate.ts";
+import { authoredText } from "../render/lists.ts";
 import { inlineHtmlToMarkdown } from "../render/inline.ts";
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
 import {
@@ -353,6 +354,7 @@ function assertFreshCreation(
         (_element, i) => {
           reserved.add(`${item.id}-text-${i + 1}`);
           reserved.add(`${item.id}-text-${i + 1}/paragraph:1`);
+          reserved.add(`${item.id}-text-${i + 1}/list:1`);
         },
       );
     }
@@ -364,6 +366,7 @@ function assertFreshCreation(
     ) => [
       `${created.id}-text-${i + 1}`,
       `${created.id}-text-${i + 1}/paragraph:1`,
+      `${created.id}-text-${i + 1}/list:1`,
     ]);
   for (
     const id of [
@@ -397,14 +400,16 @@ function previewCreationSource(source: SourceDocument, created: BentoSlide) {
       );
     }
   }
-  const [title, ...body] = texts.map((e) =>
-    inlineHtmlToMarkdown(e.html as string)
+  const title = inlineHtmlToMarkdown(texts[0].html as string);
+  const body = texts.slice(1).map((e) =>
+    authoredText(e.html as string).markdown
   );
   const operations: StructureOperation[] = [{
     type: "insert-slide",
     id: created.id,
     title,
     body: body.join("\n\n"),
+    bodyFragments: body,
     titleElementId: texts[0].id,
     bodyElementIds: texts.slice(1).map((e) => e.id),
   }];
