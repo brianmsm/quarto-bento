@@ -1,11 +1,70 @@
 /** Previously verified source roles can supply visual typography, never meaning. */
 import { clone, type ProjectState, targetKey } from "../state/mod.ts";
 import type { SourceDocument } from "../source/mod.ts";
+import { verifiedSourceSlide } from "./source-scope.ts";
+import { StateError } from "../state/types.ts";
 import { kpiSource } from "../source/kpi.ts";
 import { sourceComponentClass } from "../render/components.ts";
 import type { KpiAppearance } from "../render/kpi.ts";
 import type { BentoDoc, Element } from "../render/types.ts";
 export type KpiAppearances = ReadonlyMap<string, KpiAppearance>;
+/** A globally identified source wrapper must have exactly one native receipt. */
+function sourceBackedScope(
+  state: ProjectState,
+  source: SourceDocument,
+  sourceSlideId: string,
+  componentId: string,
+): string | undefined {
+  const backgroundId = `${componentId}/qb-kpi-background`;
+  const candidates = Object.entries(state.provenance).flatMap(
+    ([key, proof]) => {
+      let target: unknown;
+      try {
+        target = JSON.parse(key);
+      } catch {
+        return [];
+      }
+      if (
+        !Array.isArray(target) || target.length !== 2 ||
+        typeof target[0] !== "string" || !target[0] ||
+        target[1] !== backgroundId ||
+        proof.origin !== "authored" || proof.semanticId !== componentId ||
+        proof.source?.kind !== "div" || proof.source.blockId !== componentId ||
+        proof.source.stable !== true
+      ) return [];
+      const baseline = state.generatedBaseline.slides.find((slide) =>
+        slide.id === target[0]
+      )
+        ?.elements.find((element) => element.id === backgroundId);
+      return baseline?.type === "shape" && baseline.shape === "rect" &&
+          baseline.groupId === componentId
+        ? [target[0]]
+        : [];
+    },
+  );
+  if (candidates.length !== 1) return;
+  try {
+    const slideId = verifiedSourceSlide(
+      source,
+      state,
+      sourceSlideId,
+      candidates[0],
+    );
+    // A weak heading's receipt is valid only for this exact execution snapshot.
+    const heading = source.slides.find((slide) => slide.id === sourceSlideId)!;
+    if (
+      !heading.stable &&
+      state.provenance[targetKey({ slideId, elementId: backgroundId })].source
+          ?.hash !== source.hash
+    ) return;
+    return slideId;
+  } catch (error) {
+    if (error instanceof StateError && error.code === "UNMAPPED_SOURCE_SLIDE") {
+      return;
+    }
+    throw error;
+  }
+}
 export function retainedKpiAppearances(
   state: ProjectState | null | undefined,
   source: SourceDocument,
@@ -18,13 +77,33 @@ export function retainedKpiAppearances(
       sourceComponentClass(block.raw) === ".bento-kpi"
     )
   ) {
-    const binding = kpiSource(source, block.id), slideId = block.slideId;
+    const binding = kpiSource(source, block.id), sourceSlideId = block.slideId;
+    if (!sourceSlideId) continue;
+    // Pending roles have explicit membership; source-backed roles require the
+    // unique original background receipt before any native slide is considered.
+    const intent = state.componentCreations?.find((intent) =>
+      intent.kind === "kpi" && intent.id === block.id
+    );
+    let slideId: string | undefined;
+    if (intent) {
+      try {
+        slideId = verifiedSourceSlide(
+          source,
+          state,
+          sourceSlideId,
+          intent.slideId,
+        );
+      } catch (error) {
+        if (
+          !(error instanceof StateError) ||
+          error.code !== "UNMAPPED_SOURCE_SLIDE"
+        ) throw error;
+      }
+    } else {
+      slideId = sourceBackedScope(state, source, sourceSlideId, block.id);
+    }
     if (!slideId) continue;
     const elements = new Map<string, Element>();
-    const intent = state.componentCreations?.find((intent) =>
-      intent.kind === "kpi" && intent.id === block.id &&
-      intent.slideId === slideId
-    );
     const backgroundId = `${block.id}/qb-kpi-background`;
     const backgroundProof =
       state.provenance[targetKey({ slideId, elementId: backgroundId })];
@@ -44,7 +123,7 @@ export function retainedKpiAppearances(
       const member = intent?.members.find((member) =>
         member.nativeId === nativeId &&
         member.sourceId === slot.wrapper.id &&
-        member.role === slot.attr[2].find(([key]) => key === "bento-role")?.[1]
+        member.role === slot.role
       );
       if (member) {
         elements.set(nativeId, clone(member.snapshot));
