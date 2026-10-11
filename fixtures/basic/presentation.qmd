@@ -1,0 +1,24 @@
+---
+title: Reproducible results
+format: html
+---
+
+## Results {#results}
+
+::: {#finding}
+The figure updates when the data change.
+:::
+
+```{r}
+#| label: fig-values
+#| echo: false
+#| dev: svg
+values <- read.csv("data.csv")
+plot(values$x, values$y, type = "b", col = "#156f65", pch = 19)
+```
+
+## Conclusion {#conclusion}
+
+::: {#conclusion-text}
+Keep the design while recomputing the evidence.
+:::

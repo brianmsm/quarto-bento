@@ -1,0 +1,22 @@
+export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+export interface Element { id: string; type: string; [key: string]: Json; }
+export interface Slide { id: string; elements: Element[]; [key: string]: Json | Element[]; }
+export interface BentoDoc {
+  format: "bento/slides";
+  version: number;
+  docId: string;
+  title: string;
+  size: { width: number; height: number };
+  theme: { background: string; color: string; accent: string; fontFamily: string };
+  slides: Slide[];
+}
+export interface Diagnostic { code: string; message: string; elementId?: string; }
+export interface Origin { origin: "authored" | "computed"; sourceId?: string; producer?: string; }
+export interface Projection {
+  document: BentoDoc;
+  origins: Record<string, Record<string, Origin>>;
+  diagnostics: Diagnostic[];
+}
+// Pandoc JSON is validated by individual handlers; unknown nodes fail explicitly.
+export interface Node { t: string; c?: unknown; }
+export interface Ast { blocks: Node[]; meta: Record<string, { t: string; c: unknown }>; }

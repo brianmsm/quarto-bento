@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/nyblnet/bento",
+  "revision": "3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b",
+  "version": "1.2.6",
+  "shellSha256": "90cd74ceeef010473821deb36cb30f30fc7cf1454f3bd758bedb941635d046f1",
+  "build": "npm ci --ignore-scripts && npm run build:single",
+  "quartoTested": "1.10.19"
+}

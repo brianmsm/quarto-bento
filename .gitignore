@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+output/
+**/.quarto/
+**/*_files/
+**/*.bento.html
+**/.qbento/build/
+**/.qbento/*.lock
+**/.qbento/*.tmp
