@@ -43,7 +43,7 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 | S0 executed QMD to native Bento                               | Real native editing → actual Bento serialize/download → capture → changed-data recompute preserves geometry/style/docId. [Live evidence](evidence/S2-studio.md). OS file picker not yet verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | S1 original byte spans / safe patches                         | UTF-8/CRLF, fenced blocks, explicit IDs, qb markers, bounded patches and stale-source checks pass. Unsupported source formatting refuses reverse sync. [Mapping evidence](evidence/S1.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | S2 editor observation / undo / save                           | Public Bento API adapter, native edit/save/reopen, revision-bound iframe and recompute busy state tested. [Bridge](evidence/S2.md), [Studio](evidence/S2-studio.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Stable deck/semantic/visual identity                          | Persisted docId, explicit IDs and native-created IDs survive sync/render; ambiguous weak identities refuse. Broader plain-QMD mapping and lost computation provenance remain under development.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Stable deck/semantic/visual identity                          | Persisted docId, explicit IDs and native-created IDs survive sync/render; ambiguous weak identities refuse. Plain headings and faithful rich paragraphs acquire reviewed source identities before sync; unsupported or externally changed weak bindings still refuse. [Native plain-QMD evidence](evidence/PLAIN-KPI-NATIVE.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Sparse visual overrides and decorations                       | Field-level sparse overrides, element stacking and explicit creation promotion integrated. Changed SVG preserves placement/style/decorations in live and automated tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Save durable pending semantics, separate from sync            | Atomic state/checksum/revision; live server restart preserves pending authored text and visual objects. Save/preview leave QMD unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Field-level three-way reconciliation                          | Fresh execution-bound preview/apply and Studio three-value conflicts tested; explicit QMD/Bento/detach decisions save state without silently syncing. [Reconciliation](evidence/RECONCILE.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -65,12 +65,14 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 
 ## Known limits under active implementation
 
-The post-suite requirement audit found concrete missing ordinary workflows:
-plain-QMD identity acquisition after reviewed edits, confirmed source-element
-deletion, meaningful Studio-created card/KPI synchronization, and the remaining
-declarative component vocabulary. See the
-[functional acceptance checklist](ACCEPTANCE_GAPS.md). These remain required
-implementation work; the green suite below covers its existing fixtures.
+The post-suite audit's plain-QMD identity and confirmed source-element deletion
+cases are now integrated, independently reviewed and demonstrated through native
+Studio. Source-authored KPI projection and changed-data recomputation are also
+integrated. Meaningful Studio-created card/KPI synchronization and source
+diagrams/timelines remain in isolated implementation/review branches. See the
+[functional acceptance checklist](ACCEPTANCE_GAPS.md). The prior full suite
+below predates these additions; their current evidence is focused, not a new
+complete suite result.
 
 - First-slice evidence is Linux-specific and bounded to the documented fixture.
   Broader structural cases and all later product gates remain active work.
@@ -101,6 +103,23 @@ implementation work; the green suite below covers its existing fixtures.
   sandbox. The server listens only on `127.0.0.1`.
 
 ## Recent integrated verification
+
+- At `be98fc1`, 22 focused plain-QMD/deletion/client tests passed with zero
+  failures. Independent mixed testing covered CRLF, reviewed identities,
+  deletion, excluded pending edits and computed KPI recomputation. Native Studio
+  proved plain rich-text edit/save/reopen/review/recalculate, five visible
+  identity patches, unchanged R source and changed-data SVG with saved geometry.
+  [Native acceptance](evidence/PLAIN-KPI-NATIVE.md).
+- Native source KPI label editing and `20.00` → `200.00` recomputation preserve
+  the complete value design. A manual `999.00` edit appears as a computed
+  conflict and explicitly restores to QMD without source writes. At `f7f5296`,
+  the integrated native measurement and serialized-Apply suites passed all 7
+  tests. A real delayed server response then verified the native UI lock and
+  successful next recalculation. [KPI measurement](evidence/KPI.md),
+  [native synchronization](evidence/PLAIN-KPI-NATIVE.md).
+- Confirmed native element deletion preserves its pending text/design through
+  restoration and removes only the reviewed source unit after Apply and fresh
+  execution. [Element deletion](evidence/ELEMENT-DELETION.md).
 
 - At `c225546`, the full integrated suite passed **332 tests, 4 steps, 0
   failures, 0 ignored tests** in **8 minutes 34 seconds**, with process exit

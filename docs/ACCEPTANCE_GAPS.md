@@ -1,77 +1,89 @@
-# Remaining functional acceptance work
+# Functional acceptance follow-up
 
-This checklist follows the full product objective. Passing the integrated Linux
-suite does not prove requirements outside its fixtures. Current validation is
-limited to the owner's Linux machine; other operating systems and hosted CI are
-deferred. Public release scope is a separate decision.
+This checklist follows the full product objective. Passing a suite does not
+prove requirements outside its fixtures. Current validation is limited to the
+owner's Linux machine; other operating systems and hosted CI are deferred.
+Public release scope is a separate decision.
 
-## Verified gaps at `0bf0d9c`
+## Closed gaps from the audit at `0bf0d9c`
 
 ### Plain QMD source mapping and reviewed identity acquisition
 
-The authoring contract explicitly supports plain QMD. A real Quarto repro with
-`## Slide` followed by `Texto original.` opens and saves a native text edit.
-Sync preview/apply accepts its bounded paragraph patch, but the following render
-fails with `AMBIGUOUS_IDENTITY`. Source already contains the approved edit;
-pending content and saved geometry remain recoverable. The same plain fixture
-with `Texto **importante**.` fails the initial projection with
-`UNMAPPED_PROVENANCE` because the unlabelled fallback compares raw Markdown with
-rendered HTML.
+At the audited revision, editing ordinary QMD paragraphs could fail after Apply
+with `AMBIGUOUS_IDENTITY`, and rich unlabelled text could fail initial
+projection with `UNMAPPED_PROVENANCE`. The integrated fix at `be98fc1` maps
+faithful original Pandoc fragments without computation and proposes explicit
+source identities before semantic changes. Studio displays every identity patch,
+including untouched weak blocks, and the complete proposed QMD before Apply.
 
-The required fix must establish faithful original-source mapping for the
-supported inline subset and complete the approved edit/rebuild loop. Any needed
-identity acquisition belongs in an inspectable source plan; Save/render must not
-pin source implicitly, and unrelated external edits must retain the current
-identity protections. Other unedited weak bindings, document/native identity,
-saved geometry and source bytes outside reviewed patches also need proof.
-
-The real repro and temporary fixtures are recorded in
-`/tmp/qbento-functional-audit.log`. Implementation and independent review are in
-progress.
+Native edit/save/reopen/review/apply/recalculate preserved rich text, Unicode
+native IDs, `docId`, source code and saved design. A changed CSV regenerated the
+SVG at its saved geometry. Stale or ambiguous source remains guarded. See
+[plain QMD](evidence/PLAIN-QMD.md) and
+[integrated native acceptance](evidence/PLAIN-KPI-NATIVE.md).
 
 ### Confirmed deletion of a source-backed element
 
-The [sync contract](SYNC.md) includes verified source-backed slide/element
-deletion. Existing slide deletion is implemented. Removing the identified
-authored body `body/paragraph:1` from a native slide and saving creates a
-durable `delete-element` pending change, but current sync returns
-`UNSUPPORTED_SYNC` even when its ID is explicitly confirmed. Studio's
-confirmation UI only handles slide deletion.
+The original `UNSUPPORTED_SYNC` gap is closed for independently verified
+authored paragraphs, displayed code and display equations. Review shows the
+exact removed source unit and requires that element's separate confirmation.
+Pending deletion can restore prior text, design and stacking. Fresh execution
+must prove the approved absence before the target's retained state is retired.
+Computed/shared producers and ambiguous structure refuse before publication.
 
-A complete slice needs an exact source-block proposal, specific confirmation,
-recoverable pending deletion/restoration, checked application and regeneration
-that removes only the approved object and its retained design. Computed/shared
-producers and ambiguous structure must refuse before publication. Restoring a
-pending deletion must retain pre-existing pending content and visual edits.
-Implementation and independent review are in progress.
+Native deletion/restoration and final source removal passed on Linux. The mixed
+plain-heading/weak-survivor/deletion path also passed with reviewed identities
+and preserved survivor design. See
+[element deletion](evidence/ELEMENT-DELETION.md) and
+[mixed integration](evidence/PLAIN-KPI-NATIVE.md).
+
+### Source-authored KPI projection
+
+The former missing `.bento-kpi` adapter is integrated for its explicit bounded
+label/value/detail source structure. Literal text keeps authored provenance; an
+inline computed value keeps its real source expression. Native label editing,
+changed-data recomputation and explicit computed-conflict restoration preserve
+design and source authority. Browser measurements include native text extents
+and retained font resources, with refusal or retained-design diagnostics for
+unsupported/overflowing typography. See [KPI contract](evidence/KPI.md) and
+[native acceptance](evidence/PLAIN-KPI-NATIVE.md).
+
+## Implementation and review still in progress
 
 ### Meaningful Studio-created cards and KPIs
 
-[WORKFLOWS.md](WORKFLOWS.md) and [DECISIONS.md](DECISIONS.md) require meaningful
-content inside a newly created card/KPI to become a pending semantic component,
-then a source-backed fenced div after reviewed sync. Standalone new text now
-works; the current insertion path rejects grouped text, and `.bento-kpi` has no
-projection adapter.
+[WORKFLOWS.md](WORKFLOWS.md) and [DECISIONS.md](DECISIONS.md) require content in
+a newly created card/KPI to become a pending semantic component, then
+source-backed fenced divs after reviewed sync. Explicit component creation,
+durable membership snapshots, partial-deletion recovery and safe promotion are
+being implemented in an isolated worktree. This capability is not established by
+source KPI support.
 
-The missing slice needs explicit semantic intent and membership. Spatial
-proximity or arbitrary native grouping must not silently establish source
-structure. Authored text belongs in QMD; decorations/geometry remain in the
-sidecar; a computed value keeps its producer. The original contract permits
-defining the exact component schema as implementation work.
+Spatial proximity or arbitrary native grouping must not establish semantic
+structure. Authored text belongs in QMD; decorations and geometry remain in the
+sidecar; a computed value keeps its producer. Remaining acceptance includes
+multiple components, ordinary QMD, restoration stacking, native background
+edits, failed publication/recovery, native Studio controls and integrated tests.
 
 ### Declarative diagram and timeline adapters
 
-The [target component vocabulary](AUTHORING.md) names `.bento-diagram` and
-`.bento-timeline`. Both currently refuse with `UNSUPPORTED_COMPONENT`, as does
-`.bento-kpi`. A documented explicit node/edge or milestone structure and
-faithful native adapter are still needed. Native shapes/connectors are
-presentation; their meaningful labels and sequence/relationships need source
-authority. Universal diagram or HTML conversion is not required.
+The [target component vocabulary](AUTHORING.md) includes `.bento-diagram` and
+`.bento-timeline`. Their bounded adapters and explicit source node/edge or
+lexical milestone structures are implemented in an isolated branch under
+independent review. They are not yet integrated in main. Relationship source
+patches must be visible in Studio before approval, and saved native geometry
+must retain its separate authority. Native DOM/visual evidence for the branch is
+available; final integration and native edit/sync acceptance remain.
 
-## Boundaries that do not establish missing universal features
+## Integrated verification still required
+
+The last complete suite receipt is 332 tests at `c225546`; it predates these
+changes. Focused and native receipts above do not replace a full suite and
+portable-package check on the completed integration. The implementation ledger
+will record the final runtime revision and exact results.
 
 Unsupported arbitrary widgets, general TeX, ambiguous source spans, automatic
 computed-value reverse edits and inference of an entire parent transform from
-one child remain legitimate refusals. They must not be used to excuse the
-ordinary authoring and explicit component scenarios above. Each gap closes only
-with its relevant source/runtime/native evidence, not by renaming it a limit.
+one child remain legitimate refusals. They must not excuse ordinary authoring or
+explicit component scenarios. Each gap closes with source/runtime/native
+evidence, not by renaming it a limit.
