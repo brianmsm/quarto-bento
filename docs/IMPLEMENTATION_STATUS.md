@@ -79,9 +79,14 @@ Full product acceptance and public v1 release remain pending. See
   the new regression was rerun after correcting isolation of its two temporary
   projects.
 - After `b201c4b`, 44 focused integrated slide-action, source-structure, state and
-  Studio-body tests pass, and all source TypeScript checks pass. This is not a
-  claim that the earlier complete-suite run includes the newer widget modules
-  or pending changes.
+  Studio-body tests pass, and all source TypeScript checks pass.
+- At `d784b65`, the complete suite passes **246 tests, 0 failures, 1 optional
+  test ignored** in 4 minutes 33 seconds. This includes chart/component
+  integration, slide actions and the isolated widget modules. It does not
+  include the ongoing durable widget integration or component composition fix.
+- Native hidden-slide print output has a one-page PDF with both source slides
+  retained; its chart and labels were visually inspected. This closes the
+  Chromium print layer for that bounded fixture, not native OS dialogs.
 
 ## Integration discipline
 

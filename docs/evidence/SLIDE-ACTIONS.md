@@ -94,6 +94,25 @@ The screenshots were opened and visually inspected:
 
 They are ignored local validation artifacts. The browser console contained the
 existing favicon refusal and blocked upstream update-manifest request under the
-offline CSP. PDF omission is verified against the pinned native print-page code;
-this evidence does not claim that a PDF artifact or print dialog was visually
-reviewed. It also does not establish a full product release boundary.
+offline CSP. This author run did not inspect a PDF; the coordinator's separate
+native print check below closes that layer for a two-slide fixture. OS print
+dialogs and a full product release boundary remain outside this evidence.
+
+## Integrated hidden-slide PDF check
+
+The coordinator used `examples/native-charts/deck.qmd` in a temporary Studio
+project. Its two slides were retained in the source. After hiding the first
+through **Diapositivas → Ocultar diapositiva**, the durable state contained
+`authored.hidden=true`, both source slides, and no pending semantic changes.
+Recalculation preserved that flag (revision 6); QMD stayed byte-identical to the
+canonical fixture.
+
+The current native `/deck` view's **Exportar PDF (imprimir)** built Bento's own
+print pages. Chromium's headless PDF output contained exactly one page,
+`Computed line`, with the updated Alpha/Gamma chart; `Authored bars` was absent.
+`pdfinfo` reported approximately 1200 × 675 pt and no PDF JavaScript.
+The coordinator rasterized and visually inspected the PDF: its chart, labels
+and retained placement were intact. Local artifacts are
+`output/playwright/native-hidden-slide.pdf` and `native-hidden-slide.png`.
+No alternative print renderer, document mutation or print-function override was
+used. This validates native print output in Chromium, not an OS print dialog.
