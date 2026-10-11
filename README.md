@@ -73,9 +73,12 @@ creation of authored cards and literal-value KPI components on existing source
 slides. Saving a created component leaves QMD unchanged; its authored members
 remain pending until reviewed together in the source-sync plan. The Studio KPI
 value is text, not a computed expression. Focused component and Studio tests
-exist; visual acceptance of this creation flow in the native editor has not yet
-been recorded. These adapters do not imply support for every QMD construct.
-Reproducible sources include:
+exist. The authored card/KPI flow also has headless Linux acceptance through the
+shipped Studio client and pinned Bento editor; see the [native creation
+receipt](docs/evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+This receipt does not claim foreground desktop or other-platform acceptance.
+These adapters do not imply support for every QMD construct. Reproducible
+sources include:
 
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
@@ -84,7 +87,7 @@ Reproducible sources include:
 - [Two-column components](examples/components/deck.qmd)
 - [Source-authored KPI components](examples/kpi/deck.qmd)
 - [Bounded diagrams and timelines](examples/source-graphs/deck.qmd) (see
-  [Linux graph evidence](docs/evidence/GRAPHS.md#integrated-studio-acceptance-on-linux))
+  [Linux graph and relationship acceptance](docs/evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux))
 - [Offline Plotly](examples/plotly-offline/deck.qmd)
 
 Examples use their accompanying CSV inputs. The rich-table example also uses

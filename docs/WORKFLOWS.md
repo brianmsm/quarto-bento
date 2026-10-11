@@ -4,10 +4,12 @@ These scenarios are the product acceptance contract, not a claim that every
 behavior has shipped. See the [implementation ledger](IMPLEMENTATION_STATUS.md)
 and the feature receipts for the current bounded Linux scope: [Studio
 edit/save/recompute](evidence/S2-studio.md), [authored card/KPI
-creation](evidence/COMPONENT-CREATION.md), [graphs, timeline and relationship
-controls](evidence/GRAPHS.md), and [receipt-guarded HTML capture](evidence/CAPTURE.md).
-Studio card/KPI creation is implemented with bounded headless evidence; its
-native visual acceptance gate remains pending.
+creation](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux),
+[graphs, timeline and relationship controls](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux),
+and [receipt-guarded HTML capture](evidence/CAPTURE.md). Card/KPI creation and
+graph relationship controls have headless Linux acceptance through the real
+Studio client and pinned Bento editor. These receipts do not claim foreground
+desktop or other-platform acceptance.
 
 ## Normal editing cycle
 
@@ -36,7 +38,7 @@ Think of three distinct operations: **save = preserve work; sync = reconcile sou
 
 ## Additional scenarios
 
-**Visual objects and meaningful text.** Adding a purely decorative arrow requires no QMD block; optional minimal QMD annotation can signal the slide has extra design. Studio's bounded **Añadir componente** flow creates an authored card or literal-value KPI on an existing source-backed slide. Its role fields are saved as pending semantic content in `.qbento/`; reviewing and applying the complete component promotes it to its exact QMD fenced-div schema while geometry remains in the sidecar. The flow does not infer membership from proximity or arbitrary native grouping. Its native visual acceptance gate remains pending; see [component creation evidence](evidence/COMPONENT-CREATION.md).
+**Visual objects and meaningful text.** Adding a purely decorative arrow requires no QMD block; optional minimal QMD annotation can signal the slide has extra design. Studio's bounded **Añadir componente** flow creates an authored card or literal-value KPI on an existing source-backed slide. Its role fields are saved as pending semantic content in `.qbento/`; reviewing and applying the complete component promotes it to its exact QMD fenced-div schema while geometry remains in the sidecar. The flow does not infer membership from proximity or arbitrary native grouping. Its real Studio/pinned-editor path has Linux headless acceptance in the [component creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
 
 **Advanced QMD layout.** A developer may declare `.bento-layout`, `.bento-card`, or specific dimensions in QMD; Studio must respect them. If Studio changes an attribute explicitly present in QMD, mark and sync that field (or keep the QMD version), rather than silently overriding it.
 

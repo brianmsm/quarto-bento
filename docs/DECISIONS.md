@@ -62,9 +62,10 @@ The original `QMD → Bento base → _bento/overrides.json → .bento.html` mode
 3. Studio can explicitly create an authored card or literal-value KPI on an
    existing source-backed slide and promote the complete role set through
    reviewed QMD sync. Save still does not patch source; computed KPI values
-   must be authored as source expressions. This creation flow has focused
-   implementation/client tests, but its native visual acceptance is still
-   pending.
+   must be authored as source expressions. The bounded flow has Linux headless
+   acceptance through the shipped Studio client and pinned Bento editor; see
+   the [component creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+   That receipt does not claim foreground desktop or other-platform acceptance.
 4. Arbitrary widgets, reconciliation of independently distributed HTML copies,
    multi-QMD editing and live collaboration remain outside the implemented
    scope described by [PRODUCT_TARGET.md](PRODUCT_TARGET.md).

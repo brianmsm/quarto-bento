@@ -163,8 +163,10 @@ componente** para restaurar los miembros ausentes en su orden previo o descartar
 esa creación pendiente. Si el objeto presente cambió de tipo o hay miembros
 adicionales en su grupo nativo, resuélvelo en Bento o descarta la creación; la
 sincronización no adivina su pertenencia. Este flujo tiene pruebas enfocadas de
-contrato y de la interfaz Studio; su aceptación visual en el editor nativo aún
-está pendiente.
+contrato y de la interfaz Studio, y aceptación en Chromium headless sobre Linux
+con el editor Bento fijado. Consulta el [recibo de creación nativa](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+Esto no acredita interacción con el escritorio en primer plano ni con otras
+plataformas.
 
 ## Diagramas y líneas de tiempo
 
@@ -209,8 +211,8 @@ escritos en QMD. Este adaptador cubre solo topologías y métricas de texto
 delimitadas; rechaza cruces, desbordamiento, relaciones ambiguas, rótulos
 computados y composiciones no admitidas. Consulta el
 [contrato del ejemplo](../examples/source-graphs/README.md) y la
-[evidencia Linux](evidence/GRAPHS.md) para los límites exactos y la revisión
-nativa headless.
+[aceptación Linux de los controles de relación](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux)
+para los límites exactos y la revisión nativa headless.
 
 ## Anotaciones y diseños reutilizables
 

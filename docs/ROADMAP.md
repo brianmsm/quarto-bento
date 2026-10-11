@@ -4,13 +4,15 @@
 bounded Linux implementation now includes source-authored diagrams/timelines
 and explicit Studio card/KPI creation alongside the first bidirectional slice.
 Studio also provides guarded **Relaciones** selectors for paired endpoints in
-existing source diagrams; timeline adjacency is displayed read-only. Acceptance
-for graph rendering and round trips has a headless native editor receipt. The
-card/KPI creation flow has focused contract and Studio-client tests, while its
-visual acceptance remains open. The graph receipt should not be read as visual
-acceptance of the newer relationship-selection flow. Consult [graph
-evidence](evidence/GRAPHS.md), [the authoring contract](AUTHORING.md), and
-[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for current evidence and
+existing source diagrams; timeline adjacency is displayed read-only. Bounded
+Linux headless acceptance covers graph rendering/round trips and the newer
+relationship controls in the [graph receipt](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux),
+and the Studio card/KPI creation workflow in the [component creation
+receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+These receipts exercise the real Studio client and pinned Bento editor in
+headless Chromium; they do not claim foreground desktop or other-platform
+acceptance. Consult [the authoring contract](AUTHORING.md) and
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for current scope and
 unfinished work. Build toward the [product target](PRODUCT_TARGET.md)
 in **vertical slices**. A small throwaway exporter
 is not the goal. The final public v1 release boundary must be frozen before

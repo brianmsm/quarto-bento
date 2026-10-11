@@ -51,8 +51,10 @@ selected source slide. The saved frame used for subsequent source projection is
 independent from the native background's mutable geometry; that background's
 placement and styling remain a visual override. A KPI entered through this
 Studio form contains literal text, not a calculation. Focused tests cover the
-creation contract and Studio client; this does not yet establish native visual
-acceptance for the creation flow.
+creation contract and Studio client. The shipped UI with the pinned Bento
+editor also passed bounded Linux headless acceptance; see the [component
+creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+This does not claim foreground desktop or other-platform acceptance.
 
 **Render:** execute Quarto and project updated outputs through the saved design, preserving stable visual identity. It is not a command to erase pending Bento edits or silently settle source conflicts. An unattended strict render/CI should fail with a structured diagnostic if it cannot produce a coherent deck without selecting a conflicting value.
 

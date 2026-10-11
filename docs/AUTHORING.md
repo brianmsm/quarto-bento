@@ -6,10 +6,12 @@ plain-QMD identity acquisition, `.bento-kpi`, cards, two-column layouts,
 displayed code and the `none`/`minimal`/`detailed` informational annotations
 have bounded Linux implementation evidence. `.bento-diagram` and
 `.bento-timeline` also have bounded source adapters. Studio supports explicit
-authored card/KPI creation with reviewed source promotion; visual acceptance of
-that creation flow in the native editor remains pending. Standard
-Pandoc/Quarto fenced div syntax underlies the examples; component-specific
-semantics are ours.
+authored card/KPI creation with reviewed source promotion. This flow has Linux
+headless acceptance through Studio and the pinned Bento editor; see the [native
+creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+The receipt does not claim foreground desktop or other-platform acceptance.
+Standard Pandoc/Quarto fenced div syntax underlies the examples;
+component-specific semantics are ours.
 
 ## Three modes
 
@@ -193,8 +195,8 @@ geometry, which remains visual design state. Before source promotion, missing
 members can be restored from the saved snapshots or the pending creation can be
 discarded; incompatible retyped or extra grouped objects need native resolution
 or explicit discard. The Studio client and contract have focused automated
-tests, but visual acceptance of this creation flow in the native editor is
-pending.
+tests, and the real Studio/pinned-editor flow has Linux headless acceptance; see
+the [native creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
 
 ### Implemented component subset
 
@@ -343,8 +345,8 @@ execution limits are documented in [notes evidence](evidence/NOTES.md).
 - Implemented subset: **Añadir componente** creates explicit authored
   cards/KPIs with the bounded roles described above; reviewed sync maps them to
   the exact QMD fenced-div schema. Spatial proximity or native grouping alone
-  never establishes membership. Visual acceptance of this Studio creation flow
-  in the native editor remains pending.
+  never establishes membership. The bounded headless Linux editor acceptance is
+  recorded in the [component creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
 - Purely decorative shapes/paths can remain entirely in `.qbento/`.
 
 ## Configurable QMD annotations
