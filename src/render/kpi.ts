@@ -25,6 +25,20 @@ type Fields = NonNullable<Projection["design"]>[string];
 const geometry = new Set(["x", "y", "w", "h"]);
 const shape = new Set(["fill", "stroke", "strokeWidth", "radius"]);
 const generic = new Set(["rotation", "opacity"]);
+const typography = [
+  "fontSize",
+  "fontFamily",
+  "fontWeight",
+  "lineHeight",
+  "letterSpacing",
+  "align",
+  "valign",
+];
+/** Source/slide provenance is verified by the caller before admitting appearance. */
+export interface KpiAppearance {
+  elements: ReadonlyMap<string, Element>;
+  resources?: BentoDoc;
+}
 function fail(code: string, message: string): never {
   throw new DesignError(code, message);
 }
@@ -84,8 +98,15 @@ export async function projectKpi(
   children: Node[],
   base: Frame,
   defaults: DesignDefaults = {},
+  appearance?: KpiAppearance,
 ): Promise<
-  { elements: Element[]; origins: Record<string, Origin>; fields: Fields }
+  {
+    elements: Element[];
+    origins: Record<string, Origin>;
+    fields: Fields;
+    /** The consumer retains unowned member geometry when saved typography rescues projection. */
+    appearanceRescued: boolean;
+  }
 > {
   const binding = kpiSource(source, attr[0]), declaration = binding.design;
   if (
@@ -228,19 +249,53 @@ export async function projectKpi(
     // the source-bound rendered value as computed, without a fake chunk.
     origins[element.id] = { origin: "authored", sourceId: slot.paragraph.id };
   }
-  const measured = await measureNativeText(elements.slice(1));
-  for (const [index, element] of elements.slice(1).entries()) {
+  // A valid source baseline keeps normal flow. Only a baseline refusal may
+  // use retained typography with fresh HTML; unsafe saved styles remain final
+  // composed diagnostics rather than new initial-source refusals.
+  const text = elements.slice(1);
+  const measured = await measureNativeText(text, appearance?.resources);
+  let appearanceRescued = false;
+  const retained = text.map((element) => {
+    const saved = appearance?.elements.get(element.id);
+    if (!saved || saved.id !== element.id || saved.type !== "text") {
+      return undefined;
+    }
+    const effective = { ...element };
+    for (const field of typography) {
+      if (fields[element.id].ownedPaths.includes(field)) continue;
+      if (Object.hasOwn(saved, field)) effective[field] = saved[field];
+      else delete effective[field];
+    }
+    return effective;
+  });
+  let retainedMeasurements: NativeTextMeasurement[] | undefined;
+  async function effectiveMeasurements(): Promise<NativeTextMeasurement[]> {
+    return retainedMeasurements ??= await measureNativeText(
+      text.map((element, index) => retained[index] ?? element),
+      appearance?.resources,
+    );
+  }
+  async function rescue(index: number): Promise<boolean> {
+    const effective = retained[index];
+    if (!effective) return false;
+    const measurement = (await effectiveMeasurements())[index];
+    return !unsupportedTypography(effective, measurement) &&
+      measurement.width <= Number(effective.w) + 1;
+  }
+  for (const [index, element] of text.entries()) {
     if (unsupportedTypography(element, measured[index])) {
-      fail(
-        "KPI_TYPOGRAPHY_UNSUPPORTED",
-        "KPI font bounds exceed the native line boxes or overlap adjacent lines; increase explicit line-height, or center a single-line role with enough space. A taller top/bottom-aligned box alone cannot correct glyph overhang.",
-      );
+      if (await rescue(index)) appearanceRescued = true;
+      else {fail(
+          "KPI_TYPOGRAPHY_UNSUPPORTED",
+          "KPI font bounds exceed the native line boxes or overlap adjacent lines; increase explicit line-height, or center a single-line role with enough space. A taller top/bottom-aligned box alone cannot correct glyph overhang.",
+        );}
     }
     if (measured[index].width > Number(element.w) + 1) {
-      fail(
-        "KPI_CONTENT_OVERFLOW",
-        "A KPI glyph or inline token exceeds its final width; increase the frame or explicitly change typography.",
-      );
+      if (await rescue(index)) appearanceRescued = true;
+      else {fail(
+          "KPI_CONTENT_OVERFLOW",
+          "A KPI glyph or inline token exceeds its final width; increase the frame or explicitly change typography.",
+        );}
     }
     element.y = y;
     element.h = measured[index].height;
@@ -265,7 +320,7 @@ export async function projectKpi(
       }
     }
   }
-  return { elements, origins, fields };
+  return { elements, origins, fields, appearanceRescued };
 }
 /** Diagnose the actual composed text, preserving the owner's saved geometry. */
 export async function kpiReadabilityDiagnostics(
