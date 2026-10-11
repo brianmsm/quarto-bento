@@ -52,7 +52,9 @@ function tokens(content: string): Token[] {
       cursor++;
       while (cursor < content.length && !/\s/.test(content[cursor])) cursor++;
       if (
-        !/^[#.][\p{L}_][\p{L}\p{N}_.:-]*$/u.test(content.slice(start, cursor))
+        !/^[#.][\p{L}_][\p{L}\p{N}\p{M}_.:-]*$/u.test(
+          content.slice(start, cursor),
+        )
       ) {
         throw new SourceError(
           "unsupported-attributes",

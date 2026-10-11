@@ -368,8 +368,19 @@ Deno.test("text insertion refuses ambiguous grouped unsafe rich content and stal
   const weak = await fixture("", true);
   try {
     await saveProject(weak.source, weak.edited, weak.first.state.revision);
-    await refuses(() => previewSync(weak.source), "AMBIGUOUS_IDENTITY");
+    const plan = await previewSync(weak.source);
+    eq(plan.identities?.bindings.length, 1);
     eq(await Deno.readTextFile(weak.source), weak.text);
+    await applySync(weak.source, plan);
+    const rebuilt = await renderProject(weak.source);
+    eq(rebuilt.state.pending.length, 0);
+    eq(rebuilt.state.docId, weak.first.state.docId);
+    eq(
+      rebuilt.state.emitted.slides[0].elements.find((element) =>
+        element.id === "new-native"
+      )?.html,
+      "New β.",
+    );
   } finally {
     await Deno.remove(weak.dir, { recursive: true });
   }

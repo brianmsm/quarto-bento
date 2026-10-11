@@ -185,30 +185,12 @@ $("save").onclick = async () => {
 };
 function showPatches(plan) {
   $("patches").replaceChildren();
-  for (
-    const patch of [
-      ...plan.patch.patches,
-      ...(plan.annotations?.patches ?? []).map((patch) => ({
-        ...patch,
-        blockId: `${patch.blockId} · anotación visual opcional`,
-      })),
-      ...(plan.notes?.patches ?? []).map((patch) => ({
-        ...patch,
-        blockId: `${patch.blockId} · notas de orador`,
-      })),
-      ...plan.changes.filter((change) => change.kind === "visual-attribute")
-        .map((change) => ({
-          blockId: `${change.blockId} · atributo visual`,
-          expected: change.before,
-          replacement: change.after,
-        })),
-    ]
-  ) {
+  function showPatch(patch, phase) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       before = document.createElement("pre"),
       after = document.createElement("pre");
-    title.textContent = patch.blockId;
+    title.textContent = `${phase} · ${patch.blockId}`;
     before.textContent = patch.expected;
     before.className = "before";
     after.textContent = patch.replacement;
@@ -216,14 +198,29 @@ function showPatches(plan) {
     section.append(title, before, after);
     $("patches").append(section);
   }
-  for (const diagnostic of plan.annotations?.diagnostics ?? []) {
-    const section = document.createElement("section"),
-      title = document.createElement("h3"),
-      message = document.createElement("p");
-    title.textContent = diagnostic.code;
-    message.textContent = diagnostic.message;
-    section.append(title, message);
-    $("patches").append(section);
+  if (plan.identities?.patches.length) {
+    const explanation = document.createElement("p");
+    explanation.textContent =
+      "Primero se fijan las identidades de los bloques siguientes, incluidos los que no has editado, para conservar su vínculo con QMD al cambiar el archivo. Revisa cada fragmento antes y después; a continuación se aplican los cambios de contenido.";
+    $("patches").append(explanation);
+    for (const patch of plan.identities.patches) {
+      showPatch(patch, "1. Identidad de fuente");
+    }
+  }
+  for (const patch of plan.patch.patches) showPatch(patch, "2. Contenido");
+  for (const patch of plan.notes?.patches ?? []) {
+    showPatch(patch, "3. Notas de orador");
+  }
+  for (
+    const change of plan.changes.filter((change) =>
+      change.kind === "visual-attribute"
+    )
+  ) {
+    showPatch({
+      blockId: change.blockId,
+      expected: change.before,
+      replacement: change.after,
+    }, "4. Atributo visual");
   }
   if (plan.structure) {
     for (const step of plan.structure.steps) {
@@ -236,7 +233,7 @@ function showPatches(plan) {
           ? `Eliminar ${step.operation.id} del QMD`
           : step.operation.type === "delete-block"
           ? `Eliminar elemento ${step.operation.blockId} del QMD`
-          : `Estructura · ${step.operation.type}`;
+          : `5. Estructura · ${step.operation.type}`;
         before.textContent = edit.expected;
         before.className = "before";
         after.textContent = edit.replacement || "Se elimina este fragmento";
@@ -245,10 +242,24 @@ function showPatches(plan) {
         $("patches").append(section);
       }
     }
+  }
+  for (const patch of plan.annotations?.patches ?? []) {
+    showPatch(patch, "6. Anotación visual opcional");
+  }
+  for (const diagnostic of plan.annotations?.diagnostics ?? []) {
+    const section = document.createElement("section"),
+      title = document.createElement("h3"),
+      message = document.createElement("p");
+    title.textContent = diagnostic.code;
+    message.textContent = diagnostic.message;
+    section.append(title, message);
+    $("patches").append(section);
+  }
+  if (plan.structure || plan.identities) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
-    title.textContent = "QMD propuesto con los cambios revisados";
+    title.textContent = "QMD completo propuesto";
     result.textContent = plan.result;
     section.append(title, result);
     $("patches").append(section);
@@ -279,6 +290,7 @@ async function prepareSyncPreview() {
     syncPlan = plan;
     showPatches(syncPlan);
     const hasChanges = syncPlan.patch.patches.length ||
+      syncPlan.identities?.patches.length ||
       syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
       syncPlan.annotations?.patches.length ||
       syncPlan.structure;

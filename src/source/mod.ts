@@ -1,4 +1,5 @@
 /** Conservative original-QMD mapping. All spans are UTF-8 bytes, end-exclusive. */
+import { isSourceIdentity } from "./identity-id.ts";
 
 export interface Span {
   start: number;
@@ -220,7 +221,9 @@ function linesOf(text: string): Line[] {
 const explicitId = (text: string): string | undefined => {
   const attributes = text.trim().replace(/^\{/, "").replace(/\}$/, "");
   const tokens = attributes.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) ?? [];
-  return tokens.find((token) => /^#[A-Za-z][\w:.-]*$/.test(token))?.slice(1);
+  return tokens.find((token) =>
+    token[0] === "#" && isSourceIdentity(token.slice(1))
+  )?.slice(1);
 };
 const dynamic = (text: string): boolean =>
   /`+(?:\{(?:r|python|julia|ojs)\}|(?:r|python|julia|ojs)\s)/i.test(text) ||
@@ -328,7 +331,8 @@ export function scanSource(
       const comment = lines.slice(first, Math.min(i + 1, lines.length)).map((
         l,
       ) => l.text).join("\n");
-      marker = comment.match(/^\s*<!--\s*qb:([A-Za-z][\w:.-]*)\s*-->\s*$/)?.[1];
+      marker = comment.match(/^\s*<!--\s*qb:([^\s]+)\s*-->\s*$/)?.[1];
+      if (marker && !isSourceIdentity(marker)) marker = undefined;
       if (i === lines.length) {
         diagnostics.push({
           code: "unclosed-comment",

@@ -25,6 +25,8 @@ Deno.test("element deletion removes exactly one identified UTF8/CRLF unit and it
       const [body, blockId] of [
         ["::: {#body}\nLiteral β 😀.\n:::", "body/paragraph:1"],
         ["<!-- qb:body -->\nLiteral β 😀.", "body"],
+        ["<!-- qb:café -->\nLiteral β 😀.", "café"],
+        ["<!-- qb:_café -->\nLiteral β 😀.", "_café"],
         [
           '::: {#body bento-element-id="native" x="90"}\nLiteral β 😀.\n:::',
           "body/paragraph:1",

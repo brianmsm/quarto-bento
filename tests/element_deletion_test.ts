@@ -80,6 +80,74 @@ const canRun =
   (await Deno.permissions.query({ name: "run" })).state === "granted";
 Deno.test({
   name:
+    "deletion under a plain Unicode heading reviews survivor identities and preserves retained native design",
+  ignore: !canRun,
+  fn: async () => {
+    const f = await fixture(
+      authored.replace("## Slide {#slide}", "## Éxito sin IDs")
+        .replace("::: {#keep}\nKeep unchanged.\n:::", "Keep **unchanged**."),
+    );
+    try {
+      const initialSlide = f.initial.emitted.slides[0];
+      const survivor = initialSlide.elements.find((element) =>
+        element.type === "text" && typeof element.html === "string" &&
+        element.html.includes("unchanged")
+      )!;
+      ok(survivor);
+      const edited = structuredClone(f.initial.emitted);
+      const retained = edited.slides[0].elements.find((element) =>
+        element.id === survivor.id
+      )!;
+      retained.x = 419;
+      retained.y = 312;
+      retained.fontSize = 31;
+      const saved = await saveProject(f.source, edited, f.initial.revision);
+      const removed = await remove(f.source, saved);
+      const deletion = removed.pending.find((p) =>
+        p.kind === "delete-element"
+      )!;
+      const plan = await previewSync(f.source, undefined, {
+        confirmedDeleteIds: [deletion.id],
+      });
+      eq(plan.identities?.patches.length, 2);
+      ok(
+        plan.identities!.patches.some((patch) =>
+          patch.expected.includes("## Éxito sin IDs")
+        ),
+      );
+      ok(
+        plan.identities!.patches.some((patch) =>
+          patch.expected.includes("Keep **unchanged**.")
+        ),
+      );
+      eq(await Deno.readTextFile(f.source), f.text);
+      eq(canonical(await readProject(f.source)), canonical(removed));
+      await applySync(f.source, plan);
+      const final = (await renderProject(f.source)).state;
+      eq(final.docId, f.initial.docId);
+      eq(final.pending, []);
+      eq(final.emitted.slides[0].id, initialSlide.id);
+      eq(
+        final.emitted.slides[0].elements.find((element) =>
+          element.id === survivor.id
+        ),
+        retained,
+      );
+      eq(final.emitted.slides[1], f.initial.emitted.slides[1]);
+      ok(
+        !final.emitted.slides[0].elements.some((element) =>
+          element.id === "body/paragraph:1"
+        ),
+      );
+      eq(await Deno.readTextFile(f.source), plan.result);
+      ok(!plan.result.includes("Literal β 😀."));
+    } finally {
+      await Deno.remove(f.directory, { recursive: true });
+    }
+  },
+});
+Deno.test({
+  name:
     "real confirmed element deletion is an exact CRLF patch, retires only its state after fresh render and rebuilds",
   ignore: !canRun,
   fn: async () => {
@@ -309,12 +377,27 @@ Deno.test({
     try {
       const state = await remove(weak.source, weak.initial),
         deletion = state.pending.find((p) => p.kind === "delete-element")!;
-      await refuses(() =>
-        previewSync(weak.source, undefined, {
-          confirmedDeleteIds: [deletion.id],
-        }), "unsafe-element-delete");
+      const plan = await previewSync(weak.source, undefined, {
+        confirmedDeleteIds: [deletion.id],
+      });
+      ok(plan.identities?.patches.length === 1);
+      ok(plan.identities.patches[0].expected.includes("Unpinned survivor."));
       eq(await Deno.readTextFile(weak.source), weak.text);
       eq(canonical(await readProject(weak.source)), canonical(state));
+      await applySync(weak.source, plan);
+      const final = (await renderProject(weak.source)).state;
+      eq(final.docId, weak.initial.docId);
+      eq(final.pending, []);
+      ok(
+        !final.emitted.slides[0].elements.some((element) =>
+          element.id === "body/paragraph:1"
+        ),
+      );
+      ok(
+        final.emitted.slides[0].elements.some((element) =>
+          element.html === "Unpinned survivor."
+        ),
+      );
     } finally {
       await Deno.remove(weak.directory, { recursive: true });
     }

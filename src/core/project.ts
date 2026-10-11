@@ -8,6 +8,7 @@ import {
   loadDesignRegistry,
 } from "../render/registry.ts";
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
+import { readSourceInline } from "../render/source-inline.ts";
 import { MATH_CODEC_VERSION } from "../render/math.ts";
 import { basename, dirname, resolve } from "node:path";
 import { executeQuarto } from "../render/quarto.ts";
@@ -275,6 +276,7 @@ export async function projectProjection(
       registry.defaults,
       richTables,
     ),
+    await readSourceInline(mapping),
   );
   const generated = prepareIsolatedDocument(
     projected.document,
@@ -435,6 +437,7 @@ async function render(source: string, executed?: ExecutedRender) {
         generated,
         projected.sourceHash,
         JSON.parse(approvalText),
+        provenance,
       );
     }
     if (state) {

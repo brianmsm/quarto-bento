@@ -1,0 +1,71 @@
+{
+  "format": "qbento-plain-qmd-runtime/1",
+  "date": "2026-10-11",
+  "implementationBase": "0bf0d9c",
+  "platform": "local Linux x86_64",
+  "quarto": "1.10.19",
+  "deno": "2.9.6",
+  "bentoRevision": "3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b",
+  "validationLayer": "executed Quarto, source/core runtime, shipped Studio client with DOM and transport doubles",
+  "checks": [
+    {
+      "command": "deno test --allow-read --allow-write --allow-env --allow-run tests/sync_test.ts tests/inline_test.ts tests/render_test.ts tests/core_test.ts",
+      "passed": 26,
+      "failed": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "deno test --allow-read --allow-write --allow-env --allow-run tests/plain_qmd_test.ts tests/text_insertion_test.ts",
+      "passed": 9,
+      "failed": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "deno test --allow-read --allow-write --allow-env --allow-run tests/plain_qmd_test.ts tests/source_test.ts tests/source_structure_test.ts tests/annotations_test.ts tests/sync_structure_test.ts",
+      "passed": 50,
+      "failed": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "deno test --allow-read --allow-write --allow-env --allow-run tests/studio_sync_review_test.ts tests/studio_client_diagnostics_test.ts",
+      "passed": 4,
+      "failed": 0,
+      "exitCode": 0
+    }
+  ],
+  "uniqueFocalTests": 84,
+  "staticValidation": [
+    "Type checking of changed TypeScript source and tests passed",
+    "Lint of changed source and tests passed",
+    "Formatting of changed source, tests and evidence passed",
+    "git diff --check passed"
+  ],
+  "verified": [
+    "Plain rich Spanish headings and paragraphs open faithfully",
+    "Original Pandoc fragment reading does not execute Quarto",
+    "Unique matching is scoped to the original slide",
+    "Reviewed acquisition includes untouched and unselected weak bindings",
+    "Unicode and combining marks, CRLF and source chunk bytes are preserved",
+    "docId, native slide and element IDs and saved geometry survive selected sync and reopen",
+    "CSV changes regenerate the computed SVG while retaining native image geometry",
+    "A final reviewed sync clears all pending content",
+    "Minimal and detailed optional annotations compose with technical identities",
+    "Studio displays all identity before/after patches first and the full proposed QMD without autoapply",
+    "Malformed, stale and altered plans or fresh provenance refuse without source/state/output loss"
+  ],
+  "independentReview": {
+    "reviewer": "plain_qmd_review",
+    "status": "No remaining actionable findings in the candidate; Studio identity visibility finding fixed and rechecked",
+    "extraCases": [
+      "Duplicate rich headings retain Pandoc automatic suffix identities",
+      "Two weak children of an identified generic div retain slash-containing native IDs",
+      "Same-slide duplicate rich paragraphs refuse before source write",
+      "Wrong or missing fresh bindings and post-apply selected pending changes refuse"
+    ]
+  },
+  "notClaimed": [
+    "Full integrated suite on the new candidate",
+    "Native browser or visual acceptance on the integrated branch",
+    "Other platforms or public v1 release acceptance"
+  ]
+}

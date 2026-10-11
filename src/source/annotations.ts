@@ -64,7 +64,8 @@ function normalizedRequests(
   const ids = new Set<string>();
   return requests.map((r) => {
     if (
-      !r || !/^[A-Za-z][\w:@.-]*$/.test(r.slideId) || ids.has(r.slideId) ||
+      !r || !/^[\p{L}_][\p{L}\p{N}\p{M}_:@.-]*$/u.test(r.slideId) ||
+      ids.has(r.slideId) ||
       !Array.isArray(r.features) || !Array.isArray(r.references) ||
       r.features.some((f) => !featureNames.has(f)) ||
       r.references.some((f) => !references.has(f)) ||

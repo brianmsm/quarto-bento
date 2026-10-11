@@ -13,6 +13,8 @@ import {
   sourceComponentClass,
 } from "./components.ts";
 import type { SourceDocument } from "../source/mod.ts";
+import { isNativeIdentity, isSourceIdentity } from "../source/identity-id.ts";
+import type { SourceInlineProof } from "./source-inline.ts";
 import {
   NOTES_CODEC_VERSION,
   renderPlainNotes,
@@ -367,7 +369,7 @@ export async function projectAst(
           )?.[1];
           if (
             nativeTitleId !== undefined &&
-            !/^[A-Za-z][\w:.-]*$/.test(nativeTitleId)
+            !isNativeIdentity(nativeTitleId)
           ) {
             throw new Error(
               "INVALID_ID: bento-title-id must be a safe explicit identity",
@@ -709,7 +711,7 @@ export async function projectAst(
               "UNSUPPORTED_NOTES: native element bindings do not apply to slide notes",
             );
           }
-          if (!/^[A-Za-z][\w:.-]*$/.test(nativeId) || !attr[0]) {
+          if (!isNativeIdentity(nativeId) || !attr[0]) {
             throw new Error(
               "INVALID_ID: bento-element-id needs safe visual and explicit source identities",
             );
@@ -880,9 +882,11 @@ export async function projectAst(
       } else if (node.t === "RawBlock") {
         const [format, raw] = node.c as [string, string];
         const marker = format === "html"
-          ? raw.match(/^\s*<!--\s*qb:([A-Za-z][\w:.-]*)\s*-->\s*$/)
+          ? raw.match(/^\s*<!--\s*qb:([^\s]+)\s*-->\s*$/)
           : null;
-        sourceMarker = marker?.[1];
+        sourceMarker = marker && isSourceIdentity(marker[1])
+          ? marker[1]
+          : undefined;
         if (
           format !== "html" ||
           !/^\s*(?:<\/?(?:div|section|figure|figcaption)[^>]*>\s*|<!--[\s\S]*?-->\s*)*$/
@@ -956,6 +960,7 @@ export function assertSupportedExecutionSource(source: SourceDocument): void {
 export function validateProjectionOrigins(
   source: SourceDocument,
   projection: Projection,
+  sourceInline?: ReadonlyMap<string, SourceInlineProof>,
 ): Projection {
   assertSupportedExecutionSource(source);
   if (source.diagnostics.length) {
@@ -965,6 +970,45 @@ export function validateProjectionOrigins(
   }
   const origins: Projection["origins"] = {};
   const used = new Set<string>();
+  const originalHtml = (
+    block: SourceDocument["blocks"][number],
+  ): string | undefined => {
+    if (!sourceInline) return block.content;
+    const proof = sourceInline.get(block.id);
+    return proof?.sourceHash === source.hash && proof.blockId === block.id &&
+        proof.kind === block.kind
+      ? proof.html
+      : undefined;
+  };
+  // Automatic heading IDs and authored source IDs are different until a
+  // reviewed sync pins them. Establish each slide from its exact original
+  // heading before considering any unlabelled paragraph beneath it.
+  const originalSlides = new Map<string, string>();
+  for (const slide of projection.document.slides) {
+    const exact = source.slides.filter((candidate) =>
+      candidate.id === slide.id && candidate.stable
+    );
+    if (exact.length === 1) {
+      originalSlides.set(slide.id, exact[0].id);
+      continue;
+    }
+    const title = slide.elements.find((element) =>
+      projection.origins[slide.id]?.[element.id]?.sourceId === slide.id &&
+      element.type === "text" && typeof element.html === "string"
+    );
+    const matches = title
+      ? source.slides.filter((candidate) => {
+        const heading = source.blocks.find((block) =>
+          block.id === candidate.headingId
+        )!;
+        return heading.origin === "authored" && !heading.stable &&
+          originalHtml(heading) === title.html &&
+          (!sourceInline ||
+            sourceInline.get(heading.id)?.readerId === slide.id);
+      })
+      : [];
+    if (matches.length === 1) originalSlides.set(slide.id, matches[0].id);
+  }
   for (const [slideId, entries] of Object.entries(projection.origins)) {
     origins[slideId] = {};
     const slide = projection.document.slides.find((s) => s.id === slideId);
@@ -1018,12 +1062,15 @@ export function validateProjectionOrigins(
         !candidates.length && element.type === "text" &&
         typeof element.html === "string"
       ) {
-        // Only literal, unique unlabelled original text can establish this binding.
-        // Exact HTML/string equality deliberately rejects transformed Markdown.
+        // Only faithful original authored inline HTML can establish this
+        // binding, uniquely within the same verified original slide.
         const kind = original.sourceId ? "heading" : "paragraph";
         candidates = source.blocks.filter((b) =>
           b.kind === kind && b.origin === "authored" && !b.stable &&
-          !b.parentId && b.content === element.html
+          !b.parentId && b.slideId === originalSlides.get(slideId) &&
+          originalSlides.has(slideId) && originalHtml(b) === element.html &&
+          (kind !== "heading" || !sourceInline ||
+            sourceInline.get(b.id)?.readerId === original.sourceId)
         );
       }
       if (
@@ -1032,6 +1079,8 @@ export function validateProjectionOrigins(
       ) {
         candidates = source.blocks.filter((block) =>
           block.kind === "math" && block.origin === "authored" &&
+          originalSlides.has(slideId) &&
+          block.slideId === originalSlides.get(slideId) &&
           mathToNativeHtml(block.content) === element.html
         );
       }

@@ -10,6 +10,7 @@ import {
   originalAttributeTokens,
   originalPandocAttributes,
 } from "./attributes.ts";
+import { isSourceIdentity } from "./identity-id.ts";
 import { nativeDesignField, parseDesignAttributes } from "../render/design.ts";
 
 function fail(code: string, message: string): never {
@@ -79,10 +80,10 @@ export function assertDeletionReferences(rest: string, ids: string[]): void {
 function withMarker(doc: SourceDocument, block: SourceBlock): Span {
   const before = sliceBytes(doc.text, { start: 0, end: block.span.start });
   const marker = before.match(
-    /(?:^|\n)([ \t]*<!--[ \t]*qb:([A-Za-z][\w:.-]*)[ \t]*-->[ \t]*(?:(?:\r\n|\n)[ \t]*)+)$/,
+    /(?:^|\n)([ \t]*<!--[ \t]*qb:([^\s<>]+)[ \t]*-->[ \t]*(?:(?:\r\n|\n)[ \t]*)+)$/,
   );
   return {
-    start: marker?.[2] === block.id
+    start: marker?.[2] === block.id && isSourceIdentity(marker[2])
       ? block.span.start - new TextEncoder().encode(marker[1]).length
       : block.span.start,
     end: block.span.end,

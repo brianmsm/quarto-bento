@@ -51,7 +51,7 @@ export interface StructurePreview {
 }
 const encode = new TextEncoder();
 const decode = new TextDecoder("utf-8", { fatal: true });
-const idPattern = /^[A-Za-z][\w:.-]*$/;
+const idPattern = /^[\p{L}_][\p{L}\p{N}\p{M}_.:-]*$/u;
 function fail(code: string, message: string): never {
   throw new SourceError(code, message);
 }
@@ -90,7 +90,7 @@ function sectionSpans(doc: SourceDocument): Map<string, Span> {
   const starts = doc.slides.map((slide) => {
     const before = sliceBytes(doc.text, { start: 0, end: slide.span.start });
     const marker = before.match(
-      /(?:^|\n)([ \t]*<!--[ \t]*qb:([A-Za-z][\w:.-]*)[ \t]*-->[ \t]*(?:(?:\r\n|\n)[ \t]*)+)$/,
+      /(?:^|\n)([ \t]*<!--[ \t]*qb:([\p{L}_][\p{L}\p{N}\p{M}_.:-]*)[ \t]*-->[ \t]*(?:(?:\r\n|\n)[ \t]*)+)$/u,
     );
     if (marker && marker[2] === slide.id) {
       return slide.span.start - encode.encode(marker[1]).length;
@@ -506,7 +506,7 @@ function verifyResult(
         b.kind,
         b.kind === "div"
           ? b.content.replace(
-            /^[ \t]*<!--[ \t]*qb:[A-Za-z][\w:.-]*[ \t]*-->[ \t]*(?:\r\n|\n)/gm,
+            /^[ \t]*<!--[ \t]*qb:[\p{L}_][\p{L}\p{N}\p{M}_.:-]*[ \t]*-->[ \t]*(?:\r\n|\n)/gmu,
             "",
           )
           : b.content,

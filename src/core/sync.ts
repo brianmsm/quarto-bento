@@ -21,7 +21,11 @@ import type {
   BentoDoc,
   BentoSlide,
   Change,
+  JsonObject,
   ProjectState,
+  Provenance,
+  ProvenanceMap,
+  Target,
   Value,
 } from "../state/mod.ts";
 import {
@@ -36,6 +40,13 @@ import type {
   SourceDocument,
 } from "../source/mod.ts";
 import type { Node } from "../render/types.ts";
+import { readSourceInline } from "../render/source-inline.ts";
+import {
+  applyIdentities,
+  type IdentityPreview,
+  type IdentityRequest,
+  previewIdentities,
+} from "../source/identities.ts";
 import {
   applyAttributePatches,
   previewAttributePatches,
@@ -81,6 +92,12 @@ export interface SyncNormalization {
   expectedAfter: Value;
   after: Value;
 }
+export interface SyncIdentityBinding {
+  target: Target;
+  before: Provenance;
+  after: Provenance;
+  expectedHtml: string;
+}
 export interface SyncApproval {
   version: 1;
   docId: string;
@@ -92,6 +109,7 @@ export interface SyncApproval {
   normalizations: SyncNormalization[];
   /** Exact post-apply state before any element deletion may retire retained edits. */
   deletionStateHash?: string;
+  identityBindings?: SyncIdentityBinding[];
 }
 export interface SyncApprovalEnvelope {
   format: "qbento-sync-approval/1";
@@ -123,6 +141,7 @@ export interface SyncPlan {
   attributes?: AttributePreview;
   notes?: NotesPreview;
   structure?: StructurePreview;
+  identities?: IdentityPreview;
   annotations: AnnotationPreview;
   designRegistry: AnnotationRegistry;
   result: string;
@@ -130,6 +149,7 @@ export interface SyncPlan {
   confirmedDeleteIds: string[];
   creationChangeIds: string[];
   normalizations: SyncNormalization[];
+  identityBindings?: SyncIdentityBinding[];
   planHash: string;
 }
 export interface SyncReceipt {
@@ -212,6 +232,33 @@ export function validateSyncApproval(
     (a.deletionStateHash !== undefined &&
       !/^[a-f0-9]{64}$/.test(a.deletionStateHash))
   ) fail("INVALID_APPROVAL", "Sync approval metadata is malformed.");
+  if (a.identityBindings !== undefined) {
+    if (
+      !Array.isArray(a.identityBindings) || a.identityBindings.some((binding) =>
+        !binding || !binding.target
+      ) || new Set(a.identityBindings.map((binding) =>
+          targetKey(binding.target)
+        )).size !== a.identityBindings.length ||
+      a.identityBindings.some((binding) =>
+        typeof binding.target.slideId !== "string" || !binding.target.slideId ||
+        typeof binding.target.elementId !== "string" ||
+        !binding.target.elementId || typeof binding.expectedHtml !== "string" ||
+        binding.before?.origin !== "authored" ||
+        binding.after?.origin !== "authored" ||
+        typeof binding.before.source?.hash !== "string" ||
+        binding.after.source?.hash !== a.sourceHash ||
+        typeof binding.before.source?.blockId !== "string" ||
+        typeof binding.after.source?.blockId !== "string" ||
+        binding.before.semanticId !== binding.before.source.blockId ||
+        binding.after.semanticId !== binding.after.source.blockId
+      )
+    ) {
+      fail(
+        "INVALID_APPROVAL",
+        "Identity approval requires exact authored source bindings and native targets.",
+      );
+    }
+  }
   const ids = a.expectedPending.map((p) => p?.id);
   if (
     ids.some((id) => typeof id !== "string") ||
@@ -245,6 +292,7 @@ export function prepareApprovedSync(
   generated: BentoDoc,
   sourceHash: string,
   envelope: SyncApprovalEnvelope,
+  freshProvenance?: ProvenanceMap,
 ): ProjectState {
   validateSyncApproval(envelope);
   const a = envelope.approval;
@@ -281,6 +329,24 @@ export function prepareApprovedSync(
     );
   }
   const prepared = clone(state);
+  for (const binding of a.identityBindings ?? []) {
+    const key = targetKey(binding.target), fresh = freshProvenance?.[key];
+    const element = generated.slides.find((slide) =>
+      slide.id === binding.target.slideId
+    )?.elements.find((element) => element.id === binding.target.elementId);
+    if (
+      canonical(state.provenance[key]) !== canonical(binding.before) ||
+      canonical(fresh) !== canonical(binding.after) ||
+      fresh?.source?.hash !== sourceHash || element?.type !== "text" ||
+      element.html !== binding.expectedHtml
+    ) {
+      fail(
+        "STALE_APPROVAL",
+        "Approved identity acquisition lacks exact fresh source and content proof; pending edits are retained.",
+      );
+    }
+    prepared.provenance[key] = clone(fresh!);
+  }
   for (const n of a.normalizations) {
     prepared.pending.find((p) => p.id === n.changeId)!.after = clone(n.after);
   }
@@ -412,6 +478,98 @@ function chooseBlock(
   }
   return { block, expected: source.content };
 }
+function acquiredProvenance(
+  before: Provenance,
+  block: SourceBlock,
+  document: SourceDocument,
+): Provenance {
+  const source: JsonObject = {
+    ...clone(before.source!),
+    hash: document.hash,
+    inlineCodec: INLINE_CODEC_VERSION,
+    blockId: block.id,
+    content: block.content,
+    kind: block.kind,
+    stable: block.stable,
+  };
+  delete source.parentId;
+  delete source.siblings;
+  if (block.parentId) {
+    source.parentId = block.parentId;
+    source.siblings = document.blocks.filter((candidate) =>
+      candidate.parentId === block.parentId && candidate.kind === block.kind
+    ).length;
+  }
+  return { ...clone(before), semanticId: block.id, source };
+}
+/** A global source hash change affects every weak authored binding, selected or not. */
+function identityAcquisition(
+  text: string,
+  state: ProjectState,
+  selected: Change[],
+) {
+  if (!selected.length) return undefined;
+  const document = scanSource(text), requests: IdentityRequest[] = [];
+  for (const [key, proof] of Object.entries(state.provenance)) {
+    if (proof.origin === "computed") continue;
+    const binding = proof.source;
+    const block = document.blocks.find((candidate) =>
+      candidate.id === binding?.blockId
+    );
+    const singleton = binding?.siblings === 1 &&
+      typeof binding.parentId === "string" &&
+      document.blocks.some((parent) =>
+        parent.id === binding.parentId && parent.stable
+      ) &&
+      document.blocks.filter((candidate) =>
+          candidate.parentId === binding.parentId &&
+          candidate.kind === binding.kind
+        ).length === 1;
+    if (binding?.stable === true && block?.stable || singleton) continue;
+    const target = JSON.parse(key) as [string | null, string | null];
+    const slideId = target[0], elementId = target[1];
+    if (
+      selected.some((change) =>
+        change.kind === "delete-slide" && change.target.slideId === slideId ||
+        change.kind === "delete-element" && targetKey(change.target) === key
+      )
+    ) continue;
+    const element = state.generatedBaseline.slides.find((slide) =>
+      slide.id === slideId
+    )?.elements.find((element) => element.id === elementId);
+    if (
+      !slideId || !elementId || proof.origin !== "authored" || !binding ||
+      !block || document.blocks.filter((candidate) =>
+          candidate.id === block.id
+        ).length !== 1 ||
+      binding.hash !== document.hash || proof.semanticId !== block.id ||
+      block.content !== binding.content || block.kind !== binding.kind ||
+      block.origin !== "authored" || !block.editable ||
+      !["heading", "paragraph"].includes(block.kind) ||
+      element?.type !== "text" || typeof element.html !== "string"
+    ) {
+      fail(
+        "AMBIGUOUS_IDENTITY",
+        "A source change needs exact weak authored heading/paragraph proofs from the unchanged executed baseline; pin unsupported or externally changed identities and recalculate before syncing. Pending edits are retained.",
+      );
+    }
+    const title = block.kind === "heading" &&
+      document.slides.some((slide) => slide.headingId === block.id);
+    requests.push({
+      blockId: block.id,
+      sourceId: title
+        ? slideId
+        : block.kind === "heading"
+        ? elementId
+        : `qb-identity-${
+          hashSource(canonical([state.docId, slideId, elementId])).slice(0, 24)
+        }`,
+      nativeId: elementId,
+      title,
+    });
+  }
+  return requests.length ? previewIdentities(document, requests) : undefined;
+}
 function assertMappedDisplayMath(html: string): void {
   if (/\$\$|\\\[/.test(html)) {
     fail(
@@ -425,6 +583,7 @@ function assertTextCreationSource(
   state: ProjectState,
   source: SourceDocument,
   change: Change,
+  acquiredIds: ReadonlyMap<string, string> = new Map(),
 ) {
   const slideId = change.target.slideId, elementId = change.target.elementId;
   const baseline = state.generatedBaseline.slides.find((slide) =>
@@ -460,7 +619,9 @@ function assertTextCreationSource(
       block.id === binding?.parentId
     );
     if (
-      binding?.stable !== true && !(parent?.stable && binding?.siblings === 1)
+      binding?.stable !== true &&
+      !(parent?.stable && binding?.siblings === 1) &&
+      !acquiredIds.has(String(binding?.blockId))
     ) {
       fail(
         "AMBIGUOUS_IDENTITY",
@@ -546,6 +707,13 @@ async function buildPlan(
       "This element belongs to a slide also marked for deletion. Restore the pending element deletion through Compare with QMD before reviewing the slide deletion, or restore the slide before reviewing the element. No QMD changes are proposed.",
     );
   }
+  const identities = identityAcquisition(text, state, selected);
+  const identityResult = identities?.result ?? text;
+  const acquiredIds = new Map(
+    identities?.bindings.map((
+      binding,
+    ) => [binding.blockId, binding.newBlockId]) ?? [],
+  );
   const changes: SyncItem[] = [],
     normalizations: SyncNormalization[] = [],
     operations: StructureOperation[] = [],
@@ -773,7 +941,7 @@ async function buildPlan(
         );
       }
       const mapping = scanSource(text);
-      assertTextCreationSource(state, mapping, change);
+      assertTextCreationSource(state, mapping, change, acquiredIds);
       assertMappedDisplayMath(element.html);
       const markdown = inlineHtmlToMarkdown(element.html),
         html = canonicalInlineHtml(element.html);
@@ -788,7 +956,7 @@ async function buildPlan(
         markdown,
       };
       // Validate boundaries/identities before consulting Pandoc's fragment reader.
-      previewStructure(mapping, [operation]);
+      previewStructure(scanSource(identityResult), [operation]);
       await assertInsertedInline(markdown, html);
       operations.push(operation);
       creationChangeIds.push(change.id);
@@ -924,9 +1092,15 @@ async function buildPlan(
         "code",
         "math",
       ]);
-      const deletion = sourceDeletion(scanSource(text), block.id);
+      // The executed proof above is checked against the unchanged source. Structural
+      // ownership uses the reviewed identity phase, which can pin a plain heading.
+      const deletionSource = scanSource(identityResult);
+      const deletionBlock = deletionSource.blocks.find((candidate) =>
+        candidate.id === block.id
+      );
+      const deletion = sourceDeletion(deletionSource, block.id);
       if (
-        block.slideId !== change.target.slideId ||
+        deletionBlock?.slideId !== change.target.slideId ||
         Object.entries(state.provenance).some(([otherKey, proof]) =>
           otherKey !== key && typeof proof.source?.blockId === "string" &&
           deletion.removedIds.includes(proof.source.blockId)
@@ -983,7 +1157,13 @@ async function buildPlan(
       ids: change.after.value as string[],
     });
   }
-  const patch = previewPatches(scanSource(text), textRequests);
+  const patch = previewPatches(
+    scanSource(identityResult),
+    textRequests.map((request) => ({
+      ...request,
+      blockId: acquiredIds.get(request.blockId) ?? request.blockId,
+    })),
+  );
   const notes = notesRequests.length
     ? previewNotes(scanSource(patch.result), notesRequests)
     : undefined;
@@ -1016,7 +1196,22 @@ async function buildPlan(
     signalDiagnostics,
   );
   if (annotations.patches.length) {
-    const blocked = annotationIdentityDiagnostics(annotationDocument, state);
+    const annotationState = clone(state);
+    for (const [key, proof] of Object.entries(annotationState.provenance)) {
+      const id = acquiredIds.get(String(proof.source?.blockId));
+      const block = annotationDocument.blocks.find((block) => block.id === id);
+      if (block) {
+        annotationState.provenance[key] = acquiredProvenance(
+          proof,
+          block,
+          annotationDocument,
+        );
+      }
+    }
+    const blocked = annotationIdentityDiagnostics(
+      annotationDocument,
+      annotationState,
+    );
     if (blocked.length) {
       annotations = previewAnnotations(
         annotationDocument,
@@ -1058,6 +1253,45 @@ async function buildPlan(
     });
   }
   const result = annotations.result;
+  const identityBindings: SyncIdentityBinding[] = [];
+  if (identities) {
+    const document = scanSource(result),
+      inline = await readSourceInline(document);
+    for (const binding of identities.bindings) {
+      const entry = Object.entries(state.provenance).find(([, proof]) =>
+        proof.source?.blockId === binding.blockId
+      );
+      const block = document.blocks.find((block) =>
+          block.id === binding.newBlockId
+        ),
+        html = inline.get(binding.newBlockId)?.html;
+      if (!entry || !block || typeof html !== "string") {
+        fail(
+          "AMBIGUOUS_IDENTITY",
+          "Acquired source identity has no faithful approved content proof.",
+        );
+      }
+      const [slideId, elementId] = JSON.parse(entry[0]) as [string, string];
+      identityBindings.push({
+        target: { slideId, elementId },
+        before: clone(entry[1]),
+        after: acquiredProvenance(entry[1], block, document),
+        expectedHtml: html,
+      });
+    }
+    for (const [index, patch] of identities.patches.entries()) {
+      const binding = identityBindings[index];
+      changes.push({
+        changeId: `identity:${patch.blockId}`,
+        target: binding.target,
+        blockId: patch.blockId,
+        kind: "source-identity",
+        before: patch.expected,
+        after: patch.replacement,
+        html: "",
+      });
+    }
+  }
   const unsigned = {
     version: 1 as const,
     source,
@@ -1073,6 +1307,7 @@ async function buildPlan(
     ...(attributes ? { attributes } : {}),
     ...(notes ? { notes } : {}),
     ...(structure ? { structure } : {}),
+    ...(identities ? { identities, identityBindings } : {}),
     annotations,
     designRegistry,
     result,
@@ -1193,7 +1428,10 @@ export async function applySync(
         "Sync plan was altered or no longer reproduces the approved result.",
       );
     }
-    const textResult = applyPatches(text, verified.patch);
+    const identityResult = verified.identities
+      ? applyIdentities(text, verified.identities)
+      : text;
+    const textResult = applyPatches(identityResult, verified.patch);
     const notesResult = verified.notes
       ? applyNotes(textResult, verified.notes)
       : textResult;
@@ -1245,7 +1483,8 @@ export async function applySync(
     await fsyncDirectory(history);
     const needsApproval = verified.creationChangeIds.length > 0 ||
       verified.normalizations.length > 0 ||
-      verified.confirmedDeleteIds.length > 0;
+      verified.confirmedDeleteIds.length > 0 ||
+      (verified.identityBindings?.length ?? 0) > 0;
     const approvalPath = resolve(paths.stateDir, "sync-approved.json"),
       approvalStaging = resolve(history, `sync-approval-${transactionId}.json`);
     if (needsApproval) {
@@ -1270,6 +1509,9 @@ export async function applySync(
               canonical({ ...clone(state), revision: state.revision + 1 }),
             ),
           }
+          : {}),
+        ...(verified.identityBindings
+          ? { identityBindings: verified.identityBindings }
           : {}),
       };
       const envelope: SyncApprovalEnvelope = {

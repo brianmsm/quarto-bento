@@ -373,7 +373,7 @@ export function validateAnnotationSummary(
       d.message.length > 65536 ||
       (d.slideId !== undefined &&
         (typeof d.slideId !== "string" ||
-          !/^[A-Za-z][\w:@.-]*$/.test(d.slideId)))
+          !/^[\p{L}_][\p{L}\p{N}\p{M}_:@.-]*$/u.test(d.slideId)))
     )
   ) {
     throw new StateError(
