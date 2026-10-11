@@ -74,6 +74,28 @@ Attributes declared explicitly in QMD carry source ownership: when Bento changes
 
 ## ID and grouping conventions
 
+### Displayed code (implemented subset)
+
+An identified non-executable fenced block projects to Bento's native code object:
+
+````markdown
+```{#example .r font-size="24"}
+modelo <- lm(y ~ x, data = datos)
+summary(modelo)
+```
+````
+
+Native content edits are saved as pending changes, reviewed and synchronized only
+to that fence's body. The language class is retained on regeneration; changing
+the native language selection currently remains pending and refuses reverse
+conversion. A runnable Quarto chunk such as `{r}` is distinct: its echoed code
+has computed provenance and cannot be synchronized as displayed authored code.
+Source-owned compatible typography/geometry uses the same attribute-review flow
+as text objects. The `.bento-code` component wrapper remains future integration.
+See [executed and native evidence](evidence/DISPLAYED-CODE.md).
+
+### Stable identities
+
 - Reuse explicit heading/block IDs and chunk labels when possible.
 - Add stable `qb:*` source markers only when needed for round-trip; do not flood clean QMD with markers at initialization.
 - Distinguish **semantic ID** (source content), **Bento element ID** (object on a particular slide), and **morph ID** (animation pairing across slides). A semantic figure may have multiple visual instances.

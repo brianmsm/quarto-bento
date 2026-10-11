@@ -35,6 +35,7 @@ const semanticFields = new Set([
   "cells",
   "code",
   "language",
+  "grammarName",
   "latex",
   "notes",
   "title",

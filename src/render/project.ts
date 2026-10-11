@@ -79,6 +79,7 @@ export async function projectAst(
   ast: Ast,
   docId: string,
   assetRoots: string[],
+  source?: SourceDocument,
 ): Promise<Projection> {
   const document: BentoDoc = {
     format: "bento/slides",
@@ -216,9 +217,10 @@ export async function projectAst(
   }
   async function walk(nodes: Node[], computed = false, parentId?: string) {
     let paragraphIndex = 0;
+    let codeIndex = 0;
     let sourceMarker: string | undefined;
     for (const node of nodes) {
-      if (!["Para", "Plain", "RawBlock"].includes(node.t)) {
+      if (!["Para", "Plain", "RawBlock", "CodeBlock"].includes(node.t)) {
         sourceMarker = undefined;
       }
       if (node.t === "Header") {
@@ -256,6 +258,29 @@ export async function projectAst(
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
+        // Quarto can remove ordinary cell labels. An exact, unique echoed
+        // original code body is evidence for its producer, never for authorship.
+        let sourceParent = attr[0] || parentId;
+        if (!attr[0] && attr[1].includes("cell") && source) {
+          const echoes = children.filter((child) =>
+            child.t === "CodeBlock" &&
+            (child.c as [Attr, string])[0][1].includes("cell-code")
+          );
+          if (echoes.length === 1) {
+            const content = (echoes[0].c as [Attr, string])[1];
+            const candidates = source.blocks.filter((block) =>
+              block.kind === "chunk" &&
+              block.content.replace(/\r\n|\r/g, "\n").split("\n").filter((
+                  line,
+                ) => !/^\s*#\|/.test(line)
+                ).join("\n").replace(/\n$/, "") === content
+            );
+            if (candidates.length === 1) sourceParent = candidates[0].id;
+            else {throw new Error(
+                "UNMAPPED_PROVENANCE: echoed cell code does not identify one original producer",
+              );}
+          }
+        }
         const isComputed = computed ||
           attr[1].some((c) => c === "cell" || c.startsWith("cell-output"));
         const nativeId = attr[2].find(([name]) => name === "bento-element-id")
@@ -301,7 +326,7 @@ export async function projectAst(
           for (const img of images(children)) {
             await figure(img, isComputed, attr[0]);
           }
-        } else await walk(children, isComputed, attr[0] || parentId);
+        } else await walk(children, isComputed, sourceParent);
         design(
           attr,
           slide && (!beforeSlide || slide === beforeSlide)
@@ -329,6 +354,48 @@ export async function projectAst(
             ...(computed && parentId ? { producer: parentId } : {}),
           });
         }
+      } else if (node.t === "CodeBlock") {
+        const [attr, content] = node.c as [Attr, string];
+        const sourceId = attr[0] || sourceMarker ||
+          (parentId ? `${parentId}/code:${++codeIndex}` : undefined);
+        sourceMarker = undefined;
+        const languages = attr[1].filter((name) =>
+          !["sourceCode", "cell-code"].includes(name)
+        );
+        if (languages.length > 1) {
+          throw new Error(
+            "UNSUPPORTED_CODE_CLASSES: displayed code supports one language class plus native visual attributes",
+          );
+        }
+        const height = Math.min(
+          470,
+          Math.max(90, (content.split("\n").length + 1) * 30),
+        );
+        const element: Element = {
+          id: sourceId ?? `qb-code-${++counter}`,
+          type: "code",
+          content,
+          x: 80,
+          y,
+          w: 1120,
+          h: height,
+          rotation: 0,
+          opacity: 1,
+          fontSize: 24,
+          fontFamily: "ui-monospace, monospace",
+          color: "#172a35",
+          align: "left",
+          valign: "top",
+          lineHeight: 1.25,
+          ...(languages[0] ? { grammarName: languages[0] } : {}),
+        };
+        add(element, {
+          origin: computed ? "computed" : "authored",
+          ...(sourceId ? { sourceId } : {}),
+          ...(computed && parentId ? { producer: parentId } : {}),
+        });
+        design(attr, [element]);
+        y += height + 20;
       } else if (node.t === "RawBlock") {
         const [format, raw] = node.c as [string, string];
         const marker = format === "html"

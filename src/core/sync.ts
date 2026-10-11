@@ -255,6 +255,7 @@ function chooseBlock(
   sourceText: string,
   state: ProjectState,
   change: Change,
+  kinds: string[] = ["heading", "paragraph"],
 ): { block: SourceBlock; expected: string } {
   const source = state.provenance[targetKey(change.target)]?.source;
   if (
@@ -270,6 +271,7 @@ function chooseBlock(
   // Old saved projections flattened links/code. Require a fresh faithful baseline
   // before permitting rich original fragments to synchronize after an upgrade.
   if (
+    ["heading", "paragraph"].includes(source.kind) &&
     source.inlineCodec !== INLINE_CODEC_VERSION &&
     /(?<!\\)(?:`|\[|<)|https?:\/\//i.test(source.content)
   ) {
@@ -288,7 +290,7 @@ function chooseBlock(
   }
   const block = matches[0];
   if (
-    !["heading", "paragraph"].includes(block.kind) || !block.editable ||
+    !kinds.includes(block.kind) || !block.editable ||
     block.origin !== "authored" || block.kind !== source.kind
   ) {
     fail(
@@ -430,13 +432,14 @@ function buildPlan(
         });
         continue;
       }
+      const displayedCode = canonical(change.path) === canonical(["content"]);
       if (
-        canonical(change.path) !== canonical(["html"]) ||
+        (!displayedCode && canonical(change.path) !== canonical(["html"])) ||
         !change.after.present || typeof change.after.value !== "string"
       ) {
         fail(
           "UNSUPPORTED_SYNC",
-          `Change ${change.id} is not an authored HTML text edit.`,
+          `Change ${change.id} is not a supported authored text or displayed-code edit.`,
         );
       }
       if (
@@ -448,8 +451,18 @@ function buildPlan(
           `Change ${change.id} is not authored source text.`,
         );
       }
-      const { block, expected } = chooseBlock(text, state, change),
-        after = inlineHtmlToMarkdown(change.after.value);
+      const { block, expected } = chooseBlock(
+          text,
+          state,
+          change,
+          displayedCode ? ["code"] : ["heading", "paragraph"],
+        ),
+        normalized = displayedCode
+          ? change.after.value.replace(/\r\n|\r/g, "\n")
+          : canonicalInlineHtml(change.after.value),
+        after = displayedCode
+          ? normalized + "\n"
+          : inlineHtmlToMarkdown(change.after.value);
       textRequests.push({ blockId: block.id, expected, replacement: after });
       changes.push({
         changeId: change.id,
@@ -462,7 +475,7 @@ function buildPlan(
       });
       addNormalization(change, {
         present: true,
-        value: canonicalInlineHtml(change.after.value),
+        value: normalized,
       });
     } else if (change.kind === "create-slide") {
       const slide = change.after.value as BentoSlide;

@@ -256,7 +256,9 @@ export function applyElementDesign(
   const copy = structuredClone(element);
   for (const [field, value] of Object.entries(declaration.properties)) {
     if (
-      textFields.has(field) && element.type !== "text" ||
+      textFields.has(field) && element.type !== "text" &&
+        !(element.type === "code" &&
+          !["fontWeight", "letterSpacing"].includes(field)) ||
       shapeFields.has(field) && element.type !== "shape"
     ) {
       throw new DesignError(

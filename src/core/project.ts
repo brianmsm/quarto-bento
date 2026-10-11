@@ -171,6 +171,7 @@ export async function projectProjection(
       ast,
       state?.docId ?? crypto.randomUUID(),
       executed?.assetDirectories ?? [build, paths.directory],
+      mapping,
     ),
   );
   const generated = prepareIsolatedDocument(
