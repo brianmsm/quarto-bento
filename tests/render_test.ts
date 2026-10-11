@@ -196,3 +196,49 @@ Deno.test("speaker notes refuse lists and code instead of silently dropping cont
     assert(refused);
   }
 });
+Deno.test("source-aware provenance accepts exact plain QMD and refuses unknown or ambiguous output", async () => {
+  const { validateProjectionOrigins, assertSupportedExecutionSource } =
+    await import("../src/render/project.ts");
+  const { scanSource } = await import("../src/source/mod.ts");
+  const ast: Ast = {
+    meta: {},
+    blocks: [{
+      t: "Header",
+      c: [2, ["plain-title", [], []], [{ t: "Str", c: "Plain title" }]],
+    }, { t: "Para", c: [{ t: "Str", c: "Literal." }] }],
+  };
+  const p = await projectAst(ast, "doc", []),
+    source = scanSource("## Plain title\n\nLiteral.\n");
+  const mapped = validateProjectionOrigins(source, p);
+  assert(
+    mapped.origins["plain-title"]["plain-title-title"].sourceId ===
+      source.blocks[0].id,
+  );
+  assert(
+    mapped.origins["plain-title"]["qb-paragraph-1"].sourceId ===
+      source.blocks[1].id,
+  );
+  throws(
+    () =>
+      validateProjectionOrigins(
+        scanSource("## Other title\n\nOther text.\n"),
+        p,
+      ),
+    "UNMAPPED_PROVENANCE",
+  );
+  throws(
+    () =>
+      validateProjectionOrigins(
+        scanSource("## Plain title\n\nLiteral.\n\nLiteral.\n"),
+        p,
+      ),
+    "UNMAPPED_PROVENANCE",
+  );
+  throws(
+    () =>
+      assertSupportedExecutionSource(
+        scanSource('```{r}\n#| results: asis\ncat("## Generated")\n```\n'),
+      ),
+    "UNMAPPED_PROVENANCE",
+  );
+});

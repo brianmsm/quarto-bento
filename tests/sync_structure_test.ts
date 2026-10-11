@@ -1,3 +1,5 @@
+import { projectAst } from "../src/render/project.ts";
+import { executeQuarto } from "../src/render/quarto.ts";
 import {
   applySync,
   prepareApprovedSync,
@@ -253,6 +255,31 @@ Deno.test({
       eq(actual.elements[1].x, 411);
       eq(actual.elements[2], decoration);
       eq(merged.document.docId, initial.state.docId);
+    } finally {
+      await Deno.remove(dir, { recursive: true });
+    }
+  },
+});
+Deno.test({
+  name:
+    "real R as-is headings are refused when Quarto erases origin boundaries",
+  ignore: !canRun,
+  fn: async () => {
+    const { validateProjectionOrigins } = await import(
+      "../src/render/project.ts"
+    );
+    const dir = await Deno.makeTempDir({ prefix: "qbento-asis-guard-" });
+    try {
+      const source = dir + "/heading.qmd",
+        text =
+          '---\nformat: html\n---\n\n```{r}\n#| label: producer\n#| results: asis\n#| echo: false\ncat("## Generated {#generated}\\n\\nText.\\n")\n```\n';
+      await Deno.writeTextFile(source, text);
+      const ast = await executeQuarto(source, dir + "/build"),
+        projected = await projectAst(ast, "doc", [dir + "/build", dir]);
+      await refuses(
+        () => validateProjectionOrigins(scanSource(text), projected),
+        "UNMAPPED_PROVENANCE",
+      );
     } finally {
       await Deno.remove(dir, { recursive: true });
     }

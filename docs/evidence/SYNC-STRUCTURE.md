@@ -120,3 +120,28 @@ silently filtered out. A separate actual R as-is probe found that Quarto can
 hoist generated headings outside cell wrappers; the wrapper-provenance fix alone
 does not establish full as-is output provenance. Original-source verification
 remains required at the core projection boundary.
+
+## Source-aware execution provenance guard
+
+The projector exports `assertSupportedExecutionSource(scan)` for the
+pre-execution boundary and `validateProjectionOrigins(scan, projection)`
+afterward. The latter returns mapped origins; it never assigns authored
+provenance to unknown output. Direct original IDs and unique exact unlabelled
+literal heading/paragraph matches are accepted. Unknown or ambiguous matches
+raise `UNMAPPED_PROVENANCE` with an explicit identity/support diagnostic.
+Computed wrapper outputs need a verified original chunk producer.
+
+R `results: asis` can erase all execution wrappers, as verified with an actual
+Quarto/R fixture. This mode and `asis_output(...)` are currently refused rather
+than falsely classified. The real test verifies the source-aware guard rejects
+that output. A separate actual structural-sync execution test passes through the
+same validator and still preserves newly acquired native IDs/design. Ordinary
+plain-QMD unique literal headings and paragraphs remain supported by exact
+original source matching; their identities remain snapshot-local until
+explicitly pinned.
+
+Follow-up results: **8 projector tests and 4 structural-sync tests pass**,
+including two actual Quarto execution tests; lint passes. Parent
+`projectProjection` must call these helpers at its execution boundary; a
+standalone call to `projectAst` without the original-source validation is not
+proof of safe provenance.

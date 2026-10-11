@@ -1,3 +1,4 @@
+import type { SourceDocument } from "../source/mod.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { escapeHtml } from "./html.ts";
 import type {
@@ -230,6 +231,7 @@ export async function projectAst(
             {
               origin: computed ? "computed" : "authored",
               sourceId: attr[0] || undefined,
+              ...(computed && parentId ? { producer: parentId } : {}),
             },
           );}
       } else if (node.t === "Div") {
@@ -277,6 +279,7 @@ export async function projectAst(
           text(id, inline(content), false, {
             origin: computed ? "computed" : "authored",
             sourceId: explicitMarker ?? (parentId ? id : undefined),
+            ...(computed && parentId ? { producer: parentId } : {}),
           });
         }
       } else if (node.t === "RawBlock") {
@@ -315,4 +318,96 @@ export async function projectAst(
     }
   }
   return result;
+}
+
+/** Execution modes that erase source/output boundaries cannot be reverse-mapped. */
+export function assertSupportedExecutionSource(source: SourceDocument): void {
+  for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
+    if (
+      /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
+        .test(block.raw)
+    ) {
+      throw new Error(
+        `UNMAPPED_PROVENANCE: chunk ${block.id} uses as-is output, which can erase execution-origin boundaries; use a supported wrapped output or preserve it outside editable projection`,
+      );
+    }
+  }
+}
+/** Bind executed projection to exact original blocks; never guess unknown output is authored. */
+export function validateProjectionOrigins(
+  source: SourceDocument,
+  projection: Projection,
+): Projection {
+  assertSupportedExecutionSource(source);
+  if (source.diagnostics.length) {
+    throw new Error(
+      "UNMAPPED_PROVENANCE: resolve original source identity/structure diagnostics first",
+    );
+  }
+  const origins: Projection["origins"] = {};
+  const used = new Set<string>();
+  for (const [slideId, entries] of Object.entries(projection.origins)) {
+    origins[slideId] = {};
+    const slide = projection.document.slides.find((s) => s.id === slideId);
+    for (const [elementId, original] of Object.entries(entries)) {
+      const element = slide?.elements.find((e) => e.id === elementId);
+      if (!element) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: source origin has no projected element",
+        );
+      }
+      let candidates = original.sourceId
+        ? source.blocks.filter((b) => b.id === original.sourceId)
+        : [];
+      if (original.origin === "computed") {
+        const producer = original.producer ??
+          (candidates[0]?.kind === "chunk" ? candidates[0].id : undefined);
+        if (
+          !producer ||
+          !source.blocks.some((b) => b.id === producer && b.kind === "chunk")
+        ) {
+          throw new Error(
+            `UNMAPPED_PROVENANCE: computed element ${elementId} has no verified original producer`,
+          );
+        }
+        origins[slideId][elementId] = { ...original, producer };
+        continue;
+      }
+      if (
+        !candidates.length && element.type === "text" &&
+        typeof element.html === "string"
+      ) {
+        // Only literal, unique unlabelled original text can establish this binding.
+        // Exact HTML/string equality deliberately rejects transformed Markdown.
+        const kind = original.sourceId ? "heading" : "paragraph";
+        candidates = source.blocks.filter((b) =>
+          b.kind === kind && b.origin === "authored" && !b.stable &&
+          !b.parentId && b.content === element.html
+        );
+      }
+      if (candidates.length !== 1) {
+        throw new Error(
+          `UNMAPPED_PROVENANCE: element ${elementId} is not uniquely linked to original source; explicitly pin authored identity or use a supported computed output`,
+        );
+      }
+      const block = candidates[0];
+      if (used.has(block.id)) {
+        throw new Error(
+          `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,
+        );
+      }
+      if (block.kind === "unsupported" || block.kind === "div") {
+        throw new Error(
+          `UNMAPPED_PROVENANCE: element ${elementId} points to an unsupported source container`,
+        );
+      }
+      used.add(block.id);
+      origins[slideId][elementId] = {
+        ...original,
+        sourceId: block.id,
+        origin: block.origin,
+      };
+    }
+  }
+  return { ...projection, origins };
 }
