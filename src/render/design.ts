@@ -4,7 +4,8 @@ export type PandocAttr = [string, string[], [string, string][]];
 export type DesignProperties = Record<string, string | number>;
 export interface DesignDeclaration {
   sourceId: string;
-  component?: "card" | "layout" | "code";
+  component?: "card" | "layout" | "code" | "chart";
+  chartKind?: "bar" | "line";
   layout?: string;
   properties: DesignProperties;
   /** Actual native Bento field -> the exact original QMD attribute key. */
@@ -164,12 +165,23 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
     if (components[0] === "bento-card") result.component = "card";
     else if (components[0] === "bento-layout") result.component = "layout";
     else if (components[0] === "bento-code") result.component = "code";
+    else if (components[0] === "bento-chart") result.component = "chart";
     else throw new DesignError("UNSUPPORTED_COMPONENT", components[0]);
   }
   const seen = new Set<string>();
   for (const [key, value] of attr[2]) {
     if (seen.has(key)) throw new DesignError("DUPLICATE_DESIGN_ATTRIBUTE", key);
     seen.add(key);
+    if (key === "bento-chart-kind") {
+      if (result.component !== "chart" || !["bar", "line"].includes(value)) {
+        throw new DesignError(
+          "INVALID_CHART_KIND",
+          "bento-chart-kind belongs to an identified .bento-chart and must be bar or line",
+        );
+      }
+      result.chartKind = value as "bar" | "line";
+      continue;
+    }
     if (key === "layout" || key === "bento-layout-name") {
       if (result.layout) {
         throw new DesignError(
@@ -211,13 +223,20 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
       'declare bento-layout-name="two-column" or a registered reusable layout',
     );
   }
+  if (result.component === "chart" && !result.chartKind) {
+    throw new DesignError(
+      "CHART_KIND_REQUIRED",
+      "declare bento-chart-kind=bar or line",
+    );
+  }
   return result;
 }
 function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
   if (
     !value || typeof value.sourceId !== "string" || !value.properties ||
     !value.bindings ||
-    value.component && !["card", "layout", "code"].includes(value.component)
+    value.component &&
+      !["card", "layout", "code", "chart"].includes(value.component)
   ) {
     throw new DesignError(
       "INVALID_DECLARATION",
@@ -239,6 +258,7 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
     attrs.push([key, String(property)]);
   }
   if (value.layout) attrs.push(["layout", value.layout]);
+  if (value.chartKind) attrs.push(["bento-chart-kind", value.chartKind]);
   return parseDesignAttributes([
     value.sourceId,
     value.component ? [`bento-${value.component}`] : [],
@@ -430,8 +450,8 @@ export function applyComponentDesign(
     );
   }
   if (
-    !declaration.component || declaration.component === "code" ||
-    !declaration.sourceId
+    !declaration.component ||
+    !["card", "layout"].includes(declaration.component) || !declaration.sourceId
   ) {
     throw new DesignError(
       "COMPONENT_REQUIRED",

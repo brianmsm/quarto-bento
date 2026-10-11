@@ -13,6 +13,47 @@ import { targetKey } from "../src/state/mod.ts";
 function assert(v: unknown, message = "assertion failed"): asserts v {
   if (!v) throw new Error(message);
 }
+
+Deno.test("integrated native tables and charts refuse unadapted component placement", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-component-native-" });
+  try {
+    for (const kind of ["table", "chart"]) {
+      const projectDir = `${dir}/${kind}`;
+      await Deno.mkdir(projectDir);
+      const source = `${projectDir}/deck.qmd`;
+      const intent = kind === "chart"
+        ? '.bento-chart bento-chart-kind="bar"'
+        : "";
+      const original = `## Data {#data}
+
+:::: {#card .bento-card}
+
+::: {#values ${intent}}
+| | N |
+| :--- | ---: |
+| Alpha | 12 |
+| Beta | 5 |
+:::
+
+::::
+`;
+      await Deno.writeTextFile(source, original);
+      await refuses(
+        () => renderProject(source),
+        "COMPONENT_CONTENT_LAYOUT_UNSUPPORTED",
+      );
+      assert(await Deno.readTextFile(source) === original);
+      try {
+        await Deno.stat(`${projectDir}/deck.bento.html`);
+        throw new Error("unadapted component was published");
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) throw error;
+      }
+    }
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
 async function refuses(fn: () => Promise<unknown>, code: string) {
   try {
     await fn();

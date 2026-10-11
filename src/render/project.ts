@@ -10,6 +10,8 @@ import {
   sourceNotes,
 } from "../source/notes.ts";
 import { projectTable } from "./table.ts";
+import { executedChartTable, projectChart } from "./chart.ts";
+import { chartSource, validateAuthoredChart } from "../source/chart.ts";
 import {
   authoredTableBlock,
   tableProducer,
@@ -415,6 +417,51 @@ export async function projectAst(
           );
         }
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
+        if (attr[1].includes("bento-chart")) {
+          if (inComponent) {
+            throw new DesignError(
+              "COMPONENT_CONTENT_LAYOUT_UNSUPPORTED",
+              "Native charts inside cards/layouts need a measured adapter for their internal typography and axes; place this chart outside the component.",
+            );
+          }
+          const declaration = parseDesignAttributes(attr);
+          if (!source || computed) {
+            throw new Error(
+              "UNMAPPED_CHART_SOURCE: declare chart intent in an original QMD wrapper, not generated output",
+            );
+          }
+          const binding = chartSource(source, attr[0]);
+          const executed = executedChartTable(children);
+          if (
+            binding.kind !== declaration.chartKind ||
+            binding.computed !== executed.computed
+          ) {
+            throw new Error(
+              "UNMAPPED_CHART_SOURCE: original chart intent or producer disagrees with execution",
+            );
+          }
+          const element = projectChart(
+            executed.table,
+            binding.kind,
+            `${attr[0]}/chart`,
+            y,
+          );
+          if (!binding.computed) {
+            validateAuthoredChart(source, binding.block.id, element);
+          }
+          add(element, {
+            origin: binding.computed ? "computed" : "authored",
+            sourceId: binding.block.id,
+            ...(binding.computed ? { producer: binding.block.id } : {}),
+          });
+          design([
+            attr[0],
+            attr[1].filter((c) => c !== "bento-chart"),
+            attr[2].filter(([k]) => k !== "bento-chart-kind"),
+          ], [element]);
+          y += Number(element.h) + 20;
+          continue;
+        }
         const containsTable = (value: unknown): boolean =>
           Array.isArray(value)
             ? value.some(containsTable)
@@ -777,7 +824,9 @@ export function validateProjectionOrigins(
           `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,
         );
       }
-      if (element.type === "table") {
+      if (element.type === "chart") {
+        validateAuthoredChart(source, block.id, element);
+      } else if (element.type === "table") {
         validateAuthoredTable(source, block.id, element);
       } else if (block.kind === "unsupported" || block.kind === "div") {
         throw new Error(
