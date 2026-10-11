@@ -99,8 +99,8 @@ editor, DOM and controls were used rather than a simulated canvas.
   native binding; it does not rebind to the node under the pointer. Save retained
   this pending edit, and review refused to remove the required source endpoint
   with Apply disabled. Native Undo restored the connection before continuing.
-  A dedicated explicit Studio relationship selector is in progress; this receipt
-  does not claim that native dragging changes source relationships.
+  The explicit Studio relationship selector is accepted in the follow-up below;
+  native dragging still does not change source relationships.
 
 The coordinator visually inspected the initial fork, refusal, exact review,
 recomputed fork/timeline and changed-data figure. The labels and attached arrows
@@ -117,3 +117,31 @@ recognition. Independent review repeated the integration cases and checked 14
 wrapper variants, retaining guards for geometry, typography, media, computed
 content, extra bytes and invalid identities. These focused receipts precede the
 final complete-suite and package qualification.
+
+
+## Explicit relationship controls accepted on Linux
+
+At `068bbb8`, Studio's **Relaciones** completed native headless Chromium
+acceptance on the same four-slide project above. The coordinator used the real
+select controls to invert both endpoints of `prepare-link`, restore them, then
+invert them again. Revisions 8–10 retained exactly the two final pending endpoint
+changes; QMD was byte-identical before approval. Reopening showed `prepare` →
+`collect`, and the timeline controls displayed their source sequence with Save
+disabled.
+
+Review displayed both exact attribute substitutions and the complete proposed
+QMD. Apply followed by Recalculate produced revision 12, zero pending edits and
+the same `docId`. QMD changed only `from="collect" to="prepare"` to
+`from="prepare" to="collect"` on that source edge. The other three slides,
+including prior native text/design and the computed figure, remained exactly
+equal. The two-node default layout followed the new direction; this is semantic
+reflow, not a claim that unmodified default positions are frozen.
+
+The coordinator inspected the relation selector, timeline read-only dialog,
+exact source review and recomputed native slide. Local screenshots are
+`output/playwright/relations-native-*.png`; the revision/hash receipt is
+`output/verification/relations-native/receipt.json`. Independent review passed
+16 tests on author `bb5f40d`, including real Studio controls and an R execution
+counter: save, reopen, review and Apply did not execute R; Recalculate did.
+Conflicts, stale source/revisions, detached sides, repeated changes and legacy
+journals contradictory to the saved connector have bounded refusal tests.
