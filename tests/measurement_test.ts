@@ -61,3 +61,33 @@ Deno.test("native text metrics load persisted built-in font faces before measuri
     JSON.stringify({ fallback, embedded }),
   );
 });
+
+Deno.test("native text measurement refuses unfaithful automatic math and document fields", async () => {
+  for (
+    const html of [
+      "$$x^2$$",
+      "$x$",
+      "\\(x\\)",
+      "\\[x\\]",
+      "{{page}}",
+      "{{ title }}",
+      "<code>{{date:yyyy}}</code>",
+      "&#36;&#36;x&#36;&#36;",
+      "&#123;&#123;page&#125;&#125;",
+    ]
+  ) {
+    let refused = false;
+    try {
+      await measureNativeText([{
+        id: "transform",
+        type: "text",
+        html,
+        w: 200,
+        fontSize: 26,
+      }]);
+    } catch (error) {
+      refused = String(error).includes("NATIVE_TEXT_TRANSFORM_UNSUPPORTED");
+    }
+    assert(refused, html);
+  }
+});

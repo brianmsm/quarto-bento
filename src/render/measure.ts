@@ -22,6 +22,20 @@ export async function measureNativeText(
 ): Promise<{ height: number; width: number }[]> {
   if (!elements.length) return [];
   const data = elements.map((element) => {
+    const html = canonicalInlineHtml(String(element.html));
+    const plain = html.replace(/<[^>]*>/g, "");
+    if (
+      /\{\{\s*(?:page|pages|title|date|time|author|company|subject|event)(?::[^}]*?)?\s*\}\}/i
+        .test(plain) ||
+      /\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/.test(
+        plain,
+      )
+    ) {
+      fail(
+        "NATIVE_TEXT_TRANSFORM_UNSUPPORTED",
+        "Native mathematical or document-field markers transform text semantics; use supported literal text or an explicit faithful adapter.",
+      );
+    }
     const fontSize = Number(element.fontSize),
       w = Number(element.w),
       lineHeight = Number(element.lineHeight ?? 1.25),
@@ -36,7 +50,7 @@ export async function measureNativeText(
       );
     }
     return {
-      html: canonicalInlineHtml(String(element.html)),
+      html,
       w,
       fontSize,
       lineHeight,
