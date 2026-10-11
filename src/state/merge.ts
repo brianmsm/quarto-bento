@@ -31,6 +31,7 @@ const semanticFields = new Set([
   "svg",
   "data",
   "rows",
+  "header",
   "columns",
   "cells",
   "code",

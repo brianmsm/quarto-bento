@@ -4,6 +4,12 @@ import {
   renderPlainNotes,
   sourceNotes,
 } from "../source/notes.ts";
+import { projectTable } from "./table.ts";
+import {
+  authoredTableBlock,
+  tableProducer,
+  validateAuthoredTable,
+} from "../source/table.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import { renderInline as inline } from "./inline.ts";
 import { mathToNativeHtml } from "./math.ts";
@@ -132,6 +138,7 @@ export async function projectAst(
   let slide: Slide | undefined;
   let y = 166;
   let counter = 0;
+  const tableSources = new Set<string>();
   function startSlide(id: string): Slide {
     if (document.slides.some((s) => s.id === id)) {
       throw new Error(`DUPLICATE_ID: ${id}`);
@@ -299,6 +306,17 @@ export async function projectAst(
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
+        const containsTable = (value: unknown): boolean =>
+          Array.isArray(value)
+            ? value.some(containsTable)
+            : !!value && typeof value === "object" &&
+              ((value as Node).t === "Table" ||
+                containsTable((value as Node).c));
+        if (attr[1].includes("quarto-float") && containsTable(children)) {
+          throw new Error(
+            "UNSUPPORTED_TABLE: captions and table floats need a faithful associated caption mapping; use an uncaptioned table with a non-tbl producer label for this slice",
+          );
+        }
         // Quarto can remove ordinary cell labels. An exact, unique echoed
         // original code body is evidence for its producer, never for authorship.
         let sourceParent = attr[0] || parentId;
@@ -435,6 +453,30 @@ export async function projectAst(
             ...(computed && parentId ? { producer: parentId } : {}),
           });
         }
+      } else if (node.t === "Table") {
+        if (!source || !parentId) {
+          throw new Error(
+            "UNMAPPED_TABLE_SOURCE: tables need original-source evidence and an identified wrapper or producer",
+          );
+        }
+        const block = computed
+          ? tableProducer(source, parentId)
+          : authoredTableBlock(source, parentId);
+        if (tableSources.has(block.id)) {
+          throw new Error(
+            "UNSUPPORTED_TABLE: use one table per source wrapper or producer; multiple outputs need stable per-table source identities",
+          );
+        }
+        tableSources.add(block.id);
+        const id = computed ? `${block.id}/table:1` : `${parentId}/table`;
+        const element = projectTable(node, id, y);
+        if (!computed) validateAuthoredTable(source, block.id, element);
+        add(element, {
+          origin: computed ? "computed" : "authored",
+          sourceId: block.id,
+          ...(computed ? { producer: block.id } : {}),
+        });
+        y += Number(element.h) + 20;
       } else if (node.t === "CodeBlock") {
         const [attr, content] = node.c as [Attr, string];
         const sourceId = attr[0] || sourceMarker ||
@@ -600,7 +642,9 @@ export function validateProjectionOrigins(
           `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,
         );
       }
-      if (block.kind === "unsupported" || block.kind === "div") {
+      if (element.type === "table") {
+        validateAuthoredTable(source, block.id, element);
+      } else if (block.kind === "unsupported" || block.kind === "div") {
         throw new Error(
           `UNMAPPED_PROVENANCE: element ${elementId} points to an unsupported source container`,
         );
