@@ -45,6 +45,13 @@ execution, 5 shared native metrics, 21 existing state and 11 existing sync) in
 
     deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/graphs_test.ts tests/graphs_execution_test.ts tests/measurement_test.ts tests/state_test.ts tests/sync_test.ts
 
+The Studio client follow-up runs a real endpoint-only preview plan through the
+complete shipped client with local DOM/transport/bridge doubles. It checks the
+exact endpoint value before/after, graph/edge/attribute identity, full proposed
+QMD and the enabled Apply gate. Relationship patches precede the optional
+annotation phase in the visible source transaction. This is client lifecycle
+evidence; it does not imply foreground editor interaction.
+
 The source graph example also rendered with stable document identity
 31c9e46b-9b36-4c6a-83ee-e33c413f4b29, no pending edits and no adapter
 diagnostics. An independent Linux headless native review loaded its emitted HTML

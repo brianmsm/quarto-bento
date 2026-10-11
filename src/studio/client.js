@@ -243,8 +243,16 @@ function showPatches(plan) {
       }
     }
   }
+  for (const [index, patch] of (plan.graphs?.patches ?? []).entries()) {
+    const request = plan.graphs.requests[index];
+    showPatch({
+      ...patch,
+      blockId:
+        `${request.componentId} · ${patch.blockId} · ${request.endpoint}`,
+    }, "6. Relación del diagrama");
+  }
   for (const patch of plan.annotations?.patches ?? []) {
-    showPatch(patch, "6. Anotación visual opcional");
+    showPatch(patch, "7. Anotación visual opcional");
   }
   for (const diagnostic of plan.annotations?.diagnostics ?? []) {
     const section = document.createElement("section"),
@@ -255,7 +263,7 @@ function showPatches(plan) {
     section.append(title, message);
     $("patches").append(section);
   }
-  if (plan.structure || plan.identities) {
+  if (plan.structure || plan.identities || plan.graphs) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
@@ -293,6 +301,7 @@ async function prepareSyncPreview() {
     const hasChanges = syncPlan.patch.patches.length ||
       syncPlan.identities?.patches.length ||
       syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
+      syncPlan.graphs?.patches.length ||
       syncPlan.annotations?.patches.length ||
       syncPlan.structure;
     $("sync-note").textContent = hasChanges
