@@ -1,6 +1,16 @@
 # Implementation roadmap and validation gates
 
-**Status:** acceptance roadmap; implementation started 2026-10-11. Current evidence and unfinished work are tracked in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). Build toward the [product target](PRODUCT_TARGET.md) in **vertical slices**. A small throwaway exporter is not the goal. The final public v1 release boundary must be frozen before shipping, not guessed by an agent.
+**Status:** acceptance roadmap; implementation started 2026-10-11. The
+bounded Linux implementation now includes source-authored diagrams/timelines
+and explicit Studio card/KPI creation alongside the first bidirectional slice.
+Graph acceptance has a headless native editor receipt. The card/KPI creation
+flow has focused contract and Studio-client tests, while its visual acceptance
+remains open. Consult [graph evidence](evidence/GRAPHS.md), [the authoring
+contract](AUTHORING.md), and [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
+for current evidence and unfinished work. Build toward the [product target](PRODUCT_TARGET.md)
+in **vertical slices**. A small throwaway exporter
+is not the goal. The final public v1 release boundary must be frozen before
+shipping, not guessed by an agent.
 
 ## Original feasibility gates — bounded Linux proof integrated
 
@@ -56,6 +66,13 @@ Workflow to demonstrate end-to-end:
 This grouping predates several integrated features and is not the current task
 list. Use the implementation ledger to see which parts have evidence and which
 gates remain.
+
+The source graph/timeline adapter and explicit Studio-authored card/KPI
+promotion are additional bounded slices beyond that original grouping. They do
+not make arbitrary native graphs, inferred component membership, or every
+QMD/Bento construct part of the supported workflow. The graph evidence
+distinguishes source/core tests, native editor acceptance, and remaining
+relationship-editing limits.
 
 | Sequence | Scope |
 |---|---|

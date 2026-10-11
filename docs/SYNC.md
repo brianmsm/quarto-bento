@@ -8,7 +8,9 @@
 | Code-produced numbers, figures and table values | Executed QMD + inputs | No reverse mapping to executable code. Restore output, edit producer source, or explicitly detach. |
 | Layout geometry, colors, typography, transitions, animations and decorative elements | `.qbento/` | Save immediately as visual state; no QMD write necessary. |
 | Any **visual property explicitly declared in QMD** | That QMD attribute until changed by deliberate sync | Flag field-level divergence; sync/keep source/revert or resolve conflict. |
-| Newly authored semantic content inside a Studio-created card/slide | Pending in `.qbento/` until synced, then QMD | Generate an appropriate QMD paragraph/fenced div/slide; retain appearance in sidecar. |
+| Studio-created card/KPI content | `.qbento/` until sync, then QMD | Review every pending member together; design stays in the sidecar. |
+| Diagram edge endpoints (`from`/`to`) | Exact QMD attributes | Native drag deletes the binding; sync refuses. Undo restores it; selector pending. |
+| Timeline order and derived links | Source milestone order | Reorder QMD blocks to change adjacency; z-order does not. Restore endpoint edits before publication. |
 
 The source of a value and its **provenance** are different from its current **synchronization state**.
 
@@ -26,6 +28,18 @@ No blanket "last writer wins". Disjoint field edits should merge automatically w
 **Save in Studio:** persist current Bento design **and unsynced semantic change journal** in recoverable project state, not only in a generated HTML or the browser. QMD remains unchanged. Sync metadata tracks which changes have already been applied; closing Studio must not lose a pending edit. **Bento's own Save outside Studio instead saves an HTML file**, not `.qbento/`; see the capture workflow below.
 
 **Sync:** load the last confirmed baseline and both current states. Show itemized changes (direction, source, property), preview patches, validate anchors and source hashes/expected fragments, let the user choose actions, then commit applied edits and advance baseline only for successful operations. Writes must be atomic/rollback-capable and avoid unrelated formatting changes.
+
+Studio-created cards and KPIs are one semantic creation per component, not a
+loose group inferred from placement. The pending intent records its exact
+member IDs, roles, snapshots and fixed projection frame. Preview refuses a
+partial selection of one component's semantic members or an incomplete/stale
+component. A reviewed approval inserts only the exact role schema into the
+selected source slide. The saved frame used for subsequent source projection is
+independent from the native background's mutable geometry; that background's
+placement and styling remain a visual override. A KPI entered through this
+Studio form contains literal text, not a calculation. Focused tests cover the
+creation contract and Studio client; this does not yet establish native visual
+acceptance for the creation flow.
 
 **Render:** execute Quarto and project updated outputs through the saved design, preserving stable visual identity. It is not a command to erase pending Bento edits or silently settle source conflicts. An unattended strict render/CI should fail with a structured diagnostic if it cannot produce a coherent deck without selecting a conflicting value.
 

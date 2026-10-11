@@ -61,13 +61,18 @@ changed uncaptured output is refused.
 Currently demonstrated projection includes plain QMD headings and paragraphs,
 supported rich text in identified fenced divs, displayed code, identified
 display equations and speaker notes, R-generated SVG figures, plain tables,
-bounded native charts, cards, named two-column layouts, and source-authored
-`.bento-kpi` components. Plain QMD can acquire stable identities only through an
-inspectable reviewed source plan; save and render do not add them implicitly.
-Native Studio also supports reviewed deletion of bounded source-backed elements.
-The examples and evidence describe these limits; they do not imply semantic KPI
-creation from Studio or support for every QMD construct. Reproducible sources
-include:
+bounded native charts, cards, named two-column layouts, source-authored
+`.bento-kpi` components, and bounded source `.bento-diagram` and
+`.bento-timeline` components. Plain QMD can acquire stable identities only
+through an inspectable reviewed source plan; save and render do not add them
+implicitly. Native Studio also supports reviewed deletion of bounded
+source-backed elements and explicit creation of authored cards and literal-value
+KPI components on existing source slides. Saving a created component leaves
+QMD unchanged; its authored members remain pending until reviewed together in
+the source-sync plan. The Studio KPI value is text, not a computed expression.
+Focused component and Studio tests exist; visual acceptance of this creation
+flow in the native editor has not yet been recorded. These adapters do not imply
+support for every QMD construct. Reproducible sources include:
 
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
@@ -75,6 +80,8 @@ include:
 - [Computed gt/gtsummary tables](examples/rich-tables/deck.qmd)
 - [Two-column components](examples/components/deck.qmd)
 - [Source-authored KPI components](examples/kpi/deck.qmd)
+- [Bounded diagrams and timelines](examples/source-graphs/deck.qmd) (see
+  [Linux graph evidence](docs/evidence/GRAPHS.md#integrated-studio-acceptance-on-linux))
 - [Offline Plotly](examples/plotly-offline/deck.qmd)
 
 Examples use their accompanying CSV inputs. The rich-table example also uses
@@ -89,7 +96,12 @@ restored before approval and safely applied for supported source units; see the
 text can be reviewed and inserted into an existing identified QMD slide, then
 regenerated with its saved geometry and style; see the
 [insertion scope and native acceptance](docs/evidence/TEXT-INSERTION.md). See
-the bounded [component evidence](docs/evidence/COMPONENTS.md). The guarded
+the bounded [component evidence](docs/evidence/COMPONENTS.md). Source diagrams
+and timelines use declared node and relationship IDs, literal labels, and a
+bounded native layout; unsupported topology or text metrics refuse before
+publication. Their exact source contract and Linux validation are documented
+with the [example](examples/source-graphs/README.md) and
+[graph evidence](docs/evidence/GRAPHS.md). The guarded
 `qbento-html` extension executes Quarto once per render (verified on Linux). The
 static standalone/PDF workflow has
 [offline browser evidence](docs/evidence/OFFLINE-PDF.md). Supported Plotly

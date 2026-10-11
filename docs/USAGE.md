@@ -129,8 +129,71 @@ y, opcionalmente, `detail`. El ejemplo reproducible está en
 valor puede ser texto literal o una expresión Quarto en línea compatible. Si es
 calculado, sigue vinculado a su expresión: editar el valor presentado no
 modifica el código; la reconciliación permite restaurarlo o separarlo
-explícitamente. Este adaptador de QMD no crea todavía un KPI semántico nuevo
-desde Studio.
+explícitamente. Studio también puede crear un KPI nuevo con un valor de texto
+literal; el formulario no crea una expresión calculada. Ese flujo está descrito
+a continuación.
+
+## Crear una tarjeta o un KPI en Studio
+
+Pulsa **Añadir componente** en una presentación abierta. Studio guarda primero
+los cambios actuales del editor y luego muestra el formulario. Elige una
+diapositiva existente procedente del QMD y selecciona **Tarjeta** o
+**Indicador**. La tarjeta pide un título y un cuerpo; el indicador pide una
+etiqueta y un valor escrito, con detalle opcional. Los campos son texto de
+autoría explícita con roles definidos; la acción no ejecuta código ni interpreta
+el valor del KPI como una fórmula. Si el resultado debe actualizarse con los
+datos, decláralo en QMD mediante el adaptador `.bento-kpi`.
+
+Si el QMD cambió desde el último recálculo, Studio bloquea la creación y
+conserva los cambios pendientes; recalcula y resuelve las diferencias antes de
+volver a abrir el formulario.
+
+La nueva tarjeta o indicador se guarda como contenido pendiente en `.qbento/`.
+**Guardar proyecto** no modifica el QMD, y puedes editar el texto o el diseño en
+Bento antes de sincronizar. En **Revisar cambios**, conserva juntos todos los
+cambios semánticos de los campos que forman un componente: seleccionar solo una
+parte de la tarjeta o del indicador se rechaza. Revisa el bloque QMD propuesto y
+usa **Aplicar estos cambios a QMD** para insertar su esquema de autoría
+explícita en la sección de la diapositiva elegida. Luego usa **Recalcular** para reconstruir y
+comprobar la presentación; el diseño nativo guardado se conserva por separado.
+
+Si al guardar falta uno de los objetos gestionados de la creación, la intención
+y las últimas instantáneas permanecen en el proyecto. Vuelve a abrir **Añadir
+componente** para restaurar los miembros ausentes en su orden previo o descartar
+esa creación pendiente. Si el objeto presente cambió de tipo o hay miembros
+adicionales en su grupo nativo, resuélvelo en Bento o descarta la creación; la
+sincronización no adivina su pertenencia. Este flujo tiene pruebas enfocadas de
+contrato y de la interfaz Studio; su aceptación visual en el editor nativo aún
+está pendiente.
+
+## Diagramas y líneas de tiempo
+
+El ejemplo [source-graphs](../examples/source-graphs/deck.qmd) contiene un
+diagrama, una bifurcación, una línea de tiempo y una figura calculada. Ejecútalo
+con:
+
+```sh
+deno task qbento render examples/source-graphs/deck.qmd
+```
+
+Los diagramas declaran nodos y relaciones con IDs del QMD. En la versión fijada
+de Bento, arrastrar el extremo nativo de un conector elimina su enlace en vez de
+reasignarlo al nodo bajo el puntero; la revisión conserva el aviso y bloquea la
+aplicación. Usa **Deshacer** para restaurar el enlace. Un selector explícito de
+relaciones en Studio sigue pendiente. Para cambiar el vínculo, edita el atributo
+`from` o `to` del `.bento-edge` en QMD y recalcula. Los lados de anclaje, la
+posición, los colores y el orden visual del conector siguen siendo diseño; la
+cercanía entre objetos no crea una relación fuente.
+
+La secuencia de una línea de tiempo procede del orden de los bloques
+`.bento-milestone` en QMD. Reordena esos bloques para cambiar la adyacencia; el
+orden visual de los objetos en Bento no cambia el significado. Las etiquetas
+admitidas son párrafos escritos en el QMD. Este adaptador cubre solo topologías
+y métricas de texto delimitadas; rechaza cruces, desbordamiento, relaciones
+ambiguas, rótulos computados y composiciones no admitidas. Consulta el
+[contrato del ejemplo](../examples/source-graphs/README.md) y la
+[evidencia Linux](evidence/GRAPHS.md) para los límites exactos y la revisión
+nativa headless.
 
 ## Anotaciones y diseños reutilizables
 

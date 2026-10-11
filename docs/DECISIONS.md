@@ -46,8 +46,24 @@ The original `QMD → Bento base → _bento/overrides.json → .bento.html` mode
 ## Remaining technical limits (not new product decisions)
 
 1. Source mapping and reverse edits are bounded to the documented QMD forms. Unsupported reader transformations, source structures and computed content require an explicit diagnostic; they are not covered by the plain-QMD evidence.
-2. `.bento-diagram` and `.bento-timeline` adapters, and creation of meaningful semantic cards/KPIs from Studio, are not yet implemented. Do not infer membership or source structure from native grouping or position.
-3. Arbitrary widgets, reconciliation of independently distributed HTML copies, multi-QMD editing and live collaboration remain outside the implemented scope described by [PRODUCT_TARGET.md](PRODUCT_TARGET.md).
-4. This work has Linux-local evidence. Other-platform and hosted validation, along with the public v1 release boundary, remain separate decisions and acceptance gates.
+2. `.bento-diagram` and `.bento-timeline` are implemented only for the bounded
+   source schemas in [AUTHORING.md](AUTHORING.md) and
+   [graph evidence](evidence/GRAPHS.md): literal labels, identified roles,
+   declared DAG endpoints, and source-order timeline adjacency. This does not
+   provide arbitrary graph layouts or native grouping-based membership
+   inference. The pinned editor's endpoint drag deletes its binding and is
+   refused during sync; an explicit Studio relationship selector remains open.
+3. Studio can explicitly create an authored card or literal-value KPI on an
+   existing source-backed slide and promote the complete role set through
+   reviewed QMD sync. Save still does not patch source; computed KPI values
+   must be authored as source expressions. This creation flow has focused
+   implementation/client tests, but its native visual acceptance is still
+   pending.
+4. Arbitrary widgets, reconciliation of independently distributed HTML copies,
+   multi-QMD editing and live collaboration remain outside the implemented
+   scope described by [PRODUCT_TARGET.md](PRODUCT_TARGET.md).
+5. This work has Linux-local evidence. Other-platform and hosted validation,
+   along with the public v1 release boundary, remain separate decisions and
+   acceptance gates.
 
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for current receipts and unfinished work. Do not change a settled product choice because an initial integration attempt is inconvenient; record trade-offs and propose a conscious revision.

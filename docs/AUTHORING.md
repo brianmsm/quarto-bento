@@ -5,9 +5,11 @@ distinguishes implemented subsets below. Direct-object visual attributes,
 plain-QMD identity acquisition, `.bento-kpi`, cards, two-column layouts,
 displayed code and the `none`/`minimal`/`detailed` informational annotations
 have bounded Linux implementation evidence. `.bento-diagram` and
-`.bento-timeline` remain target vocabulary; meaningful card/KPI creation from
-Studio is not yet supported. Standard Pandoc/Quarto fenced div syntax underlies
-the examples; component-specific semantics are ours.
+`.bento-timeline` also have bounded source adapters. Studio supports explicit
+authored card/KPI creation with reviewed source promotion; visual acceptance of
+that creation flow in the native editor remains pending. Standard
+Pandoc/Quarto fenced div syntax underlies the examples; component-specific
+semantics are ours.
 
 ## Three modes
 
@@ -65,13 +67,16 @@ cards/layouts; see its implemented contract below.
 |---|---|
 | `.bento-layout` | Implemented `two-column` arrangement with two identified direct children. |
 | `.bento-card` | Implemented bounded card with source-backed content and decorative background. |
-| `.bento-kpi` | Implemented bounded source-authored metric; see its exact contract below. Creating a semantic KPI from Studio is not implemented. |
+| `.bento-kpi` | Bounded source metric; Studio creates literal-value KPIs through reviewed promotion. |
 | `.bento-chart` | Implemented native bar/straight-line subset with identified source data. |
-| `.bento-diagram` | Target vocabulary; adapter not yet implemented. |
-| `.bento-timeline` | Target vocabulary; adapter not yet implemented. |
+| `.bento-diagram` | Bounded identified nodes and source-declared DAG edges; see [Linux evidence](evidence/GRAPHS.md). |
+| `.bento-timeline` | Bounded identified milestones with source-order adjacency; see [Linux evidence](evidence/GRAPHS.md). |
 | `.bento-code` | Implemented wrapper for one displayed, non-executable code fence. |
 
-These are **Quarto-Bento abstractions**, not necessarily built-in Bento element types. See the evidence links for the implemented schemas and refusal boundaries. Target-only entries are not accepted source syntax yet.
+These are **Quarto-Bento abstractions**, not necessarily built-in Bento element
+types. See the evidence links for implemented schemas and refusal boundaries.
+Target-only entries and target attributes elsewhere in this document are not
+accepted source syntax yet.
 
 ### Source KPI (`.bento-kpi`, implemented subset)
 
@@ -85,7 +90,92 @@ retains computed provenance and never writes a rendered number over its
 producing source. It does not infer labels, coerce or round values, or support
 nested KPI composition. See the exact [KPI schema and refusals](evidence/KPI.md),
 its [canonical example](../examples/kpi/deck.qmd), and [native
-acceptance](evidence/PLAIN-KPI-NATIVE.md).
+acceptance](evidence/PLAIN-KPI-NATIVE.md). Studio-created KPIs use the
+separate bounded flow below and always begin with authored literal text; they
+do not create or modify a Quarto computation.
+
+### Source diagrams and timelines (bounded subset)
+
+Each identified top-level `.bento-diagram` contains 2–6 identified direct
+`.bento-node` children, each with exactly one authored literal paragraph. Its
+identified direct `.bento-edge` children name `from` and `to` IDs belonging to
+nodes in that same diagram and allow zero or one authored literal label
+paragraph. The implemented layout accepts a directed acyclic graph with at most
+three topological columns, two nodes per column, and eight distinct edges;
+paths must route clearly without crossing unrelated edges, passing through
+foreign nodes, or overflowing measured text.
+
+Each identified top-level `.bento-timeline` contains 2–6 identified direct
+`.bento-milestone` children with one authored literal paragraph each. Their
+lexical QMD order defines the sequence and derived links. Moving a timeline link
+in native z-order does not change that sequence; a native endpoint edit on a
+derived timeline link remains pending and must be restored before publication.
+The pinned native editor currently removes a diagram endpoint binding when it
+is dragged rather than reassigning it. Review refuses that incomplete change;
+use native Undo to restore it. An explicit Studio relationship selector is
+still in progress. Diagram edge endpoints are QMD-owned meaning; connector
+anchor sides, positions, colors, typography and stacking are visual state.
+
+Both adapters reject computed/dynamic labels, arbitrary HTML, nested graph
+components, automatic native-to-source membership inference, and universal
+graph layout. Reordering timeline blocks in QMD changes adjacency while
+existing node identities and design are retained. See the canonical
+[example](../examples/source-graphs/README.md) and [Linux validation and native
+DOM receipt](evidence/GRAPHS.md).
+
+### Studio-authored cards and KPIs (bounded creation flow)
+
+Studio can explicitly create a card or KPI on an existing QMD-backed slide. A
+card uses `title` and `body`; a KPI uses `label`, `value`, and optional `detail`.
+Fields are authored text in one supported paragraph, and a card title is one
+line. The KPI value entered here is literal text. Use the source `.bento-kpi`
+contract above when the value must be computed. The creation action declares
+these roles and identities itself; it does not infer a component from
+proximity, native grouping, or an arbitrary collection of objects.
+
+Reviewed promotion writes these bounded source forms with generated IDs; each
+role container holds one authored paragraph:
+
+````qmd
+:::: {#studio-card .bento-card}
+
+### Summary {#studio-card-title}
+
+::: {#studio-card-body}
+An authored conclusion.
+:::
+
+::::
+
+:::: {#studio-kpi .bento-kpi}
+
+::: {#studio-kpi-label bento-role="label"}
+Participants
+:::
+
+::: {#studio-kpi-value bento-role="value"}
+250
+:::
+
+::: {#studio-kpi-detail bento-role="detail"}
+Complete cases
+:::
+
+::::
+````
+
+Save persists the new native members, their recoverable snapshots and the
+component's measured projection frame in `.qbento/`, without patching QMD. Sync
+must approve the full pending member set for that component; partial selection
+is rejected. The reviewed insertion uses the exact card/KPI source schema and
+retains the authored members' visual state. The projection frame used to lay
+out future source renders is kept separately from the mutable native background
+geometry, which remains visual design state. Before source promotion, missing
+members can be restored from the saved snapshots or the pending creation can be
+discarded; incompatible retyped or extra grouped objects need native resolution
+or explicit discard. The Studio client and contract have focused automated
+tests, but visual acceptance of this creation flow in the native editor is
+pending.
 
 ### Implemented component subset
 
@@ -231,7 +321,11 @@ execution limits are documented in [notes evidence](evidence/NOTES.md).
 - Plain headings and paragraphs can be projected without explicit source IDs. When a reviewed source change needs stable bindings, the sync plan can propose identity patches for affected and untouched weak bindings. These are visible source changes: Save and render never pin identities implicitly. Explicit IDs remain useful, and a change to an existing identity is never treated as automatic authorization to rebind saved design. See [plain-QMD evidence](evidence/PLAIN-QMD.md).
 - Add stable `qb:*` source markers only when needed for round-trip; do not flood clean QMD with markers at initialization.
 - Distinguish **semantic ID** (source content), **Bento element ID** (object on a particular slide), and **morph ID** (animation pairing across slides). A semantic figure may have multiple visual instances.
-- Target behavior: meaningful content created in a Studio card/KPI should map to a QMD fenced div or another faithful semantic construct when synced. Semantic card/KPI creation from Studio remains unimplemented; spatial proximity alone does not establish grouping.
+- Implemented subset: **Añadir componente** creates explicit authored
+  cards/KPIs with the bounded roles described above; reviewed sync maps them to
+  the exact QMD fenced-div schema. Spatial proximity or native grouping alone
+  never establishes membership. Visual acceptance of this Studio creation flow
+  in the native editor remains pending.
 - Purely decorative shapes/paths can remain entirely in `.qbento/`.
 
 ## Configurable QMD annotations
