@@ -93,3 +93,31 @@ refusal, backup validation, corrupt current envelope refusal, missing HTML
 rebuild and uncaptured native HTML refusal. These are synthetic model and Linux
 filesystem checks; native Bento editing/render fidelity requires the integration
 evidence.
+
+## Adversarial review follow-up
+
+The multi-round restoration review found and fixed loss of objects inserted
+while restoring a deleted source slide, stale hidden text/style edits
+resurrecting after restoration, and loss of the original orphan snapshot after
+repeated preview renders. The suite now includes these regressions and
+retirement of associated design when a pending source deletion is confirmed by
+fresh execution.
+
+Creation synchronization uses an explicit operation:
+
+```ts
+state = promoteCreated(state, freshlyGeneratedDocument, approvedCreationIds);
+const result = compose(state, freshlyGeneratedDocument, freshProvenance);
+```
+
+`approvedCreationIds` must contain actual pending
+`create-slide`/`create-element` change IDs from the reviewed and successfully
+applied source transaction. IDs and semantic fields must agree with fresh
+execution; otherwise promotion refuses. Matching IDs or even matching complete
+source objects do not implicitly approve a creation. Promotion separates
+retained native appearance into sparse overrides, preserves decorative objects
+and stacking, and consumes only approved creation records. QMD stays
+authoritative for later semantic changes. Optional absent and empty slide
+notes/title are treated as equivalent; arbitrary rich text normalization is not
+guessed. This operation does not itself execute, approve, or apply source
+patches.

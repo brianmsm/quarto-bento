@@ -138,6 +138,7 @@ export function captureEdits(
     before: JsonObject,
     after: JsonObject,
     skip: string[],
+    restored = false,
   ) {
     if (
       state.pending.some((p) =>
@@ -145,6 +146,15 @@ export function captureEdits(
         (p.kind === "create-element" && equal(p.target, target))
       )
     ) return;
+    if (restored) {
+      // Restoring an absent object is a complete snapshot, so a value restored to
+      // the source baseline explicitly cancels older hidden pending/visual edits.
+      state.pending = state.pending.filter((p) =>
+        !(p.kind === "field" && equal(p.target, target) &&
+          equal(get(before, p.path), get(after, p.path)))
+      );
+      state.overrides = state.overrides.filter((o) => !equal(o.target, target));
+    }
     for (const field of fields(before, after, skip)) {
       if (semantic(state, target, field.path)) {
         change(
@@ -236,7 +246,7 @@ export function captureEdits(
       const target = { slideId: slide.id, elementId: el.id };
       const existingSource = entity(state.generatedBaseline, target);
       if (existingSource) {
-        capture(target, existingSource, el, ["id"]);
+        capture(target, existingSource, el, ["id"], true);
         continue;
       }
       if (["shape", "line", "arrow", "path"].includes(el.type)) {
@@ -256,13 +266,46 @@ export function captureEdits(
       s.id === slide.id
     );
     if (original) {
-      capture({ slideId: slide.id }, original, slide, ["id", "elements"]);
+      capture({ slideId: slide.id }, original, slide, ["id", "elements"], true);
+      state.elementOrders = state.elementOrders.filter((o) =>
+        o.slideId !== slide.id
+      );
+      state.elementOrders.push({
+        slideId: slide.id,
+        ids: slide.elements.map((e) => e.id),
+      });
       for (const el of slide.elements) {
+        const target = { slideId: slide.id, elementId: el.id };
         const old = original.elements.find((e) => e.id === el.id);
-        if (old) {
-          capture({ slideId: slide.id, elementId: el.id }, old, el, ["id"]);
-        }
+        if (old) capture(target, old, el, ["id"], true);
+        else if (["shape", "line", "arrow", "path"].includes(el.type)) {
+          state.bentoOnly = state.bentoOnly.filter((o) =>
+            !(o.slideId === slide.id && o.element.id === el.id)
+          );
+          state.bentoOnly.push({ slideId: slide.id, element: clone(el) });
+        } else {change(state, target, [], { present: false }, {
+            present: true,
+            value: el,
+          }, "create-element");}
       }
+      for (
+        const old of original.elements.filter((e) =>
+          !slide.elements.some((el) => el.id === e.id)
+        )
+      ) {
+        change(
+          state,
+          { slideId: slide.id, elementId: old.id },
+          [],
+          { present: true, value: old },
+          { present: false },
+          "delete-element",
+        );
+      }
+      state.bentoOnly = state.bentoOnly.filter((o) =>
+        o.slideId !== slide.id ||
+        slide.elements.some((el) => el.id === o.element.id)
+      );
     } else {change(state, { slideId: slide.id }, [], { present: false }, {
         present: true,
         value: slide,
@@ -295,6 +338,118 @@ export function captureEdits(
   state.emitted = clone(edited);
   return state;
 }
+/**
+ * After an approved source sync and fresh execution, adopt explicitly listed
+ * creations as source-backed objects without losing native visual design.
+ * IDs and semantic fields must agree; this function never writes or approves QMD.
+ * Call compose() with the returned state and the same generated document next.
+ */
+export function promoteCreated(
+  input: ProjectState,
+  generated: BentoDoc,
+  approvedChangeIds: string[],
+): ProjectState {
+  validateState(input);
+  validateDoc(generated);
+  if (generated.docId !== input.docId) {
+    throw new StateError(
+      "DOC_ID_CHANGED",
+      "Promotion must preserve project identity.",
+    );
+  }
+  if (new Set(approvedChangeIds).size !== approvedChangeIds.length) {
+    throw new StateError(
+      "INVALID_PROMOTION",
+      "Creation approval IDs must be unique.",
+    );
+  }
+  const state = clone(input);
+  function retainVisual(
+    target: Target,
+    source: JsonObject,
+    edited: JsonObject,
+    skip: string[],
+  ) {
+    for (const field of fields(source, edited, skip)) {
+      if (semantic(state, target, field.path)) {
+        // Native optional empty notes/title are semantically equivalent to absence.
+        const previous = get(source, field.path);
+        const empty = (v: Value) => !v.present || v.value === "";
+        if (
+          ["notes", "title"].includes(field.path[0]) && empty(previous) &&
+          empty(field.value)
+        ) continue;
+        throw new StateError(
+          "PROMOTION_SEMANTIC_MISMATCH",
+          "Approved creation differs from its executed source; do not consume its pending content.",
+          { target, path: field.path, source: previous, edited: field.value },
+        );
+      }
+      let overlay = state.overrides.find((o) => equal(o.target, target));
+      if (!overlay) {
+        overlay = { target: clone(target), fields: [] };
+        state.overrides.push(overlay);
+      }
+      overlay.fields = overlay.fields.filter((f) => !equal(f.path, field.path));
+      overlay.fields.push(clone(field));
+    }
+  }
+  for (const changeId of approvedChangeIds) {
+    const pending = state.pending.find((p) => p.id === changeId);
+    if (
+      !pending || !["create-slide", "create-element"].includes(pending.kind)
+    ) {
+      throw new StateError(
+        "INVALID_PROMOTION",
+        "Only explicitly approved pending creations can be promoted.",
+      );
+    }
+    const source = entity(generated, pending.target);
+    if (!source) {
+      throw new StateError(
+        "PROMOTION_SOURCE_MISSING",
+        "Fresh execution must contain the approved creation's stable ID.",
+        pending.target,
+      );
+    }
+    const edited = pending.after.value as JsonObject;
+    if (pending.kind === "create-element") {
+      retainVisual(pending.target, source, edited, ["id"]);
+    } else {
+      const sourceSlide = source as BentoSlide,
+        editedSlide = edited as BentoSlide;
+      retainVisual(pending.target, sourceSlide, editedSlide, [
+        "id",
+        "elements",
+      ]);
+      for (const el of editedSlide.elements) {
+        const target = { slideId: editedSlide.id, elementId: el.id };
+        const sourceEl = sourceSlide.elements.find((e) => e.id === el.id);
+        if (sourceEl) retainVisual(target, sourceEl, el, ["id"]);
+        else if (["shape", "line", "arrow", "path"].includes(el.type)) {
+          state.bentoOnly = state.bentoOnly.filter((o) =>
+            !(o.slideId === editedSlide.id && o.element.id === el.id)
+          );
+          state.bentoOnly.push({ slideId: editedSlide.id, element: clone(el) });
+        } else {throw new StateError(
+            "PROMOTION_SOURCE_MISSING",
+            "An authored element on the approved slide has no stable source identity.",
+            target,
+          );}
+      }
+      state.elementOrders = state.elementOrders.filter((o) =>
+        o.slideId !== editedSlide.id
+      );
+      state.elementOrders.push({
+        slideId: editedSlide.id,
+        ids: editedSlide.elements.map((e) => e.id),
+      });
+    }
+    state.pending = state.pending.filter((p) => p.id !== changeId);
+  }
+  validateState(state);
+  return state;
+}
 export function compose(
   input: ProjectState,
   generated: BentoDoc,
@@ -316,10 +471,36 @@ export function compose(
   state.provenance = clone(provenance);
   state.ownership = clone(ownership);
   const retained: Change[] = [];
+  // A pending deletion that is now reflected in source also retires its design.
+  // Unrequested source removals still produce recoverable orphan conflicts.
+  const deleted = state.pending.filter((p) =>
+    (p.kind === "delete-slide" || p.kind === "delete-element") &&
+    !entity(generated, p.target)
+  );
+  const underDeleted = (target: Target) =>
+    deleted.some((p) =>
+      p.target.slideId === target.slideId &&
+      (!p.target.elementId || p.target.elementId === target.elementId)
+    );
+  state.overrides = state.overrides.filter((o) => !underDeleted(o.target));
+  state.bentoOnly = state.bentoOnly.filter((o) =>
+    !underDeleted({ slideId: o.slideId, elementId: o.element.id })
+  );
+  state.elementOrders = state.elementOrders.filter((o) =>
+    !deleted.some((p) =>
+      p.kind === "delete-slide" && p.target.slideId === o.slideId
+    )
+  );
+  state.pending = state.pending.filter((p) => !underDeleted(p.target));
   for (const overlay of state.overrides) {
     const obj = entity(doc, overlay.target);
     if (!obj) {
-      const old = entity(input.emitted, overlay.target);
+      const previousOrphan = input.pending.find((p) =>
+        p.kind === "orphan" && equal(p.target, overlay.target)
+      );
+      const old = previousOrphan?.after.value ??
+        entity(input.emitted, overlay.target) ??
+        entity(input.generatedBaseline, overlay.target);
       retained.push({
         id: id(overlay.target, [], "orphan"),
         target: overlay.target,
@@ -377,7 +558,7 @@ export function compose(
       });
     } else slide.elements.push(clone(item.element));
   }
-  for (const pending of input.pending.filter((p) => p.kind !== "orphan")) {
+  for (const pending of state.pending.filter((p) => p.kind !== "orphan")) {
     const p = clone(pending), obj = entity(generated, p.target);
     let source: Value;
     if (p.kind === "slide-order") {
@@ -391,13 +572,21 @@ export function compose(
         ? { present: true, value: obj }
         : { present: false };}
     // A matching source independently confirms that particular edit; other pending fields survive.
-    if (p.origin !== "detached" && equal(source, p.after)) continue;
+    const creation = p.kind === "create-slide" || p.kind === "create-element";
+    if (!creation && p.origin !== "detached" && equal(source, p.after)) {
+      continue;
+    }
     p.source = source;
     p.status = p.origin === "detached"
       ? "bento-ahead"
       : p.origin === "computed" || !equal(source, p.before)
       ? "conflict"
       : "bento-ahead";
+    if (creation && obj) {
+      p.status = "conflict";
+      p.reason =
+        "A source object now occupies this pending creation ID. Explicitly promote the approved synchronized creation to preserve its design; coincident IDs are not proof of approval.";
+    }
     if (p.kind === "field" && !obj) {
       p.status = "conflict";
       p.reason = "The source object for this pending edit no longer exists.";

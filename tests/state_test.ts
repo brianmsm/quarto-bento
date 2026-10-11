@@ -6,6 +6,7 @@ import {
   createState,
   equal,
   markEmitted,
+  promoteCreated,
   resolveChange,
   StateError,
   StateStore,
@@ -323,4 +324,141 @@ Deno.test("malformed persisted paths fail defensively and detached edits remain 
   );
   const restored = resolveChange(edited, edited.pending[0].id, "keep-source");
   eq(restored.provenance[figureKey].origin, "computed");
+});
+Deno.test("restoring a deleted slide preserves inserted authored objects and decorations", () => {
+  const original = doc(), removed = doc();
+  removed.slides.shift();
+  const deleted = captureEdits(state(), removed);
+  const restored = doc();
+  restored.slides[0].elements.push({
+    id: "fresh",
+    type: "text",
+    html: "Fresh content",
+    x: 999,
+  }, { id: "deco", type: "shape", x: 300 });
+  restored.slides[0].elements = restored.slides[0].elements.filter((e) =>
+    e.id !== "paragraph"
+  );
+  const saved = captureEdits(deleted, restored), out = compose(saved, original);
+  eq(out.document, restored);
+  assert(
+    saved.pending.some((p) =>
+      p.kind === "create-element" && p.target.elementId === "fresh"
+    ),
+  );
+  assert(
+    saved.pending.some((p) =>
+      p.kind === "delete-element" && p.target.elementId === "paragraph"
+    ),
+  );
+  eq(saved.bentoOnly[0].element.id, "deco");
+});
+Deno.test("restoring the source snapshot cancels hidden stale semantic and visual edits", () => {
+  const edit = doc();
+  edit.slides[0].elements[0].html = "Old pending";
+  edit.slides[0].elements[0].x = 500;
+  let saved = captureEdits(state(), edit);
+  edit.slides[0].elements.shift();
+  saved = captureEdits(saved, edit);
+  saved = captureEdits(saved, doc());
+  eq(compose(saved, doc()).document, doc());
+  eq(saved.pending.length, 0);
+  eq(saved.overrides.length, 0);
+});
+Deno.test("approved creation promotion retains new-slide design and decorations through source acquisition", () => {
+  const edit = doc();
+  edit.slides.push({
+    id: "new-slide",
+    background: "pink",
+    elements: [{
+      id: "new-text",
+      type: "text",
+      html: "New authored content",
+      x: 999,
+    }, { id: "deco", type: "shape", x: 7 }],
+  });
+  const saved = captureEdits(state(), edit);
+  const generated = doc();
+  generated.slides.push({
+    id: "new-slide",
+    background: "white",
+    elements: [{
+      id: "new-text",
+      type: "text",
+      html: "New authored content",
+      x: 80,
+    }],
+  });
+  rejects(() => compose(saved, generated), "MERGE_CONFLICT");
+  const id = saved.pending.find((p) => p.kind === "create-slide")!.id;
+  const promoted = promoteCreated(saved, generated, [id]);
+  const out = compose(promoted, generated);
+  eq(out.document, edit);
+  eq(out.state.pending.length, 0);
+  eq(out.state.overrides.length, 2);
+  eq(out.state.bentoOnly.length, 1);
+  const again = structuredClone(generated);
+  again.slides[2].elements[0].html = "New source content";
+  eq(compose(out.state, again).document.slides[2].elements[0], {
+    id: "new-text",
+    type: "text",
+    html: "New source content",
+    x: 999,
+  });
+});
+Deno.test("creation promotion requires explicit matching approval, identity and semantic content", () => {
+  const edit = doc();
+  edit.slides[0].elements.push({
+    id: "new-text",
+    type: "text",
+    html: "New authored content",
+    x: 999,
+  });
+  const saved = captureEdits(state(), edit);
+  const id = saved.pending.find((p) => p.kind === "create-element")!.id;
+  const generated = structuredClone(edit);
+  generated.slides[0].elements.at(-1)!.x = 80;
+  rejects(() => compose(saved, edit), "MERGE_CONFLICT"); // Coincident whole documents are not approvals.
+  const bad = structuredClone(generated);
+  bad.slides[0].elements.at(-1)!.html = "Unexpected source";
+  rejects(
+    () => promoteCreated(saved, bad, [id]),
+    "PROMOTION_SEMANTIC_MISMATCH",
+  );
+  rejects(() => promoteCreated(saved, doc(), [id]), "PROMOTION_SOURCE_MISSING");
+  rejects(
+    () => promoteCreated(saved, generated, ["not-approved"]),
+    "INVALID_PROMOTION",
+  );
+  eq(compose(promoteCreated(saved, generated, [id]), generated).document, edit);
+  eq(saved.pending.length, 1);
+});
+Deno.test("source confirming a pending deletion retires associated design while unrelated design survives", () => {
+  const edit = doc();
+  edit.slides[0].elements[0].x = 999;
+  edit.slides[0].elements[1].x = 777;
+  let saved = captureEdits(state(), edit);
+  edit.slides[0].elements.shift();
+  saved = captureEdits(saved, edit);
+  const generated = doc();
+  generated.slides[0].elements.shift();
+  const out = compose(saved, generated);
+  eq(out.state.pending.length, 0);
+  eq(out.state.overrides.length, 1);
+  eq(out.document.slides[0].elements[0].x, 777);
+});
+Deno.test("repeated non-strict conflict previews retain the original orphan snapshot", () => {
+  const edit = doc();
+  edit.slides[0].elements[0].x = 999;
+  let saved = captureEdits(state(), edit);
+  const generated = doc();
+  generated.slides[0].elements.shift();
+  for (let n = 0; n < 4; n++) {
+    saved =
+      compose(saved, generated, undefined, undefined, { strict: false }).state;
+  }
+  eq(
+    saved.pending.find((p) => p.kind === "orphan")!.after.value,
+    edit.slides[0].elements[0],
+  );
 });
