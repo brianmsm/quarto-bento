@@ -394,3 +394,90 @@ Deno.test("KPI executed inline and retained native text refuse automatic math/fi
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("KPI glyph overhang refuses initial anchored typography and diagnoses retained native metrics", async () => {
+  const { dir, source } = await setup();
+  try {
+    const first = await renderProject(source),
+      output = await Deno.readTextFile(`${dir}/deck.bento.html`);
+    const literal = original.replace('`r sprintf("%.2f", mean(values))`', "A");
+    for (
+      const attributes of [
+        'font-size="300" line-height="0.01"',
+        'font-size="300" line-height="0.01" valign="bottom"',
+      ]
+    ) {
+      const unsafe = literal.replace(
+        'bento-role="value"',
+        `bento-role="value" ${attributes}`,
+      );
+      await Deno.writeTextFile(source, unsafe);
+      await refuses(() => renderProject(source), "KPI_TYPOGRAPHY_UNSUPPORTED");
+      assert(
+        await Deno.readTextFile(source) === unsafe &&
+          await Deno.readTextFile(`${dir}/deck.bento.html`) === output &&
+          (await readProject(source)).revision === first.state.revision,
+      );
+    }
+    const multiline = literal.replace(
+      'bento-role="value"',
+      'bento-role="value" font-size="100" line-height="0.01" valign="middle"',
+    ).replace("\nA\n", "\nA  \nB\n");
+    await Deno.writeTextFile(source, multiline);
+    await refuses(() => renderProject(source), "KPI_TYPOGRAPHY_UNSUPPORTED");
+    assert(await Deno.readTextFile(`${dir}/deck.bento.html`) === output);
+    await Deno.writeTextFile(source, original);
+    const edited = structuredClone(first.state.emitted),
+      label = edited.slides[0].elements.find((el) =>
+        el.id === "label/paragraph:1"
+      )!;
+    label.html = "A";
+    label.fontSize = 300;
+    label.lineHeight = .01;
+    label.w = 264;
+    label.h = 124;
+    const saved = await saveProject(source, edited, first.state.revision),
+      retained = await renderProject(source);
+    assert(
+      retained.diagnostics.some((d) =>
+        d.code === "KPI_CONTENT_OVERFLOW" && d.elementId === label.id
+      ),
+    );
+    const kept = retained.state.emitted.slides[0].elements.find((el) =>
+      el.id === label.id
+    )!;
+    assert(
+      kept.html === "A" && kept.h === 124 && kept.lineHeight === .01 &&
+        kept.fontSize === 300 &&
+        retained.state.pending.length === saved.pending.length,
+    );
+    assert(await Deno.readTextFile(source) === original);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("centered single-line KPI typography receives enough native space for measured glyph bounds", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-kpi-centered-" }),
+    source = `${dir}/deck.qmd`;
+  try {
+    const text = `## KPI {#slide}\n\n` +
+      body.replace('`r sprintf("%.2f", mean(values))`', "A").replace(
+        'bento-role="value"',
+        'bento-role="value" font-size="100" line-height="0.01" valign="middle"',
+      );
+    await Deno.writeTextFile(source, text);
+    const first = await renderProject(source),
+      value = first.state.emitted.slides[0].elements.find((el) =>
+        el.id === "value/paragraph:1"
+      )!;
+    assert(
+      Number(value.h) > 100 && value.lineHeight === .01 &&
+        value.fontSize === 100 && value.valign === "middle" &&
+        first.diagnostics.length === 0,
+    );
+    assert(await Deno.readTextFile(source) === text);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

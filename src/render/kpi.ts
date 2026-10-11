@@ -1,4 +1,4 @@
-import { measureNativeText } from "./measure.ts";
+import { measureNativeText, type NativeTextMeasurement } from "./measure.ts";
 import { sourceComponentClass } from "./components.ts";
 /** Native KPI text/rectangle composition, with no numeric conversion or count-up. */
 import { type KpiSource, kpiSource } from "../source/kpi.ts";
@@ -64,6 +64,19 @@ async function originalParagraphs(binding: KpiSource): Promise<Node[][]> {
     );
   }
   return ast.blocks.map((node: Node) => node.c as Node[]);
+}
+/** Outer height cannot correct glyph overhang on a fixed native edge, or
+ * internally overlapping lines. Centered single-line text can use measured slack.
+ */
+function unsupportedTypography(
+  element: Element,
+  measurement: NativeTextMeasurement,
+): boolean {
+  const valign = element.valign ?? "top";
+  return (valign === "top" && measurement.overhangTop > .1) ||
+    (valign === "bottom" && measurement.overhangBottom > .1) ||
+    (measurement.lineCount > 1 &&
+      Math.max(measurement.overhangTop, measurement.overhangBottom) > .1);
 }
 export async function projectKpi(
   source: SourceDocument,
@@ -217,6 +230,12 @@ export async function projectKpi(
   }
   const measured = await measureNativeText(elements.slice(1));
   for (const [index, element] of elements.slice(1).entries()) {
+    if (unsupportedTypography(element, measured[index])) {
+      fail(
+        "KPI_TYPOGRAPHY_UNSUPPORTED",
+        "KPI font bounds exceed the native line boxes or overlap adjacent lines; increase explicit line-height, or center a single-line role with enough space. A taller top/bottom-aligned box alone cannot correct glyph overhang.",
+      );
+    }
     if (measured[index].width > Number(element.w) + 1) {
       fail(
         "KPI_CONTENT_OVERFLOW",
@@ -275,12 +294,13 @@ export async function kpiReadabilityDiagnostics(
   );
   return targets.flatMap(({ element, slideId }, index) =>
     element.type !== "text" ||
+      unsupportedTypography(element, measurements[index]) ||
       measurements[index].height > Number(element.h) + .01 ||
       measurements[index].width > Number(element.w) + 1
       ? [{
         code: "KPI_CONTENT_OVERFLOW",
         message:
-          `Saved KPI text ${element.id} exceeds its native box; increase its dimensions or explicitly adjust typography. Saved design and pending content remain retained.`,
+          `Saved KPI text ${element.id} exceeds its native box or line metrics; increase dimensions or line-height, or use suitable single-line alignment. Saved geometry is not adjusted automatically. Saved design and pending content remain retained.`,
         elementId: element.id,
         slideId,
       }]

@@ -80,16 +80,29 @@ helper launches the existing private headless Chromium helper, loads the pinned
 offline Bento shell and measures real native text styling at final width. It
 loads saved document fonts/assets, forces layout and waits for local font
 readiness. It uses the same inline-code CSS, wrapping, typography and line
-height as the pinned native renderer. It adds four pixels for rounding. No
-cloud, font download, environment manager or runtime installation is performed.
+height as the pinned native renderer. It measures both the inner CSS box and DOM
+`Range` rectangles: very small line heights can make a CSS box much shorter than
+the font bounds. The returned preferred height adds symmetric vertical slack
+plus four pixels for rounding, and width includes the horizontal union and
+scroll width. These are browser text/layout bounds, not a claim about arbitrary
+painted effects or rotated ink. No cloud, font download, environment manager or
+runtime installation is performed.
+
+A taller outer box cannot move a glyph protruding above top-aligned text, below
+bottom-aligned text, or separate overlapping lines. Initial KPI text with those
+measured conditions refuses `KPI_TYPOGRAPHY_UNSUPPORTED`; increase explicit
+`line-height`. A centered single-line role can instead use the preferred height
+to contain the measured vertical bounds. This alignment boundary is checked in
+both fresh projection and the composed native document.
 
 Initial source layout that cannot contain measured text refuses
 `KPI_CONTENT_OVERFLOW` before replacing the published output. After saved
-geometry/pending content has been composed, insufficient native text boxes emit
-an actionable `KPI_CONTENT_OVERFLOW` diagnostic. The saved design and content
-remain retained; typography is never implicitly reduced. Existing page-boundary
-`OVERFLOW` diagnostics remain available. These measurements are runtime evidence
-on this Linux browser/font environment, separate from human visual acceptance.
+geometry/pending content has been composed, insufficient native text boxes or
+unsupported saved line metrics emit an actionable `KPI_CONTENT_OVERFLOW`
+diagnostic. The saved design and content remain retained; typography is never
+implicitly reduced. Existing page-boundary `OVERFLOW` diagnostics remain
+available. These measurements are runtime evidence on this Linux browser/font
+environment, separate from human visual acceptance.
 
 ## Focused reproducible verification
 
@@ -109,6 +122,13 @@ regressions passed **3 tests, 0 failures** in 11 seconds. The canonical example
 rendered with zero pending edits and no diagnostics. These are local execution
 receipts; native visual acceptance remains separate.
 
+The glyph-overhang follow-up's focused command passed **14 tests, 0 failures**
+in **1 minute 31 seconds**. Type checking, focused lint and format checks
+passed. The shared helper fix is `4405da4`; its four measurement tests also
+passed independently in two seconds. On this browser/font environment, the 300
+px Arial `A` regression returns a 3 px line box, 167/166 px top/bottom overhang
+and a 341 px preferred height (including symmetric slack and rounding).
+
 The focused tests prove:
 
 - Literal text, default fonts, exact role/native IDs, flat grouping and actual
@@ -118,6 +138,12 @@ The focused tests prove:
   explicit line breaks use real native wrapping. A saved built-in Fraunces font
   alias changes the measured 20-character `i` sample at 120 px from 199 to 264
   px.
+- `A` at 300 px with `line-height=0.01` has a 3 px CSS inner box while native
+  `Range` font rectangles extend over 336 px. The helper returns that overhang;
+  initial top/bottom-aligned roles refuse without replacing previous output or
+  state. Centered multiline overhang also refuses. Centered single-line text
+  receives sufficient symmetric space. Saved extreme native metrics retain their
+  exact box, content and pending edits while emitting a diagnostic.
 - A real R inline value changes from `20.00` to `200.00` after CSV changes while
   saved value/label geometry, typography, background and `docId` survive.
 - A counter increments once per actual `qbento render` and once for an installed
