@@ -107,12 +107,26 @@ function showPatches(plan) {
     section.append(title, before, after);
     $("patches").append(section);
   }
+  if (plan.structure) {
+    const section = document.createElement("section"),
+      title = document.createElement("h3"),
+      result = document.createElement("pre");
+    title.textContent = "QMD propuesto con cambios de diapositivas";
+    result.textContent = plan.result;
+    section.append(title, result);
+    $("patches").append(section);
+  }
 }
 $("review").onclick = async () => {
   if (busy) return;
   try {
     await bridge.save();
     const saved = await api("state");
+    if (saved.revision !== state.revision) {
+      throw new Error(
+        "Otra pestaña ha cambiado el proyecto. Conserva tus cambios y recarga antes de sincronizar.",
+      );
+    }
     syncPlan = undefined;
     $("apply").disabled = true;
     $("patches").replaceChildren();
@@ -120,11 +134,18 @@ $("review").onclick = async () => {
     $("review-dialog").showModal();
     try {
       syncPlan = await api("sync/preview", {});
+      if (syncPlan.stateRevision !== state.revision) {
+        syncPlan = undefined;
+        throw new Error(
+          "El proyecto cambió mientras se preparaba la revisión. Recarga antes de sincronizar.",
+        );
+      }
       showPatches(syncPlan);
-      $("sync-note").textContent = syncPlan.patch.patches.length
-        ? "Revisa el texto anterior y el propuesto. Aplicar modifica solo estos fragmentos del QMD."
+      const hasChanges = syncPlan.patch.patches.length || syncPlan.structure;
+      $("sync-note").textContent = hasChanges
+        ? "Revisa los cambios propuestos. Aplicar modifica los fragmentos y la estructura indicados del QMD."
         : "No hay cambios de texto compatibles pendientes de sincronización.";
-      $("apply").disabled = !syncPlan.patch.patches.length;
+      $("apply").disabled = !hasChanges;
     } catch (error) {
       $("sync-note").textContent = error.message;
     }

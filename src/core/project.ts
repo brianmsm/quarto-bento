@@ -209,7 +209,7 @@ export function assertProjectionIdentity(
       const fresh = provenance[key];
       if (old.source?.hash !== sourceHash && old.origin !== "computed") {
         const safeExplicit = old.source?.stable === true &&
-          fresh?.semanticId === old.semanticId;
+          (!fresh || fresh.semanticId === old.semanticId);
         const safeSingleton = old.source?.parentId &&
           old.source?.siblings === 1 && fresh?.source?.siblings === 1 &&
           fresh?.source?.parentId === old.source.parentId;
@@ -237,6 +237,24 @@ async function render(source: string, executed?: ExecutedRender) {
     await assertOutputUnchanged(state, paths.output);
     const projected = await projectProjection(source, state, executed);
     const generated = projected.document, provenance = projected.provenance;
+    const approvalPath = resolve(paths.stateDir, "sync-approved.json");
+    let approvalText: string | undefined;
+    if (await exists(approvalPath)) {
+      const info = await Deno.lstat(approvalPath);
+      if (!info.isFile || info.isSymlink || !state) {
+        throw new Error(
+          "INVALID_APPROVAL: expected a saved project and regular approval file",
+        );
+      }
+      approvalText = await Deno.readTextFile(approvalPath);
+      const { prepareApprovedSync } = await import("./sync.ts");
+      state = prepareApprovedSync(
+        state,
+        generated,
+        projected.sourceHash,
+        JSON.parse(approvalText),
+      );
+    }
     if (state) {
       assertProjectionIdentity(state, provenance, projected.sourceHash);
     }
@@ -271,7 +289,16 @@ async function render(source: string, executed?: ExecutedRender) {
     const journal = resolve(paths.stateDir, "render-transaction.json");
     const history = resolve(paths.stateDir, "history");
     await Deno.mkdir(history, { recursive: true });
+    const historyInfo = await Deno.lstat(history);
+    if (!historyInfo.isDirectory || historyInfo.isSymlink) {
+      throw new Error("UNSAFE_STATE_PATH: history must be a real directory");
+    }
     const backup = resolve(history, `output-${crypto.randomUUID()}.html`);
+    const approval = approvalText === undefined ? undefined : {
+      path: approvalPath,
+      sha256: await sha256(approvalText),
+      archive: resolve(history, `consumed-sync-${crypto.randomUUID()}.json`),
+    };
     await writeDurable(
       journal,
       JSON.stringify(
@@ -284,6 +311,7 @@ async function render(source: string, executed?: ExecutedRender) {
           nextRevision: state.revision + 1,
           sha256: await sha256(html),
           previousOutput: state.output ?? null,
+          ...(approval ? { approval } : {}),
         },
         null,
         2,
@@ -329,6 +357,19 @@ async function render(source: string, executed?: ExecutedRender) {
     await syncDirectory(paths.directory);
     await Deno.remove(staging);
     await syncDirectory(paths.directory);
+    if (approval) {
+      if (
+        await sha256(await Deno.readFile(approval.path)) !== approval.sha256
+      ) {
+        throw new Error(
+          "STALE_APPROVAL: approval changed during publication; recover the retained transaction",
+        );
+      }
+      await Deno.link(approval.path, approval.archive);
+      await syncDirectory(history);
+      await Deno.remove(approval.path);
+      await syncDirectory(paths.stateDir);
+    }
     await Deno.remove(journal);
     await syncDirectory(paths.stateDir);
     return { output: paths.output, state, diagnostics: projected.diagnostics };

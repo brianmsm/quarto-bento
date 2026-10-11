@@ -9,9 +9,6 @@ import {
   renderProject,
   saveProject,
 } from "../src/core/project.ts";
-import { projectAst } from "../src/render/project.ts";
-import { executeQuarto } from "../src/render/quarto.ts";
-import { prepareIsolatedDocument } from "../src/bridge/isolation.ts";
 import {
   canonical,
   captureEdits,
@@ -227,26 +224,17 @@ Deno.test({
       await saveProject(source, edited, initial.state.revision);
       const plan = await previewSync(source);
       await applySync(source, plan);
-      const stored = await readProject(source),
-        text = await Deno.readTextFile(source),
-        ast = await executeQuarto(source, dir + "/.qbento/build");
-      const projected = await projectAst(ast, stored.docId, [
-        dir + "/.qbento/build",
-        dir,
-      ]);
-      const generated = prepareIsolatedDocument(
-        projected.document,
-      ) as unknown as BentoDoc;
-      const envelope = JSON.parse(
-        await Deno.readTextFile(dir + "/.qbento/sync-approved.json"),
+      const published = await renderProject(source);
+      const merged = {
+        state: published.state,
+        document: published.state.emitted,
+      };
+      const reopened = await readProject(source);
+      eq(reopened.pending.length, 0);
+      await refuses(
+        () => Deno.readTextFile(dir + "/.qbento/sync-approved.json"),
+        "No such file",
       );
-      const prepared = prepareApprovedSync(
-        stored,
-        generated,
-        hashSource(text),
-        envelope,
-      );
-      const merged = compose(prepared, generated);
       eq(merged.document.slides.map((s) => s.id), [
         "created",
         edited.slides[1].id,
