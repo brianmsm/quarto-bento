@@ -21,11 +21,13 @@ notes creation, existing Markdown lists and simple composed tables. Their newer
 receipts are in the implementation ledger. List creation/conversion/deletion
 and KPI composition are now also integrated; their newer receipts distinguish
 native Studio actions from core-save/native-renderer checks. Chart composition and common execution provenance are also integrated. Continue
-combined acceptance, local-image mapping and the rmarkdown intermediate-filename
-correction. Unlabelled computed tables now have reviewed execution receipts and
-native Studio acceptance. Ordinary math/code and pipe-table
-mapping are now integrated with independent reviews and native math/code evidence. Safe refusals
-preserve work but do not close those gates.
+from `docs/evidence/ORDINARY-INTEGRATED-LINUX.md`: local-image caption mapping,
+quoted rmarkdown paths and H1/H2 source boundaries are now integrated. The
+combined `85da037` runtime has a passing full Linux suite and a new portable
+artifact with exact native table/image reconstruction. Preserve the documented
+bounded codecs. A prior intermittent exact-widget-SVG mismatch did not reproduce;
+retain the strict assertion and opt-in diagnostics rather than claiming its cause
+fixed. Safe refusals preserve work but do not close future ordinary-workflow gaps.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains
 `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the

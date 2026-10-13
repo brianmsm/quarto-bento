@@ -66,6 +66,35 @@ guardado todavía puede requerir resolver su correspondencia. Consulta
 [la sintaxis y sus límites](AUTHORING.md) para componentes, código, ecuaciones,
 notas, tablas y gráficos, y la [prueba de QMD normal](evidence/PLAIN-QMD.md).
 
+## Imágenes locales y pies de figura
+
+Puedes escribir una imagen Markdown ordinaria, sin preparar un contenedor con
+identidad:
+
+```markdown
+## Resultados
+
+![Comparación con **β** y `código`](figuras/resultado.svg)
+```
+
+La imagen y su pie se proyectan como dos objetos nativos vinculados. Edita el pie
+en Studio y pulsa **Guardar proyecto** para conservarlo pendiente. **Revisar
+cambios** muestra las identidades necesarias y el cambio exacto del pie;
+**Aplicar** lo escribe en QMD. **Recalcular** conserva la ruta del recurso y el
+diseño. Un pie vacío `![](figuras/resultado.svg)` puede recibir texto mediante
+el mismo flujo. La creación y el vaciado del pie no eliminan la imagen.
+
+El recurso debe existir dentro del proyecto fuente. Se admiten PNG, JPEG, WebP y
+SVG autocontenidos compatibles; los SVG que dependen de archivos externos o
+scripts se rechazan. Si actualizas el archivo antes de recalcular, se incorporan
+los nuevos bytes manteniendo el diseño. Modificarlo durante la ejecución se
+rechaza para evitar publicar una combinación incoherente.
+
+La sustitución de la ruta desde Bento, el borrado del par, las figuras numeradas
+y los pies calculados necesitan adaptadores adicionales. Sus cambios pendientes
+no se descartan. Consulta el [ejemplo](../examples/plain-images/deck.qmd) y la
+[evidencia de imágenes](evidence/PLAIN-IMAGES.md) para los límites actuales.
+
 ## Diseñar, guardar y sincronizar
 
 1. Mueve, redimensiona o estiliza los objetos en el editor Bento. Puedes añadir

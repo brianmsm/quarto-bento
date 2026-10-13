@@ -48,14 +48,22 @@ independent startup/profile, hook and inline-filter checks. See
 [producer activation](evidence/PRODUCER-ACTIVATION.md) and
 [Python computation](evidence/PYTHON-COMPUTATION.md). The shared computed-chart receipt adapter is integrated at `b5923c2` after
 11 combined context/composition tests. Integrated Python sync/recompute/rebuild
-also passed after updating its exact expected producer-identity patch. Complete
-combined validation remains in progress; these additions do not inherit the
-older full-suite result. Ordinary unwrapped math/code and pipe-table mapping are integrated at `f3f4127`
+also passed after updating its exact expected producer-identity patch. These additions now have their own combined validation below; they do not
+inherit the older full-suite result. Ordinary unwrapped math/code and pipe-table mapping are integrated at `f3f4127`
 and `73dea2d`, respectively, after independent reviews (30 and 21 tests) and
 native Studio math/code-neighbor acceptance. See [plain QMD](evidence/PLAIN-QMD.md)
 and [plain tables](evidence/PLAIN-TABLES.md). Unlabelled computed tables are integrated at `a1492d4` after 16 independent
 tests and native Studio position/prose-sync acceptance with exact reconstruction.
-Local-image mapping and the intermediate filename correction remain in progress.
+Local-image mapping is integrated at `9b237d5` after two independent reviews
+and native Studio caption editing/reopen/sync acceptance. The intermediate
+filename correction is integrated at `ca8eb3a`; the generated SVG URI also works
+with quoted Unicode filenames. The final runtime `85da037` aligns H1/H2 source
+and native slide boundaries. Its combined Linux suite passed **550 tests,
+4 steps, zero failures (15m43s)**; types, lint, formatting and a new
+108-file portable artifact passed. See [combined ordinary-authoring acceptance](evidence/ORDINARY-INTEGRATED-LINUX.md).
+One exact-widget-SVG mismatch in the prior run remains an unexplained intermittent
+observation; repeated independent renders and the final suite passed without
+relaxing equality. Opt-in failure evidence is retained for any recurrence.
 
 Portable packages additionally pin schema, license/notice and upstream npm
 manifest/lock bytes, verify a 25-entry production dependency inventory and record

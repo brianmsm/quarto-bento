@@ -10,7 +10,7 @@ shell on local Linux; it does not establish another platform or release scope.
 The example is
 [`examples/plain-images/deck.qmd`](../../examples/plain-images/deck.qmd). Run
 the ordinary `qbento render` workflow, or install this single-QMD project with
-`qbento install` and use `quarto render`. No environment manager, remote asset
+`qbento init path.qmd` and use `quarto render`. No environment manager, remote asset
 request or additional runtime installation is introduced.
 
 ## Source and asset proof
@@ -98,3 +98,21 @@ retained captured geometry on recompute and executed each render once. This
 exercised the shared local URI resolver with `%22` in the generated figure
 reference. Type checks and lint passed for the changed TypeScript. These focused
 results precede the coordinator's combined full-suite run.
+
+## Integrated native Studio acceptance
+
+At integrated runtime `9b237d5`, the coordinator edited a rich caption through
+the real Studio UI in headless Chromium, saved, reloaded, inspected both source
+identities and the exact caption patch, applied and recalculated. Save left QMD
+byte-identical; the final complete emitted document and docId matched the saved
+state, the original image URI remained intact, and pending changes were empty.
+The inspected screenshot shows the complete image and caption within the slide.
+
+The final `85da037` portable launcher reconstructed that same native fixture from
+QMD + SVG + project/state only, without prior HTML or caches, retaining the exact
+emitted document and docId. Source asset and QMD bytes remained unchanged.
+Local evidence is in `output/verification/plain-images-native/` and
+`output/verification/portable-85da037/rebuild-receipt.json`; screenshots are
+`output/playwright/plain-images-review.png` and `plain-images-final.png`.
+This adds actual native browser interactions to the earlier API/rendering receipt,
+without claiming OS-native dialogs, other platforms or unsupported figure codecs.

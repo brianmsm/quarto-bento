@@ -21,13 +21,17 @@ toolbar creation/conversion and confirmed deletion/restoration evidence.
 KPI composition is integrated at `cea3e61`, with independent real-execution and
 native renderer checks. Chart composition is integrated at `a1201a4`, and common
 execution producer receipts with ordinary Quarto activation at `74a16cd`.
-Both have independent lane reviews; combined acceptance remains active.
+Both have independent lane reviews and are included in the newer combined acceptance below.
 The newer ordinary-QMD audit found unwrapped display math/code, plain pipe tables
 and local-image mapping gaps. Math/code and pipe tables are integrated at
 `f3f4127` and `73dea2d` after independent reviews and native Studio checks.
-Unlabelled computed tables followed at `a1492d4`. Local-image mapping and the
-rmarkdown intermediate-filename correction remain in progress; the failed first
-combined run is recorded in the implementation ledger. Documenting a
+Unlabelled computed tables followed at `a1492d4`. Local images/caption sync
+followed at `9b237d5`, with native Studio acceptance; the rmarkdown path adapter
+is integrated at `ca8eb3a`. The final `85da037` runtime also corrects H1/H2 source
+boundaries and passes the combined suite and new portable reconstruction.
+See [the final local receipt](evidence/ORDINARY-INTEGRATED-LINUX.md), including
+the earlier failed runs and the unexplained intermittent widget SVG mismatch.
+Documenting a
 conservative refusal does not make a missing ordinary workflow an accepted
 product exclusion. Local work continues under the owner's Linux-only scope.
 

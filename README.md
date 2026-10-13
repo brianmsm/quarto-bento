@@ -61,7 +61,8 @@ changed uncaptured output is refused.
 Currently demonstrated projection includes plain QMD headings, paragraphs and
 bounded native Markdown lists,
 supported rich text in identified fenced divs, ordinary displayed code,
-display equations and speaker notes, R-generated SVG figures, plain tables,
+display equations and speaker notes, local Markdown images with reviewed caption
+editing, R-generated SVG figures, plain tables,
 bounded native charts, cards, named two-column layouts, source-authored
 `.bento-kpi` components, and bounded source `.bento-diagram` and
 `.bento-timeline` components. The Studio **Relaciones** controls can reassign

@@ -43,8 +43,8 @@ review and native DOM checks. See the [implementation ledger](IMPLEMENTATION_STA
 The matrix above remains a record of the audited baseline. List creation,
 conversion/deletion is integrated at `2dbc8e2`, with newer native evidence;
 KPI composition is integrated at `cea3e61`, with independent native measurements
-and execution tests. Chart composition and the common producer-receipt work
-across execution entry points remain under review.
+and execution tests. Chart composition and the common producer receipts are now
+integrated; their combined acceptance is recorded in the later follow-up below.
 
 1. **Create plain speaker notes from Studio and the agent API.** Support existing
    slides, reviewed identity acquisition on ordinary QMD and new authored
@@ -116,3 +116,21 @@ The audit found no additional concrete ordinary-workflow defect outside these
 assigned corrections. This is a bounded audit result, not full-product or public
 release acceptance. Other-platform execution and hosted CI remain deferred by
 the owner.
+
+## Combined follow-up completed locally (2026-10-13)
+
+The assigned ordinary-QMD corrections are integrated at `85da037`: plain
+math/code, pipe tables, local image/caption pairs, common execution receipts and
+H1/H2 source boundaries. Native Studio receipts cover math/code neighbors,
+identical authored/computed tables and caption editing. The final combined suite
+passed 550 tests and 4 steps with zero failures; the new 108-file portable
+artifact rebuilt native table/image fixtures exactly from source, inputs and
+state only. See [combined evidence](evidence/ORDINARY-INTEGRATED-LINUX.md).
+
+The earlier table remains an audit history, not a current list of unimplemented
+features. An exact widget SVG comparison failed once in an intermediate suite;
+its cause is not established. Independent repetition and the final suite passed,
+and the strict test now saves opt-in diagnostic evidence on recurrence. This
+observation remains open for diagnosis; it is not reported as a confirmed fix.
+Image replacement/deletion and broader codecs retain their explicit limitations.
+The full product horizon and public v1 scope remain separate from this local pass.

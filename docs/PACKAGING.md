@@ -222,3 +222,14 @@ assertions passed with process exit **0** in 6.92 seconds. The local raw receipt
 is `output/verification/75edcdf/portable.log`. The prior 69-file receipt at
 `c225546` remains historical evidence. These checks extend the Linux receipt
 without changing the other-platform qualification boundary.
+
+## Current combined Linux artifact
+
+The `85da037` development artifact contains 108 verified files and records the
+exact clean source revision. Its real launcher rebuilt the native table and
+image-caption fixtures from source/assets/state only, retaining exact emitted
+documents, docIds and zero pending changes; the table executed R once. The
+portable smoke also passed relocation and ordinary Quarto with pending edits.
+See [the current receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable
+directory is `output/verification/portable-85da037/distribution/`; the sibling
+README documents local launch commands. Older artifact receipts remain historical.

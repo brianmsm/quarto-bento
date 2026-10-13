@@ -1,5 +1,9 @@
 # Integrated Linux validation
 
+This is the historical `75edcdf` receipt. The newer combined runtime, ordinary
+authoring workflows and portable package are recorded in
+[the 2026-10-13 receipt](ORDINARY-INTEGRATED-LINUX.md).
+
 The integrated runtime
 `75edcdf0dc2b04d09d6314c0630f694693c55f8e` passed the complete suite on
 2026-10-11: **430 tests passed, 4 test steps, 0 failures, 0 ignored
