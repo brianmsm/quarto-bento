@@ -99,8 +99,8 @@ implement reverse mapping from chart options to literal table cells or the kind
 declaration. Sync refuses unsupported changes and leaves QMD unchanged. Computed
 edits always conflict; they are never reverse-written into code or inputs.
 Existing explicit restoration/detachment remains the state core's resolution
-path. Charts inside card/layout components remain outside this slice pending
-measured component layout support.
+path. The subsequent [composed-chart slice](COMPOSED-CHARTS.md) adds measured
+card/layout placement with the same data and source-authority boundaries.
 
 ## Evidence
 
@@ -151,9 +151,10 @@ Captured and visually inspected local artifacts:
 presentation, hover and changed-data preservation for the supported fixture;
 it does not broaden the numeric/schema limits above.
 
-The integration regression additionally executes Quarto with a native chart or
-table nested inside a card. Both refuse before HTML publication, retaining the
-original QMD, until an appropriate internal-layout adapter exists.
+The original integration regression refused native charts and tables inside
+cards. The later [table](COMPOSED-TABLES.md) and [chart](COMPOSED-CHARTS.md)
+adapters replace that historical refusal with measured composition; undersized
+or ambiguous content still refuses without replacing the prior publication.
 
 The nominal ECharts categorical
 [bar](https://echarts.apache.org/handbook/en/how-to/chart-types/bar/basic-bar/)

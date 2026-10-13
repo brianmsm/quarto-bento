@@ -291,7 +291,7 @@ Deno.test("charts directly in columns keep full slot metrics and refuse box-only
     await Deno.remove(dir, { recursive: true });
   }
 });
-Deno.test("authored option edits and explicit parent geometry remain pending without guessed source synchronization", async () => {
+Deno.test("explicit parent geometry remains pending without guessed source synchronization", async () => {
   const { dir, source } = await fixture();
   try {
     const original = (await Deno.readTextFile(source)).replace(
