@@ -1,6 +1,6 @@
 # Implementation ledger
 
-Updated 2026-10-11. The full product destination remains `PRODUCT_TARGET.md`.
+Updated 2026-10-13. The full product destination remains `PRODUCT_TARGET.md`.
 The first supported bidirectional Linux workflow has been demonstrated end to
 end. Full product acceptance and public v1 release remain pending. See
 [first-slice evidence](evidence/FIRST-SLICE.md) for scope and reproduction.
@@ -40,8 +40,16 @@ changed-data reconstruction and pinned-renderer DOM/glyph checks passed before
 integration at `1605a37`. See [composed tables](evidence/COMPOSED-TABLES.md).
 KPI composition is integrated at `cea3e61` after 17 independent focal tests and
 native metric/image inspection. See [composed KPIs](evidence/COMPOSED-KPIS.md).
-Chart composition and the common R/Python producer-receipt improvements remain
-in review. These additions do not inherit the older full-suite result.
+Chart composition is integrated at `a1201a4` after 16 independent tests,
+including original slide/component context checks and native SVG measurements.
+See [composed charts](evidence/COMPOSED-CHARTS.md). Common execution producer
+receipts and ordinary Quarto activation are integrated at `74a16cd` after
+independent startup/profile, hook and inline-filter checks. See
+[producer activation](evidence/PRODUCER-ACTIVATION.md) and
+[Python computation](evidence/PYTHON-COMPUTATION.md). Integration regression
+validation is in progress; these additions do not inherit the older full-suite
+result. The current audit also found ordinary unwrapped math/code, pipe-table
+and local-image mapping gaps; their corrections remain in progress.
 
 Portable packages additionally pin schema, license/notice and upstream npm
 manifest/lock bytes, verify a 25-entry production dependency inventory and record
@@ -62,7 +70,7 @@ source bytes outside the reviewed insertion/annotations.
 Studio shows missing external-design diagnostics on open/recalculate. Render
 warnings survive the corresponding iframe reconnect and design-only refresh.
 `OVERFLOW` is recomputed from the final composed document, including saved
-geometry and page size; it checks vertical box bounds, not rendered ink.
+geometry and page size; it checks all four axis-aligned box edges at `6f8e1ea`, not rendered ink.
 [Banner lifecycle](evidence/MISSING-DESIGN.md),
 [composed overflow](evidence/COMPOSED-OVERFLOW.md).
 
@@ -98,8 +106,9 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 The full-product audit at `89fc134` identified additional ordinary authoring
 work. Notes creation, existing Markdown lists and simple table composition have
 since advanced through the evidence above. List creation/conversion/deletion
-and KPI composition are now integrated as well. Chart composition and common
-execution provenance remain active work. See
+and KPI/chart composition and common execution provenance are now integrated.
+Combined regression validation and the newly audited ordinary-QMD mapping
+gaps remain active work. See
 the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md). The historical integrated
 receipt below remains evidence only for its tested revision and scope.
 

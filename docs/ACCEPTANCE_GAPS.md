@@ -19,8 +19,11 @@ DOM evidence, integrated at `1605a37`. See [notes](evidence/NOTES.md),
 List creation/conversion/deletion is integrated at `2dbc8e2`, with native
 toolbar creation/conversion and confirmed deletion/restoration evidence.
 KPI composition is integrated at `cea3e61`, with independent real-execution and
-native renderer checks. Chart composition and strengthening the common execution
-producer receipt remain active gates. Documenting a
+native renderer checks. Chart composition is integrated at `a1201a4`, and common
+execution producer receipts with ordinary Quarto activation at `74a16cd`.
+Both have independent lane reviews; combined acceptance remains active.
+The newer ordinary-QMD audit found unwrapped display math/code, plain pipe tables
+and local-image mapping gaps. Corrections are in progress, not yet accepted. Documenting a
 conservative refusal does not make a missing ordinary workflow an accepted
 product exclusion. Local work continues under the owner's Linux-only scope.
 

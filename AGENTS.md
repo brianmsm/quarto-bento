@@ -20,8 +20,9 @@ The full-product audit in `docs/PRODUCT_ACCEPTANCE_AUDIT.md` led to integrated
 notes creation, existing Markdown lists and simple composed tables. Their newer
 receipts are in the implementation ledger. List creation/conversion/deletion
 and KPI composition are now also integrated; their newer receipts distinguish
-native Studio actions from core-save/native-renderer checks. Continue chart
-composition review, common execution provenance and combined acceptance. Safe refusals
+native Studio actions from core-save/native-renderer checks. Chart composition and common execution provenance are also integrated. Continue
+combined acceptance and the newly audited ordinary math/code, table and local-image
+mapping gaps. Safe refusals
 preserve work but do not close those gates.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains
