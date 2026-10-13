@@ -86,3 +86,33 @@ Other-platform execution, hosted CI and public release are not prerequisites for
 the local authoring improvements above. A public v1 additionally requires its
 scope to be agreed and validated across the supported platforms. Neither the
 baseline suite nor this audit declares the full product complete.
+
+## Ordinary QMD follow-up (2026-10-13)
+
+A second independent read-only audit checked all ten workflows against
+`550e1ef`, then tracked integrations through `5b92912`. Reproduction scripts and
+logs are retained locally in `output/verification/ordinary-qmd-audit-550e1ef/`.
+This audit did not rerun the complete suite or all native interactions.
+
+| Workflows | Finding and next gate |
+|---|---|
+| 1, 7: ordinary scientific content | Static Markdown code without an ID fails initial projection. An untouched anonymous display equation blocks sync of neighboring prose. Reviewed original-source mapping and identity acquisition are being extended; Save/render must never insert identities implicitly. |
+| 1, 8: simple tables and local figures | A plain pipe table fails `UNMAPPED_TABLE_SOURCE`; a local Markdown SVG figure fails on Quarto's caption wrapper. Both require faithful source adapters, not a new requirement to manually wrap ordinary content. |
+| 2: redesign | Right, left and top out-of-page geometry lacked warnings. Four-edge diagnostics are integrated at `6f8e1ea`; seven integrated overflow tests passed. This remains box geometry, not painted-ink validation. |
+| 3: prose synchronization | Existing paragraph/list paths have receipts; the neighboring weak math/code obstruction above remains the new gate. |
+| 4: changed data | Chart composition and execution receipts are integrated at `a1201a4` and `74a16cd`. Their shared computed-chart boundary and combined regressions must pass after integration. |
+| 5, 6: slide creation and lifecycle | No new ordinary gap was reproduced beyond the assigned source-mapping work. Existing notes, text, structural review, recovery and native receipts remain bounded evidence. |
+| 9: selected interaction/export | No new mandatory gap was reproduced. Existing selected Plotly, offline Presenter and static/PDF receipts do not imply arbitrary widgets or OS-dialog validation. |
+| 10: Git reconstruction | Build and exercise a new portable artifact from the final combined runtime. The historical `75edcdf` artifact cannot prove the newer helpers/adapters. |
+
+Layout association currently uses QMD `bento-layout-name`; Studio edits registry
+layout definitions and the theme and retains local geometry. There is no Studio
+operation that associates arbitrary free slide content with a registry layout.
+The existing declared-layout workflow has evidence; visual association of free
+content has not been demonstrated. This is an explicit UX limit, not evidence
+that the current registry is unusable or a newly agreed release boundary.
+
+The audit found no additional concrete ordinary-workflow defect outside these
+assigned corrections. This is a bounded audit result, not full-product or public
+release acceptance. Other-platform execution and hosted CI remain deferred by
+the owner.
