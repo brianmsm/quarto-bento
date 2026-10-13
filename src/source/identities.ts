@@ -91,10 +91,10 @@ export function previewIdentities(
     const block = blocks[0];
     if (
       block.stable || block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph", "list"].includes(block.kind)
+      !["heading", "paragraph", "list", "math", "code"].includes(block.kind)
     ) {
       fail(
-        "Only weak authored headings, paragraphs and lists can acquire a verified identity.",
+        "Only weak authored headings, paragraphs, lists, display equations and displayed code can acquire a verified identity.",
       );
     }
     if (block.parentId) {

@@ -1,13 +1,15 @@
 /** Read authored fragments with Pandoc only; never execute Quarto or infer output. */
 import type { SourceDocument } from "../source/mod.ts";
+import { mathToNativeHtml } from "./math.ts";
 import { renderList } from "./lists.ts";
 import { renderInline } from "./inline.ts";
 import type { Node } from "./types.ts";
 export interface SourceInlineProof {
   sourceHash: string;
   blockId: string;
-  kind: "heading" | "paragraph" | "list";
+  kind: "heading" | "paragraph" | "list" | "math" | "code";
   html: string;
+  code?: { content: string; grammarName: string | null };
   readerId?: string;
 }
 export async function readSourceInline(
@@ -15,7 +17,7 @@ export async function readSourceInline(
 ): Promise<ReadonlyMap<string, SourceInlineProof>> {
   const fragments = source.blocks.filter((block) =>
     block.origin === "authored" && block.editable &&
-    ["heading", "paragraph", "list"].includes(block.kind)
+    ["heading", "paragraph", "list", "math", "code"].includes(block.kind)
   );
   const proofs = new Map<string, SourceInlineProof>();
   if (!fragments.length) return proofs;
@@ -77,6 +79,43 @@ export async function readSourceInline(
         kind: "heading",
         html: renderInline(nodes),
         readerId: headerAttr[0],
+      });
+    } else if (block.kind === "code" && node.t === "CodeBlock") {
+      const [attributes, content] = node.c as [
+        [string, string[], unknown[]],
+        string,
+      ];
+      if (
+        attributes[1].length > 1 ||
+        content !== block.content.replace(/\r\n/g, "\n").replace(/\n$/, "")
+      ) {
+        throw new Error("UNMAPPED_PROVENANCE: original displayed code differs");
+      }
+      proofs.set(block.id, {
+        sourceHash: source.hash,
+        blockId: block.id,
+        kind: "code",
+        html: "",
+        code: { content, grammarName: attributes[1][0] ?? null },
+      });
+    } else if (block.kind === "math" && node.t === "Para") {
+      const nodes = node.c as Node[];
+      const formula = nodes.length === 1 && nodes[0].t === "Math"
+        ? nodes[0].c as [{ t: string }, string]
+        : undefined;
+      if (
+        !formula || formula[0].t !== "DisplayMath" ||
+        mathToNativeHtml(formula[1]) !== mathToNativeHtml(block.content)
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: original display equation differs",
+        );
+      }
+      proofs.set(block.id, {
+        sourceHash: source.hash,
+        blockId: block.id,
+        kind: "math",
+        html: mathToNativeHtml(formula[1]),
       });
     } else if (block.kind === "paragraph" && node.t === "Para") {
       proofs.set(block.id, {

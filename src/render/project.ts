@@ -972,19 +972,36 @@ export async function projectAst(
           }
           if (
             isComputed || children.length !== 1 ||
-            !["Para", "Plain", "BulletList", "OrderedList"].includes(
-              children[0].t,
-            ) ||
+            !["Para", "Plain", "BulletList", "OrderedList", "CodeBlock"]
+              .includes(
+                children[0].t,
+              ) ||
             images(children).length
           ) {
             throw new Error(
-              "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored paragraph, list or display equation",
+              "AMBIGUOUS_VISUAL_BINDING: bento-element-id requires exactly one authored paragraph, list, display equation or displayed code",
             );
           }
           const content = children[0].c as Node[];
           const isList = ["BulletList", "OrderedList"].includes(children[0].t);
-          const formula = isList ? undefined : displayFormula(content);
-          if (isList) {
+          const formula = isList || children[0].t === "CodeBlock"
+            ? undefined
+            : displayFormula(content);
+          if (children[0].t === "CodeBlock") {
+            const code = structuredClone(children[0]);
+            const codeAttr = (code.c as [Attr, string])[0];
+            if (codeAttr[0]) {
+              throw new Error(
+                "AMBIGUOUS_VISUAL_BINDING: displayed code has its own identity",
+              );
+            }
+            codeAttr[0] = nativeId;
+            await walk([code], false, attr[0]);
+            result.origins[slide!.id][nativeId] = {
+              origin: "authored",
+              sourceId: `${attr[0]}/code:1`,
+            };
+          } else if (isList) {
             text(nativeId, renderList(children[0]), false, {
               origin: "authored",
               sourceId: `${attr[0]}/list:1`,
@@ -1417,6 +1434,18 @@ export function validateProjectionOrigins(
           mathToNativeHtml(block.content) === element.html
         );
       }
+      if (!candidates.length && !original.sourceId && element.type === "code") {
+        candidates = source.blocks.filter((block) => {
+          const proof = sourceInline?.get(block.id);
+          return block.kind === "code" && block.origin === "authored" &&
+            !block.stable && !block.parentId &&
+            originalSlides.has(slideId) &&
+            block.slideId === originalSlides.get(slideId) &&
+            proof?.sourceHash === source.hash &&
+            proof.code?.content === element.content &&
+            proof.code?.grammarName === (element.grammarName ?? null);
+        });
+      }
       if (candidates.length !== 1) {
         throw new Error(
           `UNMAPPED_PROVENANCE: element ${elementId} is not uniquely linked to original source; explicitly pin authored identity or use a supported computed output`,
@@ -1472,6 +1501,19 @@ export function validateProjectionOrigins(
         throw new Error(
           "UNMAPPED_PROVENANCE: executed math differs from the exact authored source formula",
         );
+      }
+      if (block.kind === "code" && block.origin === "authored") {
+        const proof = sourceInline?.get(block.id);
+        if (
+          element.type !== "code" || !proof?.code ||
+          proof.sourceHash !== source.hash ||
+          proof.code.content !== element.content ||
+          proof.code.grammarName !== (element.grammarName ?? null)
+        ) {
+          throw new Error(
+            "UNMAPPED_PROVENANCE: displayed code differs from its exact authored fence and language",
+          );
+        }
       }
       if (
         block.kind === "list" && block.origin === "authored" &&

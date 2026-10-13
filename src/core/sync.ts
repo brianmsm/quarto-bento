@@ -28,7 +28,11 @@ import {
   parseNativeList,
   renderList,
 } from "../render/lists.ts";
-import { MATH_CODEC_VERSION, parseNativeDisplayMath } from "../render/math.ts";
+import {
+  MATH_CODEC_VERSION,
+  mathToNativeHtml,
+  parseNativeDisplayMath,
+} from "../render/math.ts";
 import { graphSyncRequest, preflightGraphSync } from "./graph-sync.ts";
 import {
   applyGraphEndpoints,
@@ -132,7 +136,8 @@ export interface SyncIdentityBinding {
   target: Target;
   before: Provenance;
   after: Provenance;
-  expectedHtml: string;
+  expectedHtml?: string;
+  expectedCode?: { content: string; grammarName: string | null };
 }
 export interface SyncApproval {
   version: 1;
@@ -285,7 +290,14 @@ export function validateSyncApproval(
       a.identityBindings.some((binding) =>
         typeof binding.target.slideId !== "string" || !binding.target.slideId ||
         typeof binding.target.elementId !== "string" ||
-        !binding.target.elementId || typeof binding.expectedHtml !== "string" ||
+        !binding.target.elementId ||
+        (binding.after?.source?.kind === "code"
+          ? binding.expectedHtml !== undefined ||
+            typeof binding.expectedCode?.content !== "string" ||
+            !(binding.expectedCode.grammarName === null ||
+              typeof binding.expectedCode.grammarName === "string")
+          : typeof binding.expectedHtml !== "string" ||
+            binding.expectedCode !== undefined) ||
         binding.before?.origin !== "authored" ||
         binding.after?.origin !== "authored" ||
         typeof binding.before.source?.hash !== "string" ||
@@ -423,8 +435,12 @@ export function prepareApprovedSync(
     if (
       canonical(state.provenance[key]) !== canonical(binding.before) ||
       canonical(fresh) !== canonical(binding.after) ||
-      fresh?.source?.hash !== sourceHash || element?.type !== "text" ||
-      element.html !== binding.expectedHtml
+      fresh?.source?.hash !== sourceHash ||
+      (binding.expectedCode
+        ? element?.type !== "code" ||
+          element.content !== binding.expectedCode.content ||
+          (element.grammarName ?? null) !== binding.expectedCode.grammarName
+        : element?.type !== "text" || element.html !== binding.expectedHtml)
     ) {
       fail(
         "STALE_APPROVAL",
@@ -606,13 +622,19 @@ function acquiredProvenance(
   return { ...clone(before), semanticId: block.id, source };
 }
 /** A global source hash change affects every weak authored binding, selected or not. */
-function identityAcquisition(
+async function identityAcquisition(
   text: string,
   state: ProjectState,
   selected: Change[],
 ) {
   if (!selected.length) return undefined;
   const document = scanSource(text), requests: IdentityRequest[] = [];
+  const codeProofs =
+    document.blocks.some((block) =>
+        block.kind === "code" && block.origin === "authored"
+      )
+      ? await readSourceInline(document)
+      : undefined;
   for (const [key, proof] of Object.entries(state.provenance)) {
     if (proof.origin === "computed") continue;
     const binding = proof.source;
@@ -649,12 +671,27 @@ function identityAcquisition(
       binding.hash !== document.hash || proof.semanticId !== block.id ||
       block.content !== binding.content || block.kind !== binding.kind ||
       block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph", "list"].includes(block.kind) ||
-      element?.type !== "text" || typeof element.html !== "string"
+      !["heading", "paragraph", "list", "math", "code"].includes(block.kind) ||
+      (block.kind === "code"
+        ? element?.type !== "code" || typeof element.content !== "string"
+        : element?.type !== "text" || typeof element.html !== "string")
     ) {
       fail(
         "AMBIGUOUS_IDENTITY",
-        "A source change needs exact weak authored heading/paragraph/list proofs from the unchanged executed baseline; pin unsupported or externally changed identities and recalculate before syncing. Pending edits are retained.",
+        "A source change needs exact weak authored heading/paragraph/list/math/code proofs from the unchanged executed baseline; pin unsupported or externally changed identities and recalculate before syncing. Pending edits are retained.",
+      );
+    }
+    if (
+      block.kind === "math" && (binding.mathCodec !== MATH_CODEC_VERSION ||
+          element!.html !== mathToNativeHtml(block.content)) ||
+      block.kind === "code" && (!codeProofs?.get(block.id)?.code ||
+          element!.content !== codeProofs.get(block.id)!.code!.content ||
+          (element!.grammarName ?? null) !==
+            codeProofs.get(block.id)!.code!.grammarName)
+    ) {
+      fail(
+        "AMBIGUOUS_IDENTITY",
+        "Display math/code identity requires the exact original codec content and language in the executed baseline.",
       );
     }
     const title = block.kind === "heading" &&
@@ -839,7 +876,7 @@ async function buildPlan(
       "This element belongs to a slide also marked for deletion. Restore the pending element deletion through Compare with QMD before reviewing the slide deletion, or restore the slide before reviewing the element. No QMD changes are proposed.",
     );
   }
-  const identities = identityAcquisition(text, state, selected);
+  const identities = await identityAcquisition(text, state, selected);
   const identityResult = identities?.result ?? text;
   const acquiredIds = new Map(
     identities?.bindings.map((
@@ -1692,7 +1729,9 @@ async function buildPlan(
         target: { slideId, elementId },
         before: clone(entry[1]),
         after: acquiredProvenance(entry[1], block, document),
-        expectedHtml: html,
+        ...(block.kind === "code"
+          ? { expectedCode: inline.get(block.id)!.code! }
+          : { expectedHtml: html }),
       });
     }
     for (const patch of identities.patches) {

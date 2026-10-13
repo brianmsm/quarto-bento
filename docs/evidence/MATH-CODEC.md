@@ -195,3 +195,15 @@ attempts keep the QMD unchanged. These tests use native JSON edits to exercise
 core save/sync behavior; they do not replace a native contenteditable/browser
 check. Inline math, general TeX, source equation labels/cross-references and new
 Bento-authored equation insertion remain outside this supported subset.
+
+## Reviewed acquisition of anonymous display equations
+
+An ordinary anonymous `$$` block no longer blocks an unrelated prose or notes
+sync merely because that sync changes the global source hash. A fresh independent
+Pandoc fragment proof confirms one faithful display formula. Explicit preview and
+Apply acquire a technical wrapper with the existing native object ID, preserving
+formula bytes and any unselected pending formula edit. Recompute verifies the
+approved new binding before retaining native appearance. Save/render alone never
+pin an identity. The real CRLF/Unicode round trip and HTML-free reconstruction
+are exercised in `tests/weak_math_identity_test.ts`; see the
+[plain-QMD evidence](PLAIN-QMD.md#ordinary-display-equations-and-fenced-code).

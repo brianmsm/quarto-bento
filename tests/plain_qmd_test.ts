@@ -254,7 +254,7 @@ Deno.test({
         provenance[targetKey(binding.target)] = structuredClone(binding.after);
         generated.slides.find((slide) => slide.id === binding.target.slideId)!
           .elements.find((element) => element.id === binding.target.elementId)!
-          .html = binding.expectedHtml;
+          .html = binding.expectedHtml!;
       }
       const prepared = prepareApprovedSync(
         current,
@@ -486,7 +486,7 @@ Deno.test({
           edited = structuredClone(first.state.emitted);
         edited.slides[0].elements[1].html = "Texto editado.";
         await saveProject(source, edited, first.state.revision);
-        if (!extra) await Deno.writeTextFile(source, "\n" + text);
+        await Deno.writeTextFile(source, "\n" + text);
         const before = await Deno.readTextFile(
             directory + "/.qbento/state.json",
           ),

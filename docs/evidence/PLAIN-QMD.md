@@ -113,3 +113,30 @@ deletion slice and its mixed integration case need their separate evidence.
 This work does not freeze public v1 acceptance or establish other-platform
 behavior. Exact upstream/custom-reader differences outside the checked faithful
 inline subset remain explicit refusals rather than inferred source content.
+
+## Ordinary display equations and fenced code
+
+The reviewed identity path also covers anonymous authored display equations and
+non-executable fenced code. Initial displayed-code mapping compares the exact
+Pandoc-read original fence content and language with one executed object in the
+same verified original slide. Equal code in different language fences remains
+distinct; repeated equal content and language within a slide refuses ambiguity.
+This path never derives an authored binding from echoed executable code.
+
+A selected prose or notes edit acquires the other affected weak math/code
+identities too, including objects with unselected pending edits. The inspected
+technical patch adds a wrapper and `bento-element-id` while retaining the original
+formula/fence bytes. Save and render do not add it. Approval verifies fresh
+formula HTML or code content **and language** before retaining the previous native
+ID and appearance. An authored formula or code edit uses the existing bounded
+content-span codec after the same identity review. Component children still
+require explicit source identities where wrapping would change their structure.
+
+`tests/weak_math_identity_test.ts` exercises real local Quarto sync/recompute and
+reconstruction from QMD plus `.qbento/state.json`, without generated HTML. Its
+math fixture includes Unicode, CRLF, notes, an unselected equation edit and an
+unchanged executable producer; the code fixture retains native geometry and
+language through a selected prose sync followed by the pending code sync. Checks
+also cover stale/modified plans, collisions, component scopes and altered or
+cross-slide code provenance. This is core-runtime evidence, not a new native
+Studio interaction receipt or evidence of general TeX support.
