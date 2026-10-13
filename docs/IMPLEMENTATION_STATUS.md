@@ -23,6 +23,12 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+The owner-selected MIT license is integrated at `74e552b`, with copyright 2026
+Brian Norman Peña Calero. The 117-file portable, installed extension and native
+HTML copies preserve the complete project terms separately from third-party
+notices. Seven focal tests, independent native notice review and the portable
+smoke passed; see [the MIT receipt](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license).
+
 The `3a19e7f` distribution supplement preserves exact notices from all 25
 integrity-verified production npm archives, retaining four missing-full-text
 cases explicitly. Independent byte review, negative package tests, native

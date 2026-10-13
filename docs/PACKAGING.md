@@ -291,7 +291,13 @@ usage guide, without links to missing checkout files. The artifact is at
 focused regressions and portable smoke are recorded in
 [the distribution notice receipt](evidence/DISTRIBUTION-NOTICES.md).
 
-The current clean `3a19e7f` artifact adds the archive supplement and contains
+The clean `3a19e7f` artifact adds the archive supplement and contains
 115 verified files. It is at `output/verification/portable-3a19e7f/distribution/`.
 The same receipt records exact-text review, native serialization/reopening,
 package refusals and the updated local portable smoke.
+
+The current clean `74e552b` artifact includes the owner-selected MIT license in
+both the package root and runtime and contains 117 verified files. It is at
+`output/verification/portable-74e552b/distribution/`. The
+[MIT carriage receipt](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license)
+records native preservation, installation, relocation and exact license bytes.

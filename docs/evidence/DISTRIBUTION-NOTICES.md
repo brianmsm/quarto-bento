@@ -78,3 +78,28 @@ A clean `3a19e7f` artifact is at
 size. Earlier full-suite and artifact receipts remain tied to their revisions.
 Raw logs use `output/verification/runtime-license-*.log` and
 `output/verification/runtime-licenses-*.log`.
+
+## Owner-selected MIT license
+
+On 2026-10-13 the owner explicitly selected MIT for Quarto-Bento, with the
+holder Brian Norman Peña Calero. Revision `74e552b` adds the full root LICENSE,
+copyright 2026, and preserves it in both the portable root and its runtime,
+the installed extension runtime, and the generated HTML notice block under the
+separate `Quarto-Bento/LICENSE` identity. Upstream texts and pins are unchanged.
+
+Seven focal tests passed with zero failures in 13 seconds: package integrity,
+relocation/installation, producer execution and native notice serialization with
+fresh-profile reopening. An independent reviewer repeated the two native notice
+tests and verified the exact holder, complete text and resource paths. Types,
+lint, formatting and whitespace checks passed. The coordinator's separate
+portable smoke passed reconstruction with pending content and ordinary Quarto
+after portable removal; its log is `output/verification/project-mit-portable.log`.
+
+The clean artifact at `output/verification/portable-74e552b/distribution/` has
+117 files. Every payload hash and byte count was independently recomputed, and
+both packaged LICENSE copies equal the root file. Its sibling verification
+receipt records the source commit and project-license SHA256
+`7271c4ebefe577af66ea7702d23fdf878584a7a40052ce5af64a59dc78c4d9f7`.
+The own-project license decision is now settled. The four-package source audit,
+broader third-party review, public release scope and deferred platform gates
+are separate matters and remain as documented.
