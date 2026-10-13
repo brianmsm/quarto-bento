@@ -259,7 +259,9 @@ export function matchBareTable(
 export function tableProducer(
   doc: SourceDocument,
   contextId: string,
+  verifiedProducerId?: string,
 ): SourceBlock {
+  if (doc.hash !== hashSource(doc.text)) fail("Original source hash changed.");
   const original = scanSource(doc.text);
   if (original.diagnostics.length) {
     fail("Resolve source mapping diagnostics before binding a computed table.");
@@ -271,7 +273,10 @@ export function tableProducer(
     );
   }
   const context = contexts[0];
-  if (context.kind === "chunk" && context.stable) return context;
+  if (
+    context.kind === "chunk" &&
+    (context.stable || verifiedProducerId === context.id)
+  ) return context;
   if (context.kind === "div" && context.stable) {
     const children = bodyBlocks(original, context);
     if (

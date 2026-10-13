@@ -44,6 +44,22 @@ source sync refuses `UNSUPPORTED_SYNC` rather than guessing a QMD patch.
 Change those cells in QMD and recalculate, or explicitly resolve the pending
 change. The QMD is not silently rewritten.
 
+## Ordinary computed tables
+
+An unlabelled top-level executable chunk can emit one supported native table.
+Its original execution receipt must authenticate the exact producer while the
+output is projected. The scoped capability is restored after that boundary;
+a later `.cell` wrapper cannot borrow it. Serialized receipt attributes and
+legacy cell IDs cannot establish this trust. Computed tables remain distinct
+from literal tables even when their cells are identical.
+
+Reviewed synchronization of another source block pins the weak producer with
+its original `qb-producer` marker before source offsets change. It preserves
+the chunk bytes and native table ID without adding a user-facing chunk label.
+Save, preview and Apply do not run R. Recompute executes once and preserves
+table geometry while adopting new source data. This does not broaden the
+caption, rich-cell or multi-table-per-producer limits.
+
 ## Linux evidence
 
 The focused tests in `tests/plain_tables_test.ts` use actual installed Quarto
@@ -74,3 +90,12 @@ The native renderer is unchanged. This receipt demonstrates core operations
 and real Quarto execution, not a manual Studio table interaction. Native table
 DOM/visual acceptance is recorded in [TABLES.md](TABLES.md) and
 [COMPOSED-TABLES.md](COMPOSED-TABLES.md). Linux is the only executed platform.
+
+The unlabelled-producer extension passed **16/16 in 19s** across
+`plain_computed_tables_test.ts`, `table_test.ts` and
+`producer_capture_test.ts`. Its real Quarto tests prove identical literal and
+computed cells, Unicode/CRLF preservation, reviewed producer pinning, retained
+native IDs and x positions, execution counters and CSV-driven recomputation.
+Projection-boundary negatives refuse unauthenticated/serialized receipts and
+a later legacy wrapper attempting to borrow a completed receipt. This is a
+separate extension to the independently approved 21/21 plain-table baseline.

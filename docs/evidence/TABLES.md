@@ -85,14 +85,16 @@ knitr::kable(read.csv("data.csv"), format="pipe", align=c("l", "r"))
 :::
 ````
 
-Quarto can erase an ordinary chunk label from its executed cell wrapper. The
-adapter therefore accepts an exact original producer identity, or a uniquely
-identified original wrapper containing **one explicitly labelled executable
-chunk and nothing else**. A displayed-code block, competing chunks or unmapped
-output cannot satisfy this proof. Executed cell context remains computed, and
-the native table records the original producer.
+The original execution receipt now authenticates a table producer independently
+of the rendered cell attributes. An ordinary unlabelled chunk is accepted only
+while projecting its authenticated receipt boundary; reviewed source sync pins
+that original producer identity before source offsets can change. A bare legacy
+cell cannot infer a weak producer from its ID or displayed code. Existing exact
+labelled producers and uniquely identified single-chunk wrappers remain
+supported. The native table records the original computation. See
+[PLAIN-TABLES.md](PLAIN-TABLES.md) for the ordinary-table extension and evidence.
 
-Use a non-`tbl-` label for this first slice. A `tbl-` label can introduce a
+A label is optional. When providing one, use a non-`tbl-` label. A `tbl-` label can introduce a
 Quarto table float and automatically generated caption; that associated-caption
 mapping is currently refused. `kable(format="pipe")` is demonstrated. Raw HTML
 tables, `gt`, `gtsummary` and broader widget/static fallback formats are not

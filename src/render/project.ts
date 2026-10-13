@@ -262,6 +262,8 @@ export async function projectAst(
   // A producer may emit code through several transparent execution wrappers.
   // Count across those wrappers while keeping different slides/producers apart.
   const computedCodeIndexes = new Map<string, number>();
+  // Only the authenticated execution boundary may admit a weak table producer.
+  let verifiedTableProducer: string | undefined;
   function startSlide(id: string): Slide {
     if (document.slides.some((s) => s.id === id)) {
       throw new Error(`DUPLICATE_ID: ${id}`);
@@ -981,7 +983,13 @@ export async function projectAst(
               "INVALID_PRODUCER_RECEIPT: original producer scope changed",
             );
           }
-          await walk(children, true, proof.id, inComponent);
+          const previousProducer = verifiedTableProducer;
+          verifiedTableProducer = proof.id;
+          try {
+            await walk(children, true, proof.id, inComponent);
+          } finally {
+            verifiedTableProducer = previousProducer;
+          }
           contentFrame = previousFrame;
           if (groups && slide === groupSlide) {
             groups.push(slide!.elements.slice(groupStart));
@@ -1170,7 +1178,7 @@ export async function projectAst(
           );
         }
         const identifiedBlock = computed
-          ? tableProducer(source, parentId!)
+          ? tableProducer(source, parentId!, verifiedTableProducer)
           : parentId
           ? authoredTableBlock(source, parentId)
           : undefined;
