@@ -149,3 +149,31 @@ This closes a reviewed filter case that moved an intact math/code wrapper to a
 second slide or inside another source wrapper. Real Quarto tests reject both
 moves after reviewed acquisition and from a cold project, retaining existing
 QMD/state/HTML byte-for-byte and publishing no state/HTML for the cold refusal.
+
+### Native ordinary-math/code acceptance and integration
+
+The identity and source-scope changes are integrated at `f3f4127` after
+**30 independent tests** and real Lua probes of both cross-slide and same-slide
+ancestor relocation. Those probes reject after reviewed identity acquisition as
+well as on a cold render.
+
+The coordinator exercised Studio and pinned Bento in headless Chromium on the
+reviewed runtime `4f09f76`: a plain two-slide QMD contained rich prose, an
+anonymous display formula and a static `r` fence. A native prose edit survived
+Save and reload with unchanged QMD. Review showed all four heading/paragraph/
+math/code identity patches before Apply. After Recalculate the entire emitted
+native document matched the saved document exactly, with stable `docId`, zero
+pending edits and unchanged formula/code source. The second slide's body stayed
+byte-identical; its optional design annotation was explicitly shown in review.
+
+A relocation containing only QMD, `project.json` and `state.json` also rebuilt the
+exact document. The final screenshot was inspected: rich beta, formula and both
+syntax-highlighted code lines are visible and readable. This checks editing
+neighboring prose without obstruction; math/code content-edit coverage remains
+in the separate source/core and earlier native receipts.
+
+Local artifacts: `output/verification/plain-math-code-native/`, including source,
+saved/final state, receipts and independent logs. Screenshots are
+`output/playwright/plain-math-code-review.png` and
+`output/playwright/plain-math-code-final.png`. This is headless Linux browser
+acceptance, not foreground desktop or other-platform evidence.

@@ -50,8 +50,11 @@ independent startup/profile, hook and inline-filter checks. See
 11 combined context/composition tests. Integrated Python sync/recompute/rebuild
 also passed after updating its exact expected producer-identity patch. Complete
 combined validation remains in progress; these additions do not inherit the
-older full-suite result. The current audit also found ordinary unwrapped math/code, pipe-table
-and local-image mapping gaps; their corrections remain in progress.
+older full-suite result. Ordinary unwrapped math/code and pipe-table mapping are integrated at `f3f4127`
+and `73dea2d`, respectively, after independent reviews (30 and 21 tests) and
+native Studio math/code-neighbor acceptance. See [plain QMD](evidence/PLAIN-QMD.md)
+and [plain tables](evidence/PLAIN-TABLES.md). Local-image mapping and unlabelled
+computed-table follow-up remain in progress.
 
 Portable packages additionally pin schema, license/notice and upstream npm
 manifest/lock bytes, verify a 25-entry production dependency inventory and record
@@ -102,6 +105,18 @@ geometry and page size; it checks all four axis-aligned box edges at `6f8e1ea`, 
 | Offline / hostile data / paths / local server security        | Script splicing, local path and resource checks, bounded Studio/API input and document identity guards are implemented. Project saves refuse transient/external or missing referenced resources, including dependencies nested in native SVG/embed snapshots; self-contained resources and hyperlinks remain supported. [Asset/resource evidence](evidence/ASSET-PATHS.md). Complete dependency/security audit remains pending.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Linux/macOS/Windows packaging and native evidence             | Portable development directory, offline launchers and SHA256 inventory implemented; Linux relocation/clean-cache execution tested. A pinned CI matrix and an expanded portable launcher/state-only relocation smoke are committed; the latter passed locally on Linux. No hosted matrix run or native other-OS proof is claimed. Release packaging remains pending. [Packaging](PACKAGING.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Accurate end-user docs + public release scope                 | README, the [Spanish usage guide](USAGE.md), canonical semantic/table/chart/component/Plotly/rich-table examples and the [JSON agent contract](AGENT-API.md) describe bounded delivered behavior. Remaining implementation docs track active integrations; public v1 boundary is not frozen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+## Combined regression follow-up (2026-10-13)
+
+The first combined run at `453a984` completed **514 passed, 4 passed steps and
+7 failed tests in 15m1s**, with the optional pinned math, Studio/Relations and
+Python checks enabled. Six failures reflected outdated expectations after the
+receipt/overflow changes; their focused corrections passed. One exposed a real
+producer-adapter mismatch with Quarto's sanitized intermediate filenames and is
+being corrected. Log and failure receipt:
+`output/verification/full-suite-453a984.log` and `.json`.
+This is a failed intermediate run, not the final acceptance receipt. The newer
+ordinary-QMD changes require a subsequent combined run and portable rebuild.
 
 ## Delivered local scope and remaining limits
 
