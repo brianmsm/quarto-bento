@@ -98,10 +98,48 @@ Deno.test({
         "producer executed exactly once",
       );
       const again = await renderProject(source);
+      const repeated = again.state.emitted.slides[0].elements.find((e) =>
+        e.id === "plot-result"
+      )!;
+      // Opt-in failure evidence survives fixture cleanup without relaxing equality.
+      const evidenceRoot = Deno.env.get("QBENTO_WIDGET_EVIDENCE");
+      if (repeated.src !== widget.src && evidenceRoot) {
+        const evidence = join(evidenceRoot, crypto.randomUUID());
+        try {
+          await Deno.mkdir(evidence, { recursive: true });
+          for (
+            const [name, result] of [["first", first], [
+              "again",
+              again,
+            ]] as const
+          ) {
+            const src = String(
+              result.state.emitted.slides[0].elements.find((e) =>
+                e.id === "plot-result"
+              )!.src,
+            );
+            await Deno.writeFile(
+              join(evidence, `${name}.svg`),
+              Uint8Array.from(
+                atob(src.slice(src.indexOf(",") + 1)),
+                (c) => c.charCodeAt(0),
+              ),
+            );
+            await Deno.writeTextFile(
+              join(evidence, `${name}.state.json`),
+              JSON.stringify(result.state, null, 2),
+            );
+          }
+          console.error(`Widget SVG mismatch evidence: ${evidence}`);
+        } catch (error) {
+          console.error(
+            "Could not preserve widget SVG mismatch evidence:",
+            error,
+          );
+        }
+      }
       ok(
-        again.state.emitted.slides[0].elements.find((e) =>
-          e.id === "plot-result"
-        )!.src === widget.src,
+        repeated.src === widget.src,
         "same data must retain exact SVG",
       );
       const edited = structuredClone(again.state.emitted),
