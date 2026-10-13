@@ -72,6 +72,7 @@ const fixedFiles = [
   "_extensions/qbento/post.ts",
   "_extensions/qbento/capture.lua",
   "_extensions/qbento/guard.lua",
+  "_extensions/qbento/producer-activation.js",
 ];
 function inside(parent: string, child: string) {
   const path = relative(parent, child);

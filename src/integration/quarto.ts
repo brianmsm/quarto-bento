@@ -1,4 +1,10 @@
 import {
+  assertCompatibleProducerFilters,
+  attachProducerCapture,
+  prepareProducerCapture,
+  type ProducerManifest,
+} from "../render/producer-capture.ts";
+import {
   assertDesignRegistryUnchanged,
   loadDesignRegistry,
 } from "../render/registry.ts";
@@ -22,12 +28,35 @@ interface QuartoRun {
   source: string;
   sourceHash: string;
   designHash?: string | null;
+  producerHash?: string;
   revision: number | null;
   backupHash: string | null;
   process: { pid: number; startTime: string };
 }
 const receiptName = "quarto-run.json";
 const stageName = "quarto-stage";
+const producerManifestName = "producer-manifest.json";
+const producerOutputName = "producer-output.jsonl";
+async function assertPrivateStageFile(path: string): Promise<void> {
+  if (!(await fileExists(path))) return;
+  const info = await Deno.lstat(path);
+  if (
+    !info.isFile || info.isSymlink || (info.nlink !== null && info.nlink > 1)
+  ) {
+    throw new Error(
+      "UNSAFE_STAGE_PATH: producer receipts must be ordinary unlinked files",
+    );
+  }
+}
+async function clearProducerStage(stateDir: string): Promise<void> {
+  const stage = resolve(stateDir, stageName);
+  if (!(await fileExists(stage))) return;
+  await realDirectory(stage);
+  for (const name of [producerManifestName, producerOutputName]) {
+    const path = resolve(stateDir, stageName, name);
+    if (await fileExists(path)) await Deno.remove(path);
+  }
+}
 function backupPath(stateDir: string, run: QuartoRun): string {
   return resolve(stateDir, "history", `quarto-baseline-${run.token}.html`);
 }
@@ -123,6 +152,9 @@ async function readReceipt(path: string): Promise<QuartoRun> {
     !(value.designHash === undefined || value.designHash === null ||
       typeof value.designHash === "string" &&
         /^[a-f0-9]{64}$/.test(value.designHash)) ||
+    !(value.producerHash === undefined ||
+      typeof value.producerHash === "string" &&
+        /^[a-f0-9]{64}$/.test(value.producerHash)) ||
     !(value.revision === null || Number.isInteger(value.revision)) ||
     !(value.backupHash === null || typeof value.backupHash === "string") ||
     !Number.isInteger(value.process?.pid) ||
@@ -149,6 +181,7 @@ export async function beforeQuartoRender(): Promise<void> {
     );
   }
   const process = await assertSafeQuartoInvocation(source);
+  await assertCompatibleProducerFilters(source, "qbento-html");
   assertCompatibleComponentSource(scanSource(await Deno.readTextFile(source)));
   const registry = await loadDesignRegistry(dirname(source));
   await inspectOutput(source);
@@ -196,6 +229,28 @@ export async function beforeQuartoRender(): Promise<void> {
     }
     const stage = resolve(paths.stateDir, stageName);
     await realDirectory(stage);
+    const capture = await prepareProducerCapture(source);
+    try {
+      if (capture.manifest.sourceHash !== run.sourceHash) {
+        throw new Error(
+          "QUARTO_SOURCE_MISMATCH: source changed while producer receipts were prepared",
+        );
+      }
+      const manifestPath = resolve(stage, producerManifestName);
+      const outputReceiptPath = resolve(stage, producerOutputName);
+      await assertPrivateStageFile(manifestPath);
+      await assertPrivateStageFile(outputReceiptPath);
+      capture.manifest.outputReceiptPath = outputReceiptPath;
+      const bytes = new TextEncoder().encode(
+        JSON.stringify(capture.manifest) + "\n",
+      );
+      await Deno.writeTextFile(outputReceiptPath, "");
+      await Deno.writeFile(manifestPath, bytes);
+      run.producerHash = await sha256(bytes);
+      await Deno.writeTextFile(receipt, JSON.stringify(run, null, 2) + "\n");
+    } finally {
+      await capture.cleanup();
+    }
     try {
       await Deno.remove(resolve(stage, "executed.json"));
     } catch (e) {
@@ -235,6 +290,39 @@ export async function afterQuartoRender(): Promise<void> {
       "STALE_QUARTO_AST: stage was not produced by this execution",
     );
   }
+  await realDirectory(resolve(stateDir, stageName));
+  const manifestPath = resolve(stateDir, stageName, producerManifestName);
+  const outputReceiptPath = resolve(stateDir, stageName, producerOutputName);
+  await assertPrivateStageFile(manifestPath);
+  await assertPrivateStageFile(outputReceiptPath);
+  const manifestBytes = await Deno.readFile(manifestPath);
+  if (!run.producerHash || await sha256(manifestBytes) !== run.producerHash) {
+    throw new Error(
+      "INVALID_PRODUCER_RECEIPT: producer manifest differs from the guarded Quarto run",
+    );
+  }
+  const manifest: ProducerManifest = JSON.parse(
+    new TextDecoder().decode(manifestBytes),
+  );
+  if (
+    manifest.sourceHash !== run.sourceHash ||
+    manifest.outputReceiptPath !== outputReceiptPath ||
+    manifest.input !== run.source.replace(/\.qmd$/, ".rmarkdown")
+  ) {
+    throw new Error(
+      "INVALID_PRODUCER_RECEIPT: producer manifest belongs to another source or stage",
+    );
+  }
+  const tokens: string[] = (await Deno.readTextFile(outputReceiptPath)).split(
+    "\n",
+  ).filter(Boolean).map((line) => {
+    const value = JSON.parse(line);
+    if (typeof value !== "string") {
+      throw new Error("INVALID_PRODUCER_RECEIPT: malformed execution ledger");
+    }
+    return value;
+  });
+  captured.ast = attachProducerCapture(captured.ast, manifest, tokens);
   if (run.designHash !== undefined) {
     await assertDesignRegistryUnchanged(paths.directory, run.designHash);
   }
@@ -245,6 +333,7 @@ export async function afterQuartoRender(): Promise<void> {
     expectedRevision: run.revision,
     designHash: run.designHash,
   });
+  await clearProducerStage(stateDir);
   await Deno.remove(receipt);
   console.log(`Bento output created: ${result.output}`);
   for (const diagnostic of result.diagnostics) {
@@ -298,6 +387,7 @@ export async function recoverQuartoRender(
                 state?.docId;
           } catch { /* Truncated outputs are retained separately below. */ }
           if (nativeEdit) {
+            await clearProducerStage(paths.stateDir);
             await Deno.remove(receipt);
             return { restored: false, retainedOutput: paths.output };
           }
@@ -320,6 +410,7 @@ export async function recoverQuartoRender(
         await Deno.remove(staging);
       }
     }
+    await clearProducerStage(paths.stateDir);
     await Deno.remove(receipt);
     return { restored: run.backupHash !== null, retainedOutput };
   });
