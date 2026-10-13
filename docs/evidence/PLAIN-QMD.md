@@ -140,3 +140,12 @@ language through a selected prose sync followed by the pending code sync. Checks
 also cover stale/modified plans, collisions, component scopes and altered or
 cross-slide code provenance. This is core-runtime evidence, not a new native
 Studio interaction receipt or evidence of general TeX support.
+
+An acquired stable identity does not grant permission to move executed content
+across source scope. Fresh authored projections must still belong to the same
+verified original slide. Identified source wrappers also retain their original
+identified ancestry; transparent anonymous divs do not invent an ancestor ID.
+This closes a reviewed filter case that moved an intact math/code wrapper to a
+second slide or inside another source wrapper. Real Quarto tests reject both
+moves after reviewed acquisition and from a cold project, retaining existing
+QMD/state/HTML byte-for-byte and publishing no state/HTML for the cold refusal.

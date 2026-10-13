@@ -493,6 +493,32 @@ export async function projectAst(
             "UNMAPPED_CHART_SOURCE: executed chart ancestor attributes or ancestry differ from original source",
           );
         }
+        const originalDiv = attr[0] &&
+          source?.blocks.find((block) =>
+            block.id === attr[0] && block.kind === "div" &&
+            block.origin === "authored"
+          );
+        if (
+          originalDiv && !kpiAncestors.has(attr[0]) &&
+          !chartAncestors.has(attr[0]) && !isSourceChart(originalDiv)
+        ) {
+          // Transparent anonymous divs do not introduce a renderer source ID.
+          // Every identified source ancestor is checked in turn, so moving an
+          // intact subtree cannot retain a fabricated inherited context.
+          let sourceParent = originalDiv.parentId;
+          while (sourceParent) {
+            const parent = source!.blocks.find((block) =>
+              block.id === sourceParent
+            );
+            if (!parent || parent.stable) break;
+            sourceParent = parent.parentId;
+          }
+          if (sourceParent !== parentId) {
+            throw new Error(
+              "UNMAPPED_PROVENANCE: authored source wrapper moved outside its original ancestry",
+            );
+          }
+        }
         const ancestor = kpiAncestors.get(attr[0]);
         if (
           ancestor && (ancestor.parentId !== parentId ||
@@ -1452,6 +1478,14 @@ export function validateProjectionOrigins(
         );
       }
       const block = candidates[0];
+      if (
+        !originalSlides.has(slideId) ||
+        block.slideId !== originalSlides.get(slideId)
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: authored object moved outside its verified original source slide",
+        );
+      }
       if (used.has(block.id)) {
         throw new Error(
           `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,

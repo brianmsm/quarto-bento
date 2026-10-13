@@ -257,3 +257,71 @@ Deno.test({
     );
   },
 });
+Deno.test({
+  name:
+    "acquired math/code identities reject filter relocation across slides and source ancestry atomically",
+  ignore: (await Deno.permissions.query({ name: "run" })).state !== "granted",
+  fn: async () => {
+    for (const kind of ["math", "code"]) {
+      const dir = await Deno.makeTempDir({ prefix: "qbento-acquired-scope-" }),
+        source = dir + "/deck.qmd";
+      try {
+        await Deno.writeTextFile(dir + "/move.lua", "-- identity\n");
+        await Deno.writeTextFile(
+          source,
+          "---\nfilters: [move.lua]\nqbento-annotations: none\n---\n\n## First\n\nProse.\n\n```python\nx = 1\n```\n\n$$\nx^{2}+1\n$$\n\n::: {#other}\n\nSibling prose.\n\n:::\n\n## Second\n\nOther prose.\n",
+        );
+        const first = await renderProject(source),
+          edited = structuredClone(first.state.emitted);
+        edited.slides[0].elements.find((e) => e.html === "Prose.")!.html =
+          "Revised prose.";
+        await saveProject(source, edited, first.state.revision);
+        await applySync(source, await previewSync(source));
+        const baseline = await renderProject(source);
+        const native = baseline.state.emitted.slides[0].elements.find((e) =>
+          kind === "code" ? e.type === "code" : String(e.html).startsWith("$$")
+        )!;
+        const qmd = await Deno.readTextFile(source),
+          blockId = baseline.state
+            .provenance[
+              JSON.stringify([baseline.state.emitted.slides[0].id, native.id])
+            ].source!.parentId as string;
+        const state = await Deno.readTextFile(dir + "/.qbento/state.json"),
+          html = await Deno.readTextFile(dir + "/deck.bento.html");
+        for (const destination of ["slide", "parent"]) {
+          await Deno.writeTextFile(
+            dir + "/move.lua",
+            `local target=nil\nfunction Div(el) if el.identifier=="${blockId}" then target=el; return {} end end\nfunction Pandoc(doc) if target then ${
+              destination === "slide"
+                ? "doc.blocks:insert(target)"
+                : 'doc = doc:walk({Div=function(el) if el.identifier=="other" then el.content:insert(target) end return el end})'
+            } end return doc end\n`,
+          );
+          await refuses(() => renderProject(source), "UNMAPPED_PROVENANCE");
+          eq(await Deno.readTextFile(source), qmd);
+          eq(await Deno.readTextFile(dir + "/.qbento/state.json"), state);
+          eq(await Deno.readTextFile(dir + "/deck.bento.html"), html);
+          const cold = dir + "/cold-" + destination;
+          await Deno.mkdir(cold);
+          await Deno.writeTextFile(cold + "/deck.qmd", qmd);
+          await Deno.copyFile(dir + "/move.lua", cold + "/move.lua");
+          await refuses(
+            () => renderProject(cold + "/deck.qmd"),
+            "UNMAPPED_PROVENANCE",
+          );
+          eq(await Deno.readTextFile(cold + "/deck.qmd"), qmd);
+          for (const file of ["deck.bento.html", ".qbento/state.json"]) {
+            try {
+              await Deno.stat(cold + "/" + file);
+              throw new Error("Refused cold render published " + file);
+            } catch (error) {
+              if (!(error instanceof Deno.errors.NotFound)) throw error;
+            }
+          }
+        }
+      } finally {
+        await Deno.remove(dir, { recursive: true });
+      }
+    }
+  },
+});
