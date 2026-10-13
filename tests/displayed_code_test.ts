@@ -109,7 +109,7 @@ Deno.test({
     }
   },
 });
-Deno.test("an unlabeled executed cell requires one exact original echoed producer, never a guess", async () => {
+Deno.test("an unlabeled cell without an execution receipt cannot borrow provenance from matching echoed code", async () => {
   const { projectAst, validateProjectionOrigins } = await import(
     "../src/render/project.ts"
   );
@@ -130,20 +130,21 @@ Deno.test("an unlabeled executed cell requires one exact original echoed produce
   const source = scanSource(
     "## Results {#results}\n\n```{r}\n#| label: producer\nx <- 1\n```\n",
   );
-  const projected = validateProjectionOrigins(
-    source,
-    await projectAst(ast, "doc", [], source),
-  );
-  eq(projected.origins.results["producer/code:1"].producer, "producer");
-  eq(projected.origins.results["producer/code:1"].origin, "computed");
   for (
     const text of [
+      source.text,
       source.text.replace("x <- 1", "x <- 2"),
       source.text + "\n```{r}\n#| label: other\nx <- 1\n```\n",
     ]
   ) {
     await refuses(
-      () => projectAst(ast, "doc", [], scanSource(text)),
+      async () => {
+        const original = scanSource(text);
+        return validateProjectionOrigins(
+          original,
+          await projectAst(ast, "doc", [], original),
+        );
+      },
       "UNMAPPED_PROVENANCE",
     );
   }

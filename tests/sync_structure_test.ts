@@ -268,7 +268,7 @@ Deno.test({
 });
 Deno.test({
   name:
-    "real R as-is headings are refused when Quarto erases origin boundaries",
+    "real R as-is headings cannot become authored source structure",
   ignore: !canRun,
   fn: async () => {
     const { validateProjectionOrigins } = await import(
@@ -281,7 +281,12 @@ Deno.test({
           '---\nformat: html\n---\n\n```{r}\n#| label: producer\n#| results: asis\n#| echo: false\ncat("## Generated {#generated}\\n\\nText.\\n")\n```\n';
       await Deno.writeTextFile(source, text);
       const ast = await executeQuarto(source, dir + "/build"),
-        projected = await projectAst(ast, "doc", [dir + "/build", dir]);
+        projected = await projectAst(
+          ast,
+          "doc",
+          [dir + "/build", dir],
+          scanSource(text),
+        );
       await refuses(
         () => validateProjectionOrigins(scanSource(text), projected),
         "UNMAPPED_PROVENANCE",
