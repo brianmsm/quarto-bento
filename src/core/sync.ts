@@ -1,3 +1,9 @@
+import {
+  literalTableBlock,
+  literalTableContent,
+  tableContent,
+  validateAuthoredTable,
+} from "../source/table.ts";
 import { loadDesignRegistry } from "../render/registry.ts";
 import {
   assertCurrentComponentSource,
@@ -137,6 +143,7 @@ export interface SyncIdentityBinding {
   before: Provenance;
   after: Provenance;
   expectedHtml?: string;
+  expectedTableHash?: string;
   expectedCode?: { content: string; grammarName: string | null };
 }
 export interface SyncApproval {
@@ -291,13 +298,19 @@ export function validateSyncApproval(
         typeof binding.target.slideId !== "string" || !binding.target.slideId ||
         typeof binding.target.elementId !== "string" ||
         !binding.target.elementId ||
-        (binding.after?.source?.kind === "code"
-          ? binding.expectedHtml !== undefined ||
-            typeof binding.expectedCode?.content !== "string" ||
-            !(binding.expectedCode.grammarName === null ||
-              typeof binding.expectedCode.grammarName === "string")
-          : typeof binding.expectedHtml !== "string" ||
-            binding.expectedCode !== undefined) ||
+        (binding.after?.source?.kind === "unsupported"
+          ? typeof binding.expectedTableHash !== "string" ||
+            !/^[a-f0-9]{64}$/.test(binding.expectedTableHash) ||
+            binding.expectedCode !== undefined ||
+            binding.expectedHtml !== undefined
+          : binding.expectedTableHash !== undefined ||
+            (binding.after?.source?.kind === "code"
+              ? binding.expectedHtml !== undefined ||
+                typeof binding.expectedCode?.content !== "string" ||
+                !(binding.expectedCode.grammarName === null ||
+                  typeof binding.expectedCode.grammarName === "string")
+              : typeof binding.expectedHtml !== "string" ||
+                binding.expectedCode !== undefined)) ||
         binding.before?.origin !== "authored" ||
         binding.after?.origin !== "authored" ||
         typeof binding.before.source?.hash !== "string" ||
@@ -436,7 +449,11 @@ export function prepareApprovedSync(
       canonical(state.provenance[key]) !== canonical(binding.before) ||
       canonical(fresh) !== canonical(binding.after) ||
       fresh?.source?.hash !== sourceHash ||
-      (binding.expectedCode
+      (binding.expectedTableHash
+        ? element?.type !== "table" ||
+          hashSource(canonical(tableContent(element))) !==
+            binding.expectedTableHash
+        : binding.expectedCode
         ? element?.type !== "code" ||
           element.content !== binding.expectedCode.content ||
           (element.grammarName ?? null) !== binding.expectedCode.grammarName
@@ -663,6 +680,8 @@ async function identityAcquisition(
     const element = state.generatedBaseline.slides.find((slide) =>
       slide.id === slideId
     )?.elements.find((element) => element.id === elementId);
+    const table = block?.kind === "unsupported" && element?.type === "table" &&
+      validateAuthoredTable(document, block.id, element);
     if (
       !slideId || !elementId || proof.origin !== "authored" || !binding ||
       !block || document.blocks.filter((candidate) =>
@@ -670,9 +689,14 @@ async function identityAcquisition(
         ).length !== 1 ||
       binding.hash !== document.hash || proof.semanticId !== block.id ||
       block.content !== binding.content || block.kind !== binding.kind ||
-      block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph", "list", "math", "code"].includes(block.kind) ||
-      (block.kind === "code"
+      block.origin !== "authored" || !block.editable && !table ||
+      !table &&
+        !["heading", "paragraph", "list", "math", "code"].includes(
+          block.kind,
+        ) ||
+      (table
+        ? element?.type !== "table"
+        : block.kind === "code"
         ? element?.type !== "code" || typeof element.content !== "string"
         : element?.type !== "text" || typeof element.html !== "string")
     ) {
@@ -1718,7 +1742,14 @@ async function buildPlan(
               ?.blockId ?? binding.newBlockId)
         ),
         html = inline.get(block?.id ?? binding.newBlockId)?.html;
-      if (!entry || !block || typeof html !== "string") {
+      const tableHash = block?.kind === "unsupported"
+        ? hashSource(
+          canonical(
+            literalTableContent(literalTableBlock(document, block.id).content),
+          ),
+        )
+        : undefined;
+      if (!entry || !block || typeof html !== "string" && !tableHash) {
         fail(
           "AMBIGUOUS_IDENTITY",
           "Acquired source identity has no faithful approved content proof.",
@@ -1729,7 +1760,9 @@ async function buildPlan(
         target: { slideId, elementId },
         before: clone(entry[1]),
         after: acquiredProvenance(entry[1], block, document),
-        ...(block.kind === "code"
+        ...(tableHash
+          ? { expectedTableHash: tableHash }
+          : block.kind === "code"
           ? { expectedCode: inline.get(block.id)!.code! }
           : { expectedHtml: html }),
       });

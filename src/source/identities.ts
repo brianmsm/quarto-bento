@@ -1,4 +1,5 @@
 /** Inspectable identity acquisition; source writes belong only to approved sync. */
+import { literalTableBlock } from "./table.ts";
 import {
   hashSource,
   scanSource,
@@ -89,9 +90,13 @@ export function previewIdentities(
       fail("Identity does not select exactly one original block.");
     }
     const block = blocks[0];
+    const table = block.kind === "unsupported" &&
+      literalTableBlock(document, block.id);
     if (
-      block.stable || block.origin !== "authored" || !block.editable ||
-      !["heading", "paragraph", "list", "math", "code"].includes(block.kind)
+      block.stable || block.origin !== "authored" ||
+      !block.editable && !table ||
+      !table &&
+        !["heading", "paragraph", "list", "math", "code"].includes(block.kind)
     ) {
       fail(
         "Only weak authored headings, paragraphs, lists, display equations and displayed code can acquire a verified identity.",

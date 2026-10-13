@@ -33,6 +33,8 @@ import {
 } from "../source/chart.ts";
 import {
   authoredTableBlock,
+  bareTableBlocks,
+  matchBareTable,
   tableProducer,
   validateAuthoredTable,
 } from "../source/table.ts";
@@ -429,7 +431,15 @@ export async function projectAst(
       // Child subtrees are measured independently before the component places them.
       if (groups) y = contentFrame?.y ?? 166;
       if (
-        !["Para", "Plain", "RawBlock", "CodeBlock", "BulletList", "OrderedList"]
+        ![
+          "Para",
+          "Plain",
+          "RawBlock",
+          "CodeBlock",
+          "BulletList",
+          "OrderedList",
+          "Table",
+        ]
           .includes(node.t)
       ) {
         sourceMarker = undefined;
@@ -998,7 +1008,14 @@ export async function projectAst(
           }
           if (
             isComputed || children.length !== 1 ||
-            !["Para", "Plain", "BulletList", "OrderedList", "CodeBlock"]
+            ![
+              "Para",
+              "Plain",
+              "BulletList",
+              "OrderedList",
+              "CodeBlock",
+              "Table",
+            ]
               .includes(
                 children[0].t,
               ) ||
@@ -1010,10 +1027,19 @@ export async function projectAst(
           }
           const content = children[0].c as Node[];
           const isList = ["BulletList", "OrderedList"].includes(children[0].t);
-          const formula = isList || children[0].t === "CodeBlock"
-            ? undefined
-            : displayFormula(content);
-          if (children[0].t === "CodeBlock") {
+          const formula =
+            isList || ["CodeBlock", "Table"].includes(children[0].t)
+              ? undefined
+              : displayFormula(content);
+          if (children[0].t === "Table") {
+            await walk(children, false, attr[0]);
+            const element = slide!.elements.at(-1)!;
+            const previousId = element.id;
+            element.id = nativeId;
+            result.origins[slide!.id][nativeId] =
+              result.origins[slide!.id][previousId];
+            delete result.origins[slide!.id][previousId];
+          } else if (children[0].t === "CodeBlock") {
             const code = structuredClone(children[0]);
             const codeAttr = (code.c as [Attr, string])[0];
             if (codeAttr[0]) {
@@ -1132,22 +1158,41 @@ export async function projectAst(
           ...(computed && parentId ? { producer: parentId } : {}),
         });
       } else if (node.t === "Table") {
-        if (!source || !parentId) {
+        if (!source || computed && !parentId) {
           throw new Error(
-            "UNMAPPED_TABLE_SOURCE: tables need original-source evidence and an identified wrapper or producer",
+            "UNMAPPED_TABLE_SOURCE: tables need original source evidence and computed tables need an identified producer",
           );
         }
-        const block = computed
-          ? tableProducer(source, parentId)
-          : authoredTableBlock(source, parentId);
+        const identifiedBlock = computed
+          ? tableProducer(source, parentId!)
+          : parentId
+          ? authoredTableBlock(source, parentId)
+          : undefined;
+        const provisional = projectTable(
+          node,
+          "pending-table",
+          y,
+          contentFrame,
+        );
+        const block = identifiedBlock ?? matchBareTable(source, provisional);
         if (tableSources.has(block.id)) {
           throw new Error(
-            "UNSUPPORTED_TABLE: use one table per source wrapper or producer; multiple outputs need stable per-table source identities",
+            "UNSUPPORTED_TABLE: multiple tables cannot claim one original source fragment",
           );
         }
         tableSources.add(block.id);
-        const id = computed ? `${block.id}/table:1` : `${parentId}/table`;
-        const element = projectTable(node, id, y, contentFrame);
+        if (!parentId && sourceMarker && block.explicitId !== sourceMarker) {
+          throw new Error(
+            "UNMAPPED_TABLE_SOURCE: a table marker must exist in its exact original source fragment",
+          );
+        }
+        const id = computed
+          ? `${block.id}/table:1`
+          : parentId
+          ? `${parentId}/table`
+          : sourceMarker ?? `qb-table-${++counter}`;
+        sourceMarker = undefined;
+        const element: Element = { ...provisional, id };
         if (!computed) validateAuthoredTable(source, block.id, element);
         add(element, {
           origin: computed ? "computed" : "authored",
@@ -1514,6 +1559,14 @@ export function validateProjectionOrigins(
         validateAuthoredChart(source, block.id, element);
       } else if (element.type === "table") {
         validateAuthoredTable(source, block.id, element);
+        if (
+          block.slideId !== originalSlides.get(slideId) ||
+          !block.parentId && element.groupId !== undefined
+        ) {
+          throw new Error(
+            "UNMAPPED_TABLE_SOURCE: authored table moved outside its original source slide or into an invented group",
+          );
+        }
       } else if (block.kind === "unsupported" || block.kind === "div") {
         throw new Error(
           `UNMAPPED_PROVENANCE: element ${elementId} points to an unsupported source container`,
@@ -1577,6 +1630,13 @@ export function validateProjectionOrigins(
     if (matching.length !== 1) {
       throw new Error(
         "UNMAPPED_CHART_SOURCE: every original chart needs one native chart identity",
+      );
+    }
+  }
+  for (const block of bareTableBlocks(source)) {
+    if (!used.has(block.id)) {
+      throw new Error(
+        "UNMAPPED_TABLE_SOURCE: an original bare table was removed or lost its exact source binding",
       );
     }
   }

@@ -163,6 +163,28 @@ export function validateAuthoredTable(
   }
   return block;
 }
+/** Recognize only complete literal top-level tables, never arbitrary unsupported blocks. */
+export function bareTableBlocks(doc: SourceDocument): SourceBlock[] {
+  if (doc.hash !== hashSource(doc.text)) {
+    fail("Original table source snapshot is stale.");
+  }
+  const original = scanSource(doc.text);
+  if (original.diagnostics.length) {
+    fail("Resolve source mapping diagnostics before binding a bare table.");
+  }
+  return original.blocks.filter((block) => {
+    if (
+      block.kind !== "unsupported" || block.parentId ||
+      block.origin !== "authored"
+    ) return false;
+    try {
+      parsePipeTable(block.content);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
 /** Bare tables without IDs require a unique exact whole-table source match. */
 export function matchBareTable(
   doc: SourceDocument,
@@ -175,11 +197,7 @@ export function matchBareTable(
   if (original.diagnostics.length) {
     fail("Resolve source mapping diagnostics before binding a bare table.");
   }
-  const matches = original.blocks.filter((block) => {
-    if (
-      block.kind !== "unsupported" || block.parentId ||
-      block.origin !== "authored"
-    ) return false;
+  const matches = bareTableBlocks(original).filter((block) => {
     try {
       return JSON.stringify(literalTableContent(block.content)) ===
         JSON.stringify(tableContent(element));
