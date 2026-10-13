@@ -23,7 +23,11 @@ native renderer checks. Chart composition is integrated at `a1201a4`, and common
 execution producer receipts with ordinary Quarto activation at `74a16cd`.
 Both have independent lane reviews; combined acceptance remains active.
 The newer ordinary-QMD audit found unwrapped display math/code, plain pipe tables
-and local-image mapping gaps. Corrections are in progress, not yet accepted. Documenting a
+and local-image mapping gaps. Math/code and pipe tables are integrated at
+`f3f4127` and `73dea2d` after independent reviews and native Studio checks.
+Unlabelled computed tables followed at `a1492d4`. Local-image mapping and the
+rmarkdown intermediate-filename correction remain in progress; the failed first
+combined run is recorded in the implementation ledger. Documenting a
 conservative refusal does not make a missing ordinary workflow an accepted
 product exclusion. Local work continues under the owner's Linux-only scope.
 

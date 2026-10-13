@@ -60,7 +60,7 @@ changed uncaptured output is refused.
 
 Currently demonstrated projection includes plain QMD headings, paragraphs and
 bounded native Markdown lists,
-supported rich text in identified fenced divs, displayed code, identified
+supported rich text in identified fenced divs, ordinary displayed code,
 display equations and speaker notes, R-generated SVG figures, plain tables,
 bounded native charts, cards, named two-column layouts, source-authored
 `.bento-kpi` components, and bounded source `.bento-diagram` and
@@ -83,6 +83,7 @@ sources include:
 
 - [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
 - [Native lists](examples/native-lists/deck.qmd)
+- [Ordinary Markdown tables](examples/plain-tables/deck.qmd)
 - [Native tables](examples/native-tables/deck.qmd)
 - [Tables in cards and columns](examples/composed-tables/deck.qmd)
 - [Native charts](examples/native-charts/deck.qmd)
