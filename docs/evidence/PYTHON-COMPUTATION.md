@@ -1,6 +1,6 @@
 # Execution producers and installed Python: local Linux evidence
 
-Date: 2026-10-11. This is implementation evidence for the bounded computation
+Dates: 2026-10-11–2026-10-13. This is implementation evidence for the bounded computation
 lane, not a full product acceptance receipt or a cross-platform qualification.
 No environments, packages or interpreters were installed or managed.
 
@@ -27,7 +27,7 @@ those transparent wrappers, separately for each slide and original producer.
 
 Displayed code is not a producer receipt. A real partial-echo chunk whose first
 two expressions matched another hidden chunk used to borrow that chunk's identity.
-Dynamic `opts_chunk$set` and user hooks can similarly reduce the eco or rename
+Dynamic `opts_chunk$set` and user hooks can similarly reduce the echo or rename
 `options$label` and `options$code`. Matching the displayed body cannot resolve
 those cases safely and has been removed.
 
@@ -50,7 +50,7 @@ proof.
 
 User/profile startup selection preserves `R_PROFILE_USER` unset, empty, and
 explicit relative values; original user profile errors propagate. The adapter
-only changes the child R process. The permanent tests cover original local
+only changes the child R process. The permanent tests cover original project-local and default user-home
 profiles and user hooks coexisting with the adapter.
 
 ## Supported loop and safety checks
@@ -89,10 +89,46 @@ This can refuse a filter on a format that the CLI would not execute. Authored-on
 QMD retains its existing user-filter workflow.
 
 The ordinary Quarto extension activation is documented separately in
-`PRODUCER-ACTIVATION.md`. It must use the same original receipt and filter gate;
-CLI execution alone does not establish ordinary `quarto render` support.
+[`PRODUCER-ACTIVATION.md`](PRODUCER-ACTIVATION.md). It uses the same original receipt and filter gate.
+The opt-in `tests/python_quarto_execution_test.ts` also installs the actual
+example extension and uses only ordinary `quarto render` for its two computations:
+CSV changes alter the actual SVG path and sum, while saved figure geometry,
+stdout style, docId and source bytes survive. This passed together with the
+portable-package regression: **2 tests, 0 failures, 0 ignored, 18s** on 2026-10-13. The package regression
+executes both the packaged CLI capture and an ordinary project installed from the
+packaged runtime, checking one execution per render. The retained current log is
+`/tmp/qbento-producer-resume-python-package.log`; it checks this lane
+worktree before main integration, rather than the complete product.
+
+R startup flags `--vanilla` or `--no-init-file` in
+`QUARTO_KNITR_RSCRIPT_ARGS` disable the transport. Computed documents refuse those
+flags before running chunks; the user's flags remain intact.
+
 Future engines and arbitrary computed transformations need their own verified
 transport, not an echo or proximity fallback.
+
+## Current focused validation
+
+On 2026-10-13, the six CLI/source/Python test files below passed together:
+**24 tests, 0 failures, 0 ignored, 54s**. The current retained log is
+`/tmp/qbento-producer-resume-core.log`. This validates producer receipt parsing,
+original labels despite hooks/partial echo, rejection of foreign child knitting,
+user profile behavior, cache hits, effective filter/startup refusal, source
+patches and real Python changed-data execution. It does not replace the merged
+product suite or native UI acceptance.
+
+```sh
+DENO_JOBS=2 NO_COLOR=1 QBENTO_PYTHON_EXECUTION_TEST=1 \
+QBENTO_TEST_PYTHON=/usr/bin/python3 deno test --parallel \
+  --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 \
+  tests/producer_capture_test.ts tests/producer_execution_test.ts \
+  tests/producer_filters_test.ts tests/computed_code_test.ts \
+  tests/computed_code_execution_test.ts tests/python_execution_test.ts
+```
+
+The two ordinary/Python/package tests above passed in a separate current run.
+The ordinary activation receipt records its separate 14-test run. The results
+belong to this lane's committed runtime, before main integration.
 
 ## Reproduction
 
@@ -102,7 +138,8 @@ QBENTO_PYTHON_EXECUTION_TEST=1 QBENTO_TEST_PYTHON=/usr/bin/python3 \
   --allow-net=127.0.0.1 tests/computed_code_test.ts \
   tests/computed_code_execution_test.ts tests/producer_capture_test.ts \
   tests/producer_execution_test.ts tests/producer_filters_test.ts \
-  tests/producer_package_test.ts tests/python_execution_test.ts
+  tests/producer_package_test.ts tests/python_execution_test.ts \
+  tests/python_quarto_execution_test.ts
 ```
 
 The Python test is opt-in because it requires a compatible installed interpreter

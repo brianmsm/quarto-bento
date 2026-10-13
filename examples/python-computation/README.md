@@ -14,6 +14,18 @@ RETICULATE_PYTHON=/ruta/absoluta/a/python3 RETICULATE_USE_MANAGED_VENV=no \
 deno task qbento edit examples/python-computation/deck.qmd
 ```
 
+Para utilizar el `quarto render` ordinario con la integración local revisada:
+
+```sh
+deno task qbento init examples/python-computation/deck.qmd
+cd examples/python-computation
+RETICULATE_PYTHON=/ruta/absoluta/a/python3 RETICULATE_USE_MANAGED_VENV=no \
+  quarto render deck.qmd
+```
+
+La instalación anterior copia la extensión local; no instala paquetes o motores.
+Los siguientes renders deben conservar la selección explícita del mismo Python.
+
 En Studio puedes mover y cambiar el estilo de la figura, editar el párrafo
 literal, guardar el proyecto y revisar/aplicar la sincronización. Cambia
 `data.csv` a los valores `1`, `20`, `30` y vuelve a renderizar: la línea cambia
@@ -38,7 +50,8 @@ recibo nuevo, incluso cuando la salida se recupera de caché.
 Los filtros de usuario sobre QMD computado se rechazan antes de ejecutar porque
 pueden cambiar los límites de productor. La configuración heredada también se
 comprueba. La ruta ordinaria de Quarto utiliza una activación de recibos separada;
-consulta `docs/evidence/PRODUCER-ACTIVATION.md` para su evidencia y límites.
+consulta la [evidencia de activación](../../docs/evidence/PRODUCER-ACTIVATION.md)
+para sus comprobaciones y límites (Quarto 1.10.19).
 
 La regresión de este ciclo se activa explícitamente cuando el entorno es
 compatible:
@@ -46,7 +59,7 @@ compatible:
 ```sh
 QBENTO_PYTHON_EXECUTION_TEST=1 QBENTO_TEST_PYTHON=/ruta/absoluta/a/python3 \
   deno test --allow-read --allow-write --allow-env --allow-run \
-  --allow-net=127.0.0.1 tests/python_execution_test.ts
+  --allow-net=127.0.0.1 tests/python_execution_test.ts tests/python_quarto_execution_test.ts
 ```
 
 La prueba selecciona ese intérprete existente, desactiva la creación automática
