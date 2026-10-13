@@ -82,7 +82,9 @@ integration.
 
 ## Current boundary
 
-Structural operations currently use the canonical level-2 slide convention.
+New slide insertion still writes a level-2 heading. Existing top-level H1 and
+H2 source slides use the same checked section boundaries for reorder/deletion;
+see [the current contract](../AUTHORING.md#slide-boundaries-and-stable-identities).
 Slide hiding remains sidecar state. Multi-QMD editing, arbitrary source
 constructs, engine dependency analysis, and modifying existing heading visual
 attributes are not added by this module. Reordering uses retained original

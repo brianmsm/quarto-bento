@@ -354,7 +354,15 @@ notes containers and ambiguous source refuse this round-trip. The whitespace,
 execution and native acceptance limits are documented in
 [notes evidence](evidence/NOTES.md).
 
-### Stable identities
+### Slide boundaries and stable identities
+
+The native projection starts a slide at each top-level H1 or H2 heading. H3–H6
+remain content within the current slide; headings inside a component remain its
+content. The original-source mapper uses these same boundaries for provenance,
+reviewed synchronization and structural actions. A YAML `title` sets deck
+metadata and does not introduce an additional source slide. The low-level
+`scanSource` API's explicit `slideLevel` still selects exactly that heading level;
+this is separate from the ordinary native rendering behavior.
 
 - Reuse explicit heading/block IDs and chunk labels when possible.
 - Plain headings and paragraphs can be projected without explicit source IDs. When a reviewed source change needs stable bindings, the sync plan can propose identity patches for affected and untouched weak bindings. These are visible source changes: Save and render never pin identities implicitly. Explicit IDs remain useful, and a change to an existing identity is never treated as automatic authorization to rebind saved design. See [plain-QMD evidence](evidence/PLAIN-QMD.md).

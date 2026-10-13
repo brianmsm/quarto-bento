@@ -14,8 +14,8 @@ execution, filters or project hooks are added by the configuration check. Quarto
 and HTML format metadata; real parser tests verify all three levels, quoted
 scalars and refusals.
 
-The source module changes only the optional `.qbento-design` class on H2 slide
-headings and supported one-line JSON reference comments directly following those
+The source module changes only the optional `.qbento-design` class on source
+slide headings (top-level H1/H2 in the current default mapping) and supported one-line JSON reference comments directly following those
 headings. Existing explicit IDs, source-owned attributes, other classes,
 semantic blocks and content remain intact. Detailed comments contain controlled
 feature names and sidecar paths, never geometry, themes' values, executable

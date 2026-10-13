@@ -577,8 +577,14 @@ export function scanSource(
       });
     }
   }
+  // The native projector opens a slide at every top-level H1 or H2. Preserve
+  // the explicit scanner API's exact-level selection, but keep the ordinary
+  // mapping aligned with those rendered boundaries (including H1 title slides).
   const headings = blocks.filter((b) =>
-    b.kind === "heading" && b.level === (options.slideLevel ?? 2) && !b.parentId
+    b.kind === "heading" && !b.parentId &&
+    (options.slideLevel === undefined
+      ? b.level === 1 || b.level === 2
+      : b.level === options.slideLevel)
   );
   doc.preambleSpan.end = headings[0]?.span.start ?? doc.byteLength;
   doc.slides = headings.map((h, n) => {
