@@ -1,3 +1,4 @@
+import { producerEnvironment } from "./runtime/src/render/producer-environment.ts";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,7 +45,7 @@ export default {
       );
     }
     const rmdScript = quarto.path.resource("rmd/rmd.R");
-    const adapter = function (options, stdin, ...rest) {
+    const adapter = async function (options, stdin, ...rest) {
       if (
         !(options.args ?? []).includes(rmdScript) || typeof stdin !== "string"
       ) return original.call(this, options, stdin, ...rest);
@@ -70,19 +71,39 @@ export default {
           "INVALID_PRODUCER_RECEIPT: the R execution has no current guarded source receipt",
         );
       }
-      const selected = options.env &&
-          Object.hasOwn(options.env, "R_PROFILE_USER")
-        ? options.env.R_PROFILE_USER
-        : Deno.env.get("R_PROFILE_USER");
+      const manifest = JSON.parse(Deno.readTextFileSync(manifestPath));
+      if (manifest.chunks.length === 0) {
+        return original.call(this, options, stdin, ...rest);
+      }
+      const startup = await producerEnvironment({
+        cwd: options.cwd ?? directory,
+        command: options.cmd,
+        args: options.args,
+        env: options.env,
+      });
+      const selected = startup.originalProfile;
       // These values affect this R subprocess only. Inspection, user scripts,
       // other engines and the user's shell keep their original environment.
       return original.call(
         this,
         {
           ...options,
+          args: ["--no-environ", ...startup.args],
           env: {
-            ...options.env,
+            ...startup.effective,
             R_PROFILE_USER: profile,
+            ...(startup.args.includes("--no-site-file") ? {} : {
+              R_PROFILE: fileURLToPath(
+                new URL(
+                  "./runtime/src/render/producer-site-profile.R",
+                  import.meta.url,
+                ),
+              ),
+            }),
+            QBENTO_ORIGINAL_R_SITE_SET:
+              startup.effective.R_PROFILE === undefined ? "0" : "1",
+            QBENTO_ORIGINAL_R_SITE: startup.effective.R_PROFILE ?? "",
+            QBENTO_PRODUCER_PROFILE: profile,
             QBENTO_ORIGINAL_R_PROFILE_SET: selected === undefined ? "0" : "1",
             QBENTO_ORIGINAL_R_PROFILE_USER: selected ?? "",
             QBENTO_PRODUCER_MANIFEST: manifestPath,

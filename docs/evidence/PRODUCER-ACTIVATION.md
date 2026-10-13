@@ -41,8 +41,10 @@ decorates the shared `quarto.system.execProcess` function. It changes the
 environment only for Quarto's `rmd/rmd.R` request with action `execute`, input
 at this project's root and a current source/PID receipt. Inspection, dependency
 requests, other engines and user pre/post scripts keep their original process
-environment. The adapter preserves all other process options, stdin and
-arguments, and calls the original launcher once.
+environment. The adapter preserves the computation request, stdin and remaining process
+options, and calls the original launcher once for the QMD. It resolves R startup
+variables first with a separate data-only R process; that is an auxiliary startup,
+not a second QMD computation.
 
 This decoration is an explicitly tested compatibility adapter, not an upstream
 producer-receipt API. Its `quartoRequired` is exactly `=1.10.19`; API
@@ -64,8 +66,21 @@ The guarded ordinary render follows these steps:
    `.qbento/quarto-stage/`. A hash of that manifest belongs to the current
    durable Quarto run receipt. Manifest and ledger must be ordinary unlinked
    files in a real stage directory.
-3. The per-R-process profile chains the user's original profile with the
-   original distinction between an unset, empty or relative `R_PROFILE_USER`. It
+3. A base-only R helper runs with `--vanilla --default-packages=NULL`, restores
+   the original unset/empty/value startup selectors cleared by `--vanilla`, and
+   uses native `readRenviron` for site/user environment files. It loads no site
+   or user profile, user default package, workspace or QMD. Only environment
+   changes made by those files reach the real child; probe-generated temporary
+   variables are excluded. The private binary transport is removed immediately
+   and its values are never printed. Authored-only documents need no R probe.
+   The actual R process uses `--no-environ` with that effective environment;
+   effective default-package selection is transported as an environment value
+   so a command-line default does not reverse the native Renviron precedence.
+   A small site-profile chain executes the original site profile once, retaining
+   any user-profile selection it makes. When `--no-site-file` is selected, that
+   chain is omitted. The user-profile adapter then chains the effective original
+   user profile with the original distinction between an unset, empty or relative
+   `R_PROFILE_USER`. The producer adapter
    verifies the original chunk label/body and the current knit input, calls the
    original `knitr:::call_block` once, and wraps its returned Markdown with a
    fresh invocation token. The separate ledger records those returned
@@ -125,3 +140,35 @@ Jupyter and other execution engines require their own original-producer adapters
 and evidence. Nested or foreign knit input and unverified output transformations
 refuse explicitly; preserving their identity is an open technical gate rather
 than an acceptance claim.
+
+### Effective Renviron and profile precedence (2026-10-13)
+
+An independent review reproduced a startup bypass: a project `.Renviron` setting
+`R_PROFILE_USER` replaced the adapter and allowed computation without receipts.
+The environment helper and site-profile chain now preserve that native selection
+before the computation. Native-reference probes covered unset, empty, relative,
+site-to-user file precedence, `--no-environ`, a site profile selecting the user
+profile, `--no-site-file`, and authored documents with no R executable.
+
+The current extended regression passed **26 tests, 0 failures, 0 ignored,
+1m43s**. Its log is `/tmp/qbento-producer-environment-regression.log`:
+
+```sh
+DENO_JOBS=2 NO_COLOR=1 QBENTO_PYTHON_EXECUTION_TEST=1 \
+QBENTO_TEST_PYTHON=/usr/bin/python3 deno test --parallel \
+  --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 \
+  tests/producer_environment_test.ts tests/producer_execution_test.ts \
+  tests/producer_package_test.ts tests/extension_test.ts \
+  tests/quarto_producer_activation_test.ts tests/python_execution_test.ts \
+  tests/python_quarto_execution_test.ts
+```
+
+The permanent environment tests check six startup variants through both CLI and
+ordinary Quarto, one site/user/chunk invocation per render, unchanged source and
+startup files, native variable expansion, Renviron precedence over a command-line
+default-package selection, no profile or user-package loading in the data-only
+helper, and no new R dependency for authored-only source. Environment mutation
+cases run in isolated Deno children because process environment changes otherwise
+cross parallel test-module boundaries. Type checking, lint and formatting passed
+for the changed TypeScript/JavaScript paths. These focused results still require
+merged-product validation and independent review of the final commit.

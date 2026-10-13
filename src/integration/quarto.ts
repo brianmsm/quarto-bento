@@ -229,7 +229,9 @@ export async function beforeQuartoRender(): Promise<void> {
     }
     const stage = resolve(paths.stateDir, stageName);
     await realDirectory(stage);
-    const capture = await prepareProducerCapture(source);
+    const capture = await prepareProducerCapture(source, {
+      environment: false,
+    });
     try {
       if (capture.manifest.sourceHash !== run.sourceHash) {
         throw new Error(

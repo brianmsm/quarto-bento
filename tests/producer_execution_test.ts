@@ -1,3 +1,4 @@
+import { isolatedEnvironmentTest } from "./helpers/isolated.ts";
 import { renderProject } from "../src/core/project.ts";
 import { executeQuarto } from "../src/render/quarto.ts";
 import { scanSource } from "../src/source/mod.ts";
@@ -91,87 +92,93 @@ Deno.test("foreign child knit cannot borrow an original hidden producer even wit
     await Deno.remove(f.dir, { recursive: true });
   }
 });
-Deno.test("R profile selection preserves unset, empty and relative explicit settings and profile errors", async () => {
-  const f = await fixture(
-    '```{r}\n#| label: profile\n#| echo: false\nprint(getOption("qbento.profile", "empty"))\n```\n',
-  );
-  const original = Deno.env.get("R_PROFILE_USER"),
-    originalUser = Deno.env.get("R_ENVIRON_USER");
-  try {
-    await Deno.writeTextFile(
-      f.dir + "/.Rprofile",
-      'options(qbento.profile="local")\n',
+isolatedEnvironmentTest(
+  "R profile selection preserves unset, empty and relative explicit settings and profile errors",
+  import.meta.url,
+  async () => {
+    const f = await fixture(
+      '```{r}\n#| label: profile\n#| echo: false\nprint(getOption("qbento.profile", "empty"))\n```\n',
     );
-    await Deno.writeTextFile(
-      f.dir + "/explicit.R",
-      'options(qbento.profile="explicit")\n',
-    );
-    for (
-      const [profile, expected] of [[undefined, "local"], ["", "empty"], [
-        "explicit.R",
-        "explicit",
-      ]] as const
-    ) {
-      if (profile === undefined) Deno.env.delete("R_PROFILE_USER");
-      else Deno.env.set("R_PROFILE_USER", profile);
-      const state = (await renderProject(f.source)).state;
+    const original = Deno.env.get("R_PROFILE_USER"),
+      originalUser = Deno.env.get("R_ENVIRON_USER");
+    try {
+      await Deno.writeTextFile(
+        f.dir + "/.Rprofile",
+        'options(qbento.profile="local")\n',
+      );
+      await Deno.writeTextFile(
+        f.dir + "/explicit.R",
+        'options(qbento.profile="explicit")\n',
+      );
+      for (
+        const [profile, expected] of [[undefined, "local"], ["", "empty"], [
+          "explicit.R",
+          "explicit",
+        ]] as const
+      ) {
+        if (profile === undefined) Deno.env.delete("R_PROFILE_USER");
+        else Deno.env.set("R_PROFILE_USER", profile);
+        const state = (await renderProject(f.source)).state;
+        assert(
+          state.emitted.slides[0].elements.some((e) =>
+            e.content === `[1] "${expected}"`
+          ),
+        );
+        assert(Deno.env.get("R_PROFILE_USER") === profile);
+      }
+      await Deno.mkdir(f.dir + "/ruser");
+      await Deno.writeTextFile(
+        f.dir + "/ruser/.Rprofile",
+        'options(qbento.profile="home")\n',
+      );
+      await Deno.remove(f.dir + "/.Rprofile");
+      // R startup reads its own environment fixture; the parent HOME is intact.
+      // Preserve the already installed library search paths when selecting the
+      // temporary R home, so this fixture does not create or install a library.
+      const libraries = await new Deno.Command("Rscript", {
+        cwd: f.dir,
+        args: ["-e", 'cat(.libPaths(), sep="\\n")'],
+        stdout: "piped",
+        stderr: "piped",
+      }).output();
+      assert(libraries.success);
+      const paths = new TextDecoder().decode(libraries.stdout).trim().split(
+        "\n",
+      )
+        .join(Deno.build.os === "windows" ? ";" : ":");
+      await Deno.writeTextFile(
+        f.dir + "/environment",
+        "HOME=" + f.dir + "/ruser\nR_LIBS_USER=" + paths + "\n",
+      );
+      Deno.env.set("R_ENVIRON_USER", f.dir + "/environment");
+      Deno.env.delete("R_PROFILE_USER");
+      const homeState = (await renderProject(f.source)).state;
       assert(
-        state.emitted.slides[0].elements.some((e) =>
-          e.content === `[1] "${expected}"`
+        homeState.emitted.slides[0].elements.some((e) =>
+          e.content === '[1] "home"'
         ),
       );
-      assert(Deno.env.get("R_PROFILE_USER") === profile);
+      await Deno.writeTextFile(
+        f.dir + "/explicit.R",
+        'stop("original-profile-error")\n',
+      );
+      Deno.env.set("R_PROFILE_USER", "explicit.R");
+      try {
+        await renderProject(f.source);
+      } catch (e) {
+        assert(String(e).includes("original-profile-error"));
+        return;
+      }
+      throw new Error("Original profile error was swallowed");
+    } finally {
+      if (original === undefined) Deno.env.delete("R_PROFILE_USER");
+      else Deno.env.set("R_PROFILE_USER", original);
+      if (originalUser === undefined) Deno.env.delete("R_ENVIRON_USER");
+      else Deno.env.set("R_ENVIRON_USER", originalUser);
+      await Deno.remove(f.dir, { recursive: true });
     }
-    await Deno.mkdir(f.dir + "/ruser");
-    await Deno.writeTextFile(
-      f.dir + "/ruser/.Rprofile",
-      'options(qbento.profile="home")\n',
-    );
-    await Deno.remove(f.dir + "/.Rprofile");
-    // R startup reads its own environment fixture; the parent HOME is intact.
-    // Preserve the already installed library search paths when selecting the
-    // temporary R home, so this fixture does not create or install a library.
-    const libraries = await new Deno.Command("Rscript", {
-      cwd: f.dir,
-      args: ["-e", 'cat(.libPaths(), sep="\\n")'],
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
-    assert(libraries.success);
-    const paths = new TextDecoder().decode(libraries.stdout).trim().split("\n")
-      .join(Deno.build.os === "windows" ? ";" : ":");
-    await Deno.writeTextFile(
-      f.dir + "/environment",
-      "HOME=" + f.dir + "/ruser\nR_LIBS_USER=" + paths + "\n",
-    );
-    Deno.env.set("R_ENVIRON_USER", f.dir + "/environment");
-    Deno.env.delete("R_PROFILE_USER");
-    const homeState = (await renderProject(f.source)).state;
-    assert(
-      homeState.emitted.slides[0].elements.some((e) =>
-        e.content === '[1] "home"'
-      ),
-    );
-    await Deno.writeTextFile(
-      f.dir + "/explicit.R",
-      'stop("original-profile-error")\n',
-    );
-    Deno.env.set("R_PROFILE_USER", "explicit.R");
-    try {
-      await renderProject(f.source);
-    } catch (e) {
-      assert(String(e).includes("original-profile-error"));
-      return;
-    }
-    throw new Error("Original profile error was swallowed");
-  } finally {
-    if (original === undefined) Deno.env.delete("R_PROFILE_USER");
-    else Deno.env.set("R_PROFILE_USER", original);
-    if (originalUser === undefined) Deno.env.delete("R_ENVIRON_USER");
-    else Deno.env.set("R_ENVIRON_USER", originalUser);
-    await Deno.remove(f.dir, { recursive: true });
-  }
-});
+  },
+);
 
 Deno.test("a filter cannot remove execution receipts and relabel a cell as another producer", async () => {
   const f = await fixture(

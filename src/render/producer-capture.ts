@@ -1,3 +1,4 @@
+import { producerEnvironment } from "./producer-environment.ts";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashSource, scanSource } from "../source/mod.ts";
@@ -26,7 +27,10 @@ function assertProducerStartup() {
     );
   }
 }
-export async function prepareProducerCapture(source: string) {
+export async function prepareProducerCapture(
+  source: string,
+  options: { environment?: boolean } = {},
+) {
   const text = await Deno.readTextFile(source), document = scanSource(text);
   if (document.blocks.some((block) => block.kind === "chunk")) {
     assertProducerStartup();
@@ -72,12 +76,19 @@ export async function prepareProducerCapture(source: string) {
       },
     ),
   };
+  const startup = options.environment === false || manifest.chunks.length === 0
+    ? {
+      effective: {} as Record<string, string>,
+      originalProfile: undefined,
+      args: [] as string[],
+    }
+    : await producerEnvironment({ cwd: dirname(source) });
   const receiptDir = await Deno.makeTempDir({ prefix: "qbento-producer-" });
   const path = resolve(receiptDir, "manifest.json");
   manifest.outputReceiptPath = resolve(receiptDir, "emitted.jsonl");
   await Deno.writeTextFile(manifest.outputReceiptPath, "");
   await Deno.writeTextFile(path, JSON.stringify(manifest));
-  const original = Deno.env.get("R_PROFILE_USER");
+  const original = startup.originalProfile;
   return {
     manifest,
     emitted: async () =>
@@ -85,8 +96,25 @@ export async function prepareProducerCapture(source: string) {
         Boolean,
       ).map((line) => JSON.parse(line) as string),
     cleanup: () => Deno.remove(receiptDir, { recursive: true }),
-    env: {
+    env: manifest.chunks.length === 0 ? {} : {
+      ...startup.effective,
+      QUARTO_KNITR_RSCRIPT_ARGS: [
+        ...startup.args,
+        "--no-environ",
+      ].filter(Boolean).join(","),
       R_PROFILE_USER: fileURLToPath(
+        new URL("./producer-profile.R", import.meta.url),
+      ),
+      ...(startup.args.includes("--no-site-file") ? {} : {
+        R_PROFILE: fileURLToPath(
+          new URL("./producer-site-profile.R", import.meta.url),
+        ),
+      }),
+      QBENTO_ORIGINAL_R_SITE_SET: startup.effective.R_PROFILE === undefined
+        ? "0"
+        : "1",
+      QBENTO_ORIGINAL_R_SITE: startup.effective.R_PROFILE ?? "",
+      QBENTO_PRODUCER_PROFILE: fileURLToPath(
         new URL("./producer-profile.R", import.meta.url),
       ),
       QBENTO_ORIGINAL_R_PROFILE_SET: original === undefined ? "0" : "1",

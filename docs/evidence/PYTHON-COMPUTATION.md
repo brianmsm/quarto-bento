@@ -49,8 +49,15 @@ one verified receipt only when its producer agrees with their original-source
 proof.
 
 User/profile startup selection preserves `R_PROFILE_USER` unset, empty, and
-explicit relative values; original user profile errors propagate. The adapter
-only changes the child R process. The permanent tests cover original project-local and default user-home
+explicit relative values; original user profile errors propagate. A data-only R startup probe uses native `readRenviron` to resolve site/user
+file selection and variable expansion. It runs without profiles or user default
+packages. A site-profile chain preserves the effective user-profile selection,
+including one made by the site profile itself; both original profiles and the
+QMD execute only once. The actual computation receives the resolved environment
+with `--no-environ`. No user startup files are rewritten. The helper's private
+transport is removed and its environment values are not logged. This is a
+separate R startup, not a second QMD computation. Authored-only documents skip it.
+The adapter only changes the child computation process. The permanent tests cover original project-local and default user-home
 profiles and user hooks coexisting with the adapter.
 
 ## Supported loop and safety checks
@@ -108,6 +115,11 @@ Future engines and arbitrary computed transformations need their own verified
 transport, not an echo or proximity fallback.
 
 ## Current focused validation
+
+The later [effective-Renviron regression](PRODUCER-ACTIVATION.md#effective-renviron-and-profile-precedence-2026-10-13)
+passed 26 tests together after the startup correction, including these Python
+CLI/ordinary and portable-package checks. Earlier results below retain their
+original narrower scope.
 
 On 2026-10-13, the six CLI/source/Python test files below passed together:
 **24 tests, 0 failures, 0 ignored, 54s**. The current retained log is
