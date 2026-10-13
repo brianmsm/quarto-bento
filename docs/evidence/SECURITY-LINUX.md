@@ -12,9 +12,9 @@ report is retained privately by the repository owner; this committed receipt
 records the public-safe findings, mitigations and validation scope. The source
 review used independent implementation-area reviews, a pinned Bento runtime
 check, a native Chromium reproduction and a real Quarto path reproduction. It
-reported three findings and partial coverage: the full 1.4 MB vendored Bento
-runtime and every documentation/test file were not reviewed line by line. This
-is a scoped local code audit, not a claim that no other vulnerabilities exist.
+reported three findings and partial coverage: the full vendored Bento runtime
+and every documentation/test file were not reviewed line by line. This is a
+scoped local code audit, not a claim that no other vulnerabilities exist.
 
 | Finding                             | Baseline proof                                                                                                                                                                                         | Mitigation in this change                                                                                                                                                                                                                                                                        |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

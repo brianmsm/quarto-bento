@@ -76,3 +76,18 @@ quick-start QMD rendered successfully. A local Markdown check covered every
 non-vendor documentation file and found no missing relative targets or heading
 anchors. An independent documentation review checked current claims and scope.
 These checks are separate from the earlier complete 578-test acceptance run.
+
+## Published repository verification
+
+On 2026-10-13, the initial source publication put commit
+`e9f6eb0a7d8c099346a2f9842076b108680ccc29` on public `main` at
+[brianmsm/quarto-bento](https://github.com/brianmsm/quarto-bento). GitHub's API
+reported `private: false`, visibility `public`, and default branch `main`. An
+unauthenticated request for the raw README returned HTTP 200 and matched the
+reviewed local bytes exactly (SHA-256
+`40ad3afd1b44dc7d358ff53fed102a66e7ce9737e81236dae30193f0a28638aa`). Private
+vulnerability reporting is enabled, issues are enabled and the wiki is disabled.
+No hosted workflow run was present after the initial push. This receipt is a
+later documentation update; the initial snapshot remains available in Git
+history. Only source publication occurred, with no GitHub release or binary
+attachment.
