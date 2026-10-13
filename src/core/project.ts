@@ -6,6 +6,7 @@ import {
 import { retainedComponentFrames } from "./component-frames.ts";
 import { kpiReadabilityDiagnostics } from "../render/kpi.ts";
 import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
+import { textOverflowDiagnostics } from "../render/text-overflow.ts";
 import { assertGraphTypography } from "../render/graphs.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
@@ -506,6 +507,9 @@ async function render(source: string, executed?: ExecutedRender) {
       projected.mapping,
       composed.document as unknown as RenderDoc,
     );
+    const textDiagnostics = await textOverflowDiagnostics(
+      composed.document as unknown as RenderDoc,
+    );
     const shell = await Deno.readTextFile(
       new URL("../../vendor/bento/shell.html", import.meta.url),
     );
@@ -638,7 +642,7 @@ async function render(source: string, executed?: ExecutedRender) {
       state,
       diagnostics: refreshOverflowDiagnostics(
         composed.document as unknown as RenderDoc,
-        [...projected.diagnostics, ...kpiDiagnostics],
+        [...projected.diagnostics, ...kpiDiagnostics, ...textDiagnostics],
       ),
       ...(widgetPublication
         ? {
@@ -730,7 +734,11 @@ export async function readProjectDiagnostics(
   const { pendingComponentDiagnostics } = await import(
     "./component-actions.ts"
   );
-  return [...designDiagnostics, ...pendingComponentDiagnostics(state)];
+  return refreshOverflowDiagnostics(state.emitted as unknown as RenderDoc, [
+    ...designDiagnostics,
+    ...pendingComponentDiagnostics(state),
+    ...await textOverflowDiagnostics(state.emitted as unknown as RenderDoc),
+  ]);
 }
 
 export async function readProjectPresenter(

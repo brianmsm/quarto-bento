@@ -60,8 +60,8 @@ Los IDs permiten verificar a qué fragmento corresponde cada edición. También
 puedes empezar con encabezados y párrafos Markdown normales, sin IDs. Si una
 sincronización necesita identidades estables, **Revisar cambios** puede proponer
 los IDs de origen como parches explícitos, incluso para contenido que no
-modificaste. Revisa y aplica esos parches junto con los cambios semánticos; no se
-añaden al guardar ni al recalcular. Cambiar identidades cuando ya hay diseño
+modificaste. Revisa y aplica esos parches junto con los cambios semánticos; no
+se añaden al guardar ni al recalcular. Cambiar identidades cuando ya hay diseño
 guardado todavía puede requerir resolver su correspondencia. Consulta
 [la sintaxis y sus límites](AUTHORING.md) para componentes, código, ecuaciones,
 notas, tablas y gráficos, y la [prueba de QMD normal](evidence/PLAIN-QMD.md).
@@ -77,8 +77,8 @@ identidad:
 ![Comparación con **β** y `código`](figuras/resultado.svg)
 ```
 
-La imagen y su pie se proyectan como dos objetos nativos vinculados. Edita el pie
-en Studio y pulsa **Guardar proyecto** para conservarlo pendiente. **Revisar
+La imagen y su pie se proyectan como dos objetos nativos vinculados. Edita el
+pie en Studio y pulsa **Guardar proyecto** para conservarlo pendiente. **Revisar
 cambios** muestra las identidades necesarias y el cambio exacto del pie;
 **Aplicar** lo escribe en QMD. **Recalcular** conserva la ruta del recurso y el
 diseño. Un pie vacío `![](figuras/resultado.svg)` puede recibir texto mediante
@@ -131,14 +131,14 @@ casos ambiguos puede ser rechazado con un diagnóstico.
 
 También puedes borrar del lienzo ciertos elementos respaldados por el QMD.
 **Guardar proyecto** conserva la eliminación pendiente. En la revisión, marca la
-confirmación que identifica el elemento; antes de aplicar puedes usar
-**Comparar con QMD** para restaurarlo con su texto y diseño pendientes. La
-eliminación confirmada solo sincroniza unidades fuente independientes admitidas
-(párrafos, código mostrado o ecuaciones de visualización con identidad técnica
-estable, o una de esas unidades cuando es hija única de un div sencillo,
-identificado y de nivel superior). Encabezados, resultados calculados y
-estructuras compartidas o ambiguas se conservan y muestran un diagnóstico. Ver
-el [alcance y la prueba nativa de eliminación](evidence/ELEMENT-DELETION.md).
+confirmación que identifica el elemento; antes de aplicar puedes usar **Comparar
+con QMD** para restaurarlo con su texto y diseño pendientes. La eliminación
+confirmada solo sincroniza unidades fuente independientes admitidas (párrafos,
+código mostrado o ecuaciones de visualización con identidad técnica estable, o
+una de esas unidades cuando es hija única de un div sencillo, identificado y de
+nivel superior). Encabezados, resultados calculados y estructuras compartidas o
+ambiguas se conservan y muestran un diagnóstico. Ver el
+[alcance y la prueba nativa de eliminación](evidence/ELEMENT-DELETION.md).
 
 También puedes añadir un cuadro de texto independiente en una diapositiva
 existente. **Guardar proyecto** lo conserva como pendiente; **Revisar cambios**
@@ -151,25 +151,24 @@ estructuras ambiguas pueden requerir autoría explícita en QMD. Consulta el
 En **Notas del orador** puedes escribir notas aunque la diapositiva todavía no
 tenga un bloque de notas en QMD, incluso si acabas de crearla en Bento.
 **Guardar proyecto** conserva ese texto pendiente. **Revisar cambios** muestra
-el bloque `.notes` que se insertará y las identidades técnicas necesarias;
-solo **Aplicar** escribe QMD. Las notas admiten texto plano y párrafos, con los
+el bloque `.notes` que se insertará y las identidades técnicas necesarias; solo
+**Aplicar** escribe QMD. Las notas admiten texto plano y párrafos, con los
 [límites de espacios y ejecución documentados](evidence/NOTES.md).
 
-Las listas Markdown, incluidas las anidadas y las numeradas desde 1,
-se conservan como listas nativas editables. Puedes crear listas en cuadros de
-texto nuevos y convertir un párrafo independiente en lista, o volver a párrafo,
-con la barra de formato de Bento. Guardar conserva el cambio pendiente; Revisar
-muestra la inserción o conversión y sólo Aplicar escribe el QMD. El borrado exige
+Las listas Markdown, incluidas las anidadas y las numeradas desde 1, se
+conservan como listas nativas editables. Puedes crear listas en cuadros de texto
+nuevos y convertir un párrafo independiente en lista, o volver a párrafo, con la
+barra de formato de Bento. Guardar conserva el cambio pendiente; Revisar muestra
+la inserción o conversión y sólo Aplicar escribe el QMD. El borrado exige
 confirmar el elemento; antes de aplicarlo puedes recuperarlo desde Comparar con
-QMD. Consulta el
-[alcance actual de listas](evidence/LISTS.md).
+QMD. Consulta el [alcance actual de listas](evidence/LISTS.md).
 
 ## KPI declarados en QMD
 
 El adaptador de fuente `.bento-kpi` admite un componente identificado al nivel
-de la diapositiva o dentro de tarjetas y layouts identificados de la fuente,
-con contenedores directos identificados para `label`, `value`
-y, opcionalmente, `detail`. El ejemplo reproducible está en
+de la diapositiva o dentro de tarjetas y layouts identificados de la fuente, con
+contenedores directos identificados para `label`, `value` y, opcionalmente,
+`detail`. El ejemplo reproducible está en
 [`examples/kpi`](../examples/kpi/deck.qmd) y la composición en
 [`examples/composed-kpis`](../examples/composed-kpis/deck.qmd); la
 [evidencia KPI](evidence/KPI.md) detalla el esquema admitido y sus rechazos. El
@@ -201,8 +200,9 @@ Bento antes de sincronizar. En **Revisar cambios**, conserva juntos todos los
 cambios semánticos de los campos que forman un componente: seleccionar solo una
 parte de la tarjeta o del indicador se rechaza. Revisa el bloque QMD propuesto y
 usa **Aplicar estos cambios a QMD** para insertar su esquema de autoría
-explícita en la sección de la diapositiva elegida. Luego usa **Recalcular** para reconstruir y
-comprobar la presentación; el diseño nativo guardado se conserva por separado.
+explícita en la sección de la diapositiva elegida. Luego usa **Recalcular** para
+reconstruir y comprobar la presentación; el diseño nativo guardado se conserva
+por separado.
 
 Si al guardar falta uno de los objetos gestionados de la creación, la intención
 y las últimas instantáneas permanecen en el proyecto. Vuelve a abrir **Añadir
@@ -211,7 +211,8 @@ esa creación pendiente. Si el objeto presente cambió de tipo o hay miembros
 adicionales en su grupo nativo, resuélvelo en Bento o descarta la creación; la
 sincronización no adivina su pertenencia. Este flujo tiene pruebas enfocadas de
 contrato y de la interfaz Studio, y aceptación en Chromium headless sobre Linux
-con el editor Bento fijado. Consulta el [recibo de creación nativa](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+con el editor Bento fijado. Consulta el
+[recibo de creación nativa](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
 Esto no acredita interacción con el escritorio en primer plano ni con otras
 plataformas.
 
@@ -236,8 +237,8 @@ diferencias.
 
 En la versión fijada de Bento, arrastrar el extremo nativo de un conector
 desvincula su ancla en lugar de reasignar la relación al nodo bajo el puntero.
-La revisión bloquea ese cambio incompleto. Puedes restaurarlo con **Deshacer**
-o seleccionar explícitamente ambos extremos fuente en **Relaciones**. Pulsa
+La revisión bloquea ese cambio incompleto. Puedes restaurarlo con **Deshacer** o
+seleccionar explícitamente ambos extremos fuente en **Relaciones**. Pulsa
 **Guardar relación pendiente** para guardar el par `from`/`to` como una sola
 actualización de `.qbento/`, conservando los lados de anclaje visuales. Este
 guardado no modifica QMD ni ejecuta R. Los conflictos con QMD o las identidades
@@ -396,3 +397,11 @@ proyecto Quarto existente.
 
 Los límites de contenido y las pruebas que todavía faltan se mantienen en el
 [registro de implementación](IMPLEMENTATION_STATUS.md).
+
+El render también avisa con `TEXT_OVERFLOW` cuando texto, listas, fórmulas o
+código nativo exceden su caja guardada, aunque la caja esté dentro de la
+diapositiva. Ajusta tamaño o tipografía y guarda; la inspección de Studio
+actualiza el aviso sin ejecutar QMD. `TEXT_MEASUREMENT_UNAVAILABLE` indica que
+no se pudo medir ese contenido: revisa la diapositiva o configura Chromium
+local. El flujo ordinario sigue disponible y conserva el trabajo. Consulta
+[el alcance y la evidencia de estos avisos](evidence/CONTENT-OVERFLOW.md).

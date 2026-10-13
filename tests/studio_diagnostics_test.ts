@@ -91,8 +91,8 @@ Deno.test({
         receipt.pending === 0 &&
           receipt.diagnostics[0].code === "MISSING_DESIGN",
       );
-      // The real projection reports overflow; the read-only endpoint is only
-      // design availability. Client lifecycle regressions test their merge.
+      // The read-only endpoint reevaluates current saved bounds after render
+      // and Save, so reconnects retain warnings without a stale render receipt.
       await Deno.writeTextFile(
         f.source,
         f.text +
@@ -114,7 +114,7 @@ Deno.test({
         ),
       );
       assert(
-        !(await (await api("diagnostics")).json()).some((d: { code: string }) =>
+        (await (await api("diagnostics")).json()).some((d: { code: string }) =>
           d.code === "OVERFLOW"
         ),
       );
@@ -128,6 +128,7 @@ Deno.test({
       const current = await readProject(f.source);
       const edited = structuredClone(current.emitted);
       edited.slides[0].elements[1].x = 222;
+      edited.slides[0].elements[1].w = 800;
       const save = await api("save", {
         doc: edited,
         revision: current.revision,

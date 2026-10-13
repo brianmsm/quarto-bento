@@ -35,6 +35,13 @@ async function api(path, body) {
   return result;
 }
 function showDiagnostics(diagnostics) {
+  // Content and box bounds are freshly checked against saved state. Replace earlier render
+  // warnings so a corrected saved box clears them before another computation.
+  renderDiagnostics = renderDiagnostics.filter((d) =>
+    !["OVERFLOW", "TEXT_OVERFLOW", "TEXT_MEASUREMENT_UNAVAILABLE"].includes(
+      d.code,
+    )
+  );
   projectDiagnostics = diagnostics;
   $("diagnostic-list").replaceChildren();
   const visible = [...renderDiagnostics, ...diagnostics];
@@ -50,17 +57,23 @@ function showDiagnostics(diagnostics) {
   $("project-diagnostics").hidden = visible.length === 0;
 }
 function showRenderDiagnostics(receipt) {
-  // Design inspection can change independently of the last executed projection.
-  // Keep its non-design warnings until another render or a different snapshot.
-  const isDesign = (diagnostic) =>
-    ["MISSING_DESIGN", "UNVERIFIABLE_DESIGN_ANNOTATION"].includes(
+  // Design and content bounds can change after Save without source execution.
+  // Only projection-specific warnings remain until a new render/snapshot.
+  const isFresh = (diagnostic) =>
+    [
+      "MISSING_DESIGN",
+      "UNVERIFIABLE_DESIGN_ANNOTATION",
+      "OVERFLOW",
+      "TEXT_OVERFLOW",
+      "TEXT_MEASUREMENT_UNAVAILABLE",
+    ].includes(
       diagnostic.code,
     );
   const diagnostics = receipt.diagnostics ?? [];
-  renderDiagnostics = diagnostics.filter((diagnostic) => !isDesign(diagnostic));
+  renderDiagnostics = diagnostics.filter((diagnostic) => !isFresh(diagnostic));
   renderDiagnosticSnapshot = { docId: state.docId, revision: receipt.revision };
   ++diagnosticGeneration;
-  showDiagnostics(diagnostics.filter(isDesign));
+  showDiagnostics(diagnostics.filter(isFresh));
 }
 async function refreshDiagnostics() {
   const generation = ++diagnosticGeneration;

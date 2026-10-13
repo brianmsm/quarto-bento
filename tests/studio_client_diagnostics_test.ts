@@ -95,7 +95,7 @@ async function client() {
     },
   };
 }
-Deno.test("Studio retains render OVERFLOW after reconnect and design refresh, then replaces it on corrected render", async () => {
+Deno.test("Studio refreshes saved box bounds after reconnect and clears corrected geometry without execution", async () => {
   const c = await client();
   const overflow = {
     code: "OVERFLOW",
@@ -106,23 +106,28 @@ Deno.test("Studio retains render OVERFLOW after reconnect and design refresh, th
     code: "MISSING_DESIGN",
     message: "Restore .qbento from Git",
   };
-  c.setDesign([missing]);
+  c.setDesign([overflow, missing]);
   await c.recalc([overflow, missing]);
   assert(c.codes().includes("OVERFLOW"), JSON.stringify(c.codes()));
   assert(c.texts().some((text) => text.includes("paragraph-6/paragraph:1")));
   assert(c.codes().filter((v) => v === "MISSING_DESIGN").length === 1);
-  c.setDesign([]);
+  c.setDesign([overflow]);
   await c.refresh();
   assert(c.codes().join() === "OVERFLOW", JSON.stringify(c.codes()));
+  c.setDesign([]);
+  await c.refresh();
+  assert(c.codes().length === 0, JSON.stringify(c.codes()));
   await c.recalc([]);
   assert(c.codes().length === 0, JSON.stringify(c.codes()));
 });
 Deno.test("Studio drops previous render warnings on an unrelated native snapshot, without claiming reopen persistence", async () => {
   const c = await client();
+  c.setDesign([{ code: "OVERFLOW", message: "Fresh bounds" }]);
   await c.recalc([{
     code: "OVERFLOW",
     message: "Element exceeds slide slide",
   }]);
+  c.setDesign([]);
   c.editor.contentWindow = {
     bento: {},
     __qbentoSnapshot: { docId: "other-doc", revision: 30, pending: 0 },
@@ -130,4 +135,26 @@ Deno.test("Studio drops previous render warnings on an unrelated native snapshot
   c.connect();
   await c.refresh();
   assert(c.codes().length === 0, JSON.stringify(c.codes()));
+});
+
+Deno.test("Studio clears stale native content warnings after a corrected saved inspection", async () => {
+  const c = await client();
+  const overflow = {
+    code: "TEXT_OVERFLOW",
+    elementId: "paragraph",
+    message: "Content exceeds box",
+  };
+  c.setDesign([overflow]);
+  await c.recalc([overflow]);
+  assert(c.codes().join() === "TEXT_OVERFLOW", JSON.stringify(c.codes()));
+  c.setDesign([]);
+  await c.refresh();
+  assert(c.codes().length === 0, JSON.stringify(c.codes()));
+  c.setDesign([{
+    code: "TEXT_MEASUREMENT_UNAVAILABLE",
+    elementId: "paragraph",
+    message: "Inspect the native slide",
+  }]);
+  await c.refresh();
+  assert(c.codes().join() === "TEXT_MEASUREMENT_UNAVAILABLE");
 });
