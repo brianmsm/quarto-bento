@@ -1,5 +1,9 @@
 # Source-first KPI evidence
 
+The standalone-only composition boundary in this historical receipt is extended
+by [the newer bounded composed-KPI receipt](COMPOSED-KPIS.md). Its source and
+measurement requirements remain applicable.
+
 This slice implements original-QMD `.bento-kpi` components on the owner's Linux
 machine. It does not establish native creation of semantic KPIs, nested KPI
 composition, another operating system, or a release acceptance boundary. Native
