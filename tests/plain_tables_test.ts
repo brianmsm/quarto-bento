@@ -131,7 +131,12 @@ Deno.test("plain table transforms, removal and cross-slide moves refuse without 
       ]
     ) {
       await Deno.writeTextFile(`${dir}/table.lua`, lua);
-      await refuses(() => renderProject(source), "UNMAPPED_TABLE_SOURCE");
+      await refuses(
+        () => renderProject(source),
+        lua.startsWith("function Pandoc")
+          ? "UNMAPPED_PROVENANCE"
+          : "UNMAPPED_TABLE_SOURCE",
+      );
       eq(await Deno.readTextFile(source), original);
       eq(await Deno.readTextFile(`${dir}/deck.bento.html`), html);
       eq(await Deno.readTextFile(`${dir}/.qbento/state.json`), state);
