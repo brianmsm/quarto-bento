@@ -660,10 +660,12 @@ export async function buildDevelopmentPackage(options: {
       executable: false,
     });
   }
-  for (const name of ["bin/qbento", "bin/qbento.cmd", "docs/PACKAGING.md"]) {
+  for (
+    const name of ["bin/qbento", "bin/qbento.cmd", "docs/PORTABLE_USAGE.md"]
+  ) {
     const bytes = await regularBytes(resolve(sourceRoot, name));
     payload.push({
-      path: name === "docs/PACKAGING.md" ? "PACKAGING.md" : name,
+      path: name === "docs/PORTABLE_USAGE.md" ? "PACKAGING.md" : name,
       // Keep source diffs clean while shipping native batch-file line endings.
       bytes: name === "bin/qbento.cmd"
         ? new TextEncoder().encode(

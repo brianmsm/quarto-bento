@@ -49,8 +49,8 @@ async function sourceFixture(destination: string) {
   );
   await Deno.mkdir(resolve(destination, "docs"), { recursive: true });
   await Deno.copyFile(
-    resolve(root, "docs/PACKAGING.md"),
-    resolve(destination, "docs/PACKAGING.md"),
+    resolve(root, "docs/PORTABLE_USAGE.md"),
+    resolve(destination, "docs/PORTABLE_USAGE.md"),
   );
 }
 async function runGit(cwd: string, args: string[]) {
@@ -193,7 +193,7 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
     );
     await Deno.copyFile(
       resolve(first, "PACKAGING.md"),
-      resolve(sourceRoot, "docs/PACKAGING.md"),
+      resolve(sourceRoot, "docs/PORTABLE_USAGE.md"),
     );
     const tamperedFiles = [
       "vendor/bento/shell.html",
