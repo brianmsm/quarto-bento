@@ -14,7 +14,7 @@ function assert(v: unknown, message = "assertion failed"): asserts v {
   if (!v) throw new Error(message);
 }
 
-Deno.test("integrated native charts refuse unadapted component placement", async () => {
+Deno.test("integrated native charts refuse undersized component placement", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-component-native-" });
   try {
     for (const kind of ["chart"]) {
@@ -26,7 +26,7 @@ Deno.test("integrated native charts refuse unadapted component placement", async
         : "";
       const original = `## Data {#data}
 
-:::: {#card .bento-card}
+:::: {#card .bento-card h="200"}
 
 ::: {#values ${intent}}
 | | N |
@@ -40,7 +40,7 @@ Deno.test("integrated native charts refuse unadapted component placement", async
       await Deno.writeTextFile(source, original);
       await refuses(
         () => renderProject(source),
-        "COMPONENT_CONTENT_LAYOUT_UNSUPPORTED",
+        "UNSUPPORTED_CHART",
       );
       assert(await Deno.readTextFile(source) === original);
       try {
@@ -381,7 +381,7 @@ Deno.test("card code rows retain all eight lines at native font size and excessi
 });
 
 Deno.test("component layout rejects native types with unadapted internal metrics", () => {
-  for (const type of ["chart", "embed", "svg", "video"]) {
+  for (const type of ["embed", "svg", "video"]) {
     try {
       applyComponentDesign([[{
         id: "unadapted",

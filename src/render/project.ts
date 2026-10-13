@@ -669,6 +669,28 @@ export async function projectAst(
               child.t === "Div" &&
               (child.c as [Attr, Node[]])[0][1].includes("bento-kpi")
             ) return -1;
+            // A chart fills the remaining card height, then validates its axes,
+            // labels and legend at that exact frame. Wrapper siblings cannot be
+            // measured as one chart and silently squeezed into the same slot.
+            const containsChart = (node: Node): boolean =>
+              node.t === "Div" &&
+              ((node.c as [Attr, Node[]])[0][1].includes("bento-chart") ||
+                (node.c as [Attr, Node[]])[1].some(containsChart));
+            if (containsChart(child)) {
+              let candidate = child;
+              while (candidate.t === "Div") {
+                const [attributes, nested] = candidate.c as [Attr, Node[]];
+                if (attributes[1].includes("bento-chart")) return -1;
+                const semantic = nested.filter((n) => n.t !== "RawBlock");
+                if (semantic.length !== 1) {
+                  throw new DesignError(
+                    "COMPONENT_CHART_SUBTREE",
+                    "Put chart wrapper siblings in separate card children.",
+                  );
+                }
+                candidate = semantic[0];
+              }
+            }
             // A table can be wrapped by source and execution divs. Inspect the
             // whole subtree; never select one descendant and drop its siblings.
             const tableHeight = (value: Node): number | undefined => {
@@ -783,12 +805,6 @@ export async function projectAst(
         }
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
         if (attr[1].includes("bento-chart")) {
-          if (inComponent) {
-            throw new DesignError(
-              "COMPONENT_CONTENT_LAYOUT_UNSUPPORTED",
-              "Native charts inside cards/layouts need a measured adapter for their internal typography and axes; place this chart outside the component.",
-            );
-          }
           const declaration = parseDesignAttributes(attr);
           if (!source || computed) {
             throw new Error(
@@ -810,6 +826,7 @@ export async function projectAst(
             binding.kind,
             `${attr[0]}/chart`,
             y,
+            contentFrame,
           );
           if (!binding.computed) {
             validateAuthoredChart(source, binding.block.id, element);
@@ -825,6 +842,8 @@ export async function projectAst(
             attr[2].filter(([k]) => k !== "bento-chart-kind"),
           ], [element]);
           y += Number(element.h) + 20;
+          if (groups) groups.push(slide!.elements.slice(groupStart));
+          contentFrame = previousFrame;
           continue;
         }
         const containsTable = (value: unknown): boolean =>

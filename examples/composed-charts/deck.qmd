@@ -1,0 +1,32 @@
+## Results {#results}
+
+::::: {#grid .bento-layout bento-layout-name="two-column"}
+
+:::: {#left .bento-card}
+
+### Effects
+
+::: {#effects .bento-chart bento-chart-kind="bar"}
+| | Effect | Other |
+| --- | ---: | ---: |
+| Alpha | -2.5 | 1.25 |
+| Beta | 0 | 3 |
+:::
+
+::::
+
+:::: {#right .bento-card}
+
+### Trend
+
+::: {#trend .bento-chart bento-chart-kind="line"}
+```{r}
+#| label: chart-maker
+#| echo: false
+knitr::kable(read.csv("data.csv"), format="pipe", col.names=c("", "N"))
+```
+:::
+
+::::
+
+:::::

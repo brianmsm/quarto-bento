@@ -463,7 +463,8 @@ function placed(
   let scale = Math.min(1, frame.w / width, frame.h / height);
   if (
     original.some((element) =>
-      element.type === "table" || measured?.fixed.has(element.id)
+      element.type === "table" || element.type === "chart" ||
+      measured?.fixed.has(element.id)
     )
   ) {
     if (width > frame.w + .01 || height > frame.h + .01) {
@@ -598,7 +599,14 @@ export function applyComponentDesign(
   defaults: DesignDefaults = {},
   measuredComponents?: MeasuredComponents,
 ): ComponentProjection {
-  const supported = new Set(["text", "code", "image", "shape", "table"]);
+  const supported = new Set([
+    "text",
+    "code",
+    "image",
+    "shape",
+    "table",
+    "chart",
+  ]);
   const unsupported = children.flat().find((element) =>
     !supported.has(element.type)
   );

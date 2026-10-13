@@ -1,6 +1,7 @@
 /** Bounded chart contract for the actual pinned charts-lite renderer. */
 import { type PlainTable, plainTable } from "./table.ts";
 import type { Element, Json, Node } from "./types.ts";
+import type { Frame } from "./design.ts";
 export type ChartKind = "bar" | "line";
 function fail(message: string): never {
   throw new Error(`UNSUPPORTED_CHART: ${message}`);
@@ -25,6 +26,7 @@ export function chartNumber(text: string): number {
 export function chartOption(
   table: PlainTable,
   kind: ChartKind,
+  frame: Pick<Frame, "w" | "h"> = { w: 1120, h: 460 },
 ): Record<string, Json> {
   if (kind !== "bar" && kind !== "line") fail("Choose bar or line explicitly.");
   if (!table.header || table.columns.length < 2 || table.columns.length > 5) {
@@ -53,7 +55,17 @@ export function chartOption(
       );
     }
   }
-  const width = 1120, fontSize = 14, plotWidth = width - 112 - 24;
+  const width = frame.w, fontSize = 14, plotWidth = width - 112 - 24;
+  // Pinned charts-lite drops category labels below a 56px band. Six value-axis
+  // ticks also need actual vertical space: never resize only an outer box.
+  if (
+    !Number.isFinite(width) || !Number.isFinite(frame.h) ||
+    plotWidth < labels.length * 56 || frame.h < 242
+  ) {
+    fail(
+      "The final chart frame needs at least 56px per category and 242px height for readable axes and legend.",
+    );
+  }
   if (
     labels.some((s) =>
       Array.from(s).length * fontSize * 2 > plotWidth / labels.length
@@ -95,8 +107,13 @@ export function projectChart(
   kind: ChartKind,
   id: string,
   y = 166,
+  contentFrame?: Frame,
 ): Element {
-  if (y < 0 || y + 460 > 720) {
+  const frame = contentFrame ?? { x: 80, y, w: 1120, h: 460 };
+  if (
+    frame.x < 0 || frame.x + frame.w > 1280 || frame.y < 0 ||
+    frame.y + frame.h > 720
+  ) {
     fail(
       "The chart does not fit in the remaining slide area; place it on a separate slide.",
     );
@@ -105,11 +122,8 @@ export function projectChart(
     id,
     type: "chart",
     preset: kind,
-    option: chartOption(table, kind),
-    x: 80,
-    y,
-    w: 1120,
-    h: 460,
+    option: chartOption(table, kind, frame),
+    ...frame,
     rotation: 0,
     opacity: 1,
   };
