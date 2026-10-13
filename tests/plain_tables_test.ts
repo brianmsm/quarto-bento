@@ -145,3 +145,53 @@ Deno.test("plain table transforms, removal and cross-slide moves refuse without 
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("an executed wrapper cannot invent a table native identity", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-table-native-id-" }),
+    source = `${dir}/deck.qmd`;
+  try {
+    const original =
+      "---\nfilters: [forge.lua]\n---\n\n## Table\n\n::: {#source-table}\n" +
+      table + ":::\n";
+    await Deno.writeTextFile(source, original);
+    await Deno.writeTextFile(
+      `${dir}/forge.lua`,
+      'function Div(el) if el.identifier=="source-table" then el.attributes["bento-element-id"]="invented" end return el end',
+    );
+    await refuses(() => renderProject(source), "UNMAPPED_TABLE_SOURCE");
+    eq(await Deno.readTextFile(source), original);
+    try {
+      await Deno.stat(`${dir}/deck.bento.html`);
+      throw new Error("published unproved native identity");
+    } catch (e) {
+      ok(e instanceof Deno.errors.NotFound, String(e));
+    }
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("removing an acquired table wrapper cannot bypass literal-source coverage", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-table-coverage-" }),
+    source = `${dir}/deck.qmd`;
+  try {
+    const original =
+      '---\nfilters: [drop.lua]\n---\n\n## Table\n\n::: {#source-table bento-element-id="retained-table"}\n' +
+      table + ":::\n";
+    await Deno.writeTextFile(source, original);
+    await Deno.writeTextFile(`${dir}/drop.lua`, "-- identity");
+    await renderProject(source);
+    const html = await Deno.readTextFile(`${dir}/deck.bento.html`),
+      state = await Deno.readTextFile(`${dir}/.qbento/state.json`);
+    await Deno.writeTextFile(
+      `${dir}/drop.lua`,
+      'function Div(el) if el.identifier=="source-table" then return {} end end',
+    );
+    await refuses(() => renderProject(source), "UNMAPPED_TABLE_SOURCE");
+    eq(await Deno.readTextFile(source), original);
+    eq(await Deno.readTextFile(`${dir}/deck.bento.html`), html);
+    eq(await Deno.readTextFile(`${dir}/.qbento/state.json`), state);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

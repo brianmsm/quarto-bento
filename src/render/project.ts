@@ -33,8 +33,9 @@ import {
 } from "../source/chart.ts";
 import {
   authoredTableBlock,
-  bareTableBlocks,
+  literalTableBlocks,
   matchBareTable,
+  tableNativeIdentity,
   tableProducer,
   validateAuthoredTable,
 } from "../source/table.ts";
@@ -1032,6 +1033,11 @@ export async function projectAst(
               ? undefined
               : displayFormula(content);
           if (children[0].t === "Table") {
+            if (!source || tableNativeIdentity(source, attr[0]) !== nativeId) {
+              throw new Error(
+                "UNMAPPED_TABLE_SOURCE: native table identity differs from the original wrapper declaration",
+              );
+            }
             await walk(children, false, attr[0]);
             const element = slide!.elements.at(-1)!;
             const previousId = element.id;
@@ -1633,10 +1639,10 @@ export function validateProjectionOrigins(
       );
     }
   }
-  for (const block of bareTableBlocks(source)) {
+  for (const block of literalTableBlocks(source)) {
     if (!used.has(block.id)) {
       throw new Error(
-        "UNMAPPED_TABLE_SOURCE: an original bare table was removed or lost its exact source binding",
+        "UNMAPPED_TABLE_SOURCE: an original literal table was removed or lost its exact source binding",
       );
     }
   }

@@ -1,0 +1,8 @@
+## Plain table
+
+| Group | N |
+| :--- | ---: |
+| Alpha | 12 |
+| Beta | 5 |
+
+A conclusion.

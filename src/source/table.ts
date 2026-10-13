@@ -1,3 +1,4 @@
+import { originalAttributeTokens } from "./attributes.ts";
 /** Independent proof for the supported literal original-QMD pipe-table subset. */
 import { escapeHtml } from "../render/html.ts";
 import type { PlainTable, TableAlign } from "../render/table.ts";
@@ -100,6 +101,28 @@ export function authoredTableBlock(
   parsePipeTable(blocks[0].content);
   return blocks[0];
 }
+/** A native identity binding must be explicit in the original table wrapper. */
+export function tableNativeIdentity(
+  doc: SourceDocument,
+  wrapperId: string,
+): string | undefined {
+  const original = scanSource(doc.text);
+  authoredTableBlock(original, wrapperId);
+  const wrapper = original.blocks.find((block) => block.id === wrapperId)!;
+  const content = /^ {0,3}:{3,}\s*\{([^{}]*)\}\s*$/.exec(
+    wrapper.raw.split(/\r?\n/)[0],
+  )?.[1];
+  if (content === undefined) {
+    fail("Table wrapper requires original literal attributes.");
+  }
+  const attributes = originalAttributeTokens(content).filter((token) =>
+    token.key === "bento-element-id"
+  );
+  if (attributes.length > 1) {
+    fail("Table wrapper has ambiguous native identities.");
+  }
+  return attributes[0]?.value;
+}
 /** Exact semantic fields, independent of native geometry and table styling. */
 export function literalTableContent(content: string): Record<string, Json> {
   const table = parsePipeTable(content);
@@ -179,6 +202,27 @@ export function bareTableBlocks(doc: SourceDocument): SourceBlock[] {
     ) return false;
     try {
       parsePipeTable(block.content);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+/** Coverage also applies after an approved wrapper makes a formerly bare table stable. */
+export function literalTableBlocks(doc: SourceDocument): SourceBlock[] {
+  if (doc.hash !== hashSource(doc.text)) {
+    fail("Original table source snapshot is stale.");
+  }
+  const original = scanSource(doc.text);
+  if (original.diagnostics.length) {
+    fail("Resolve source mapping diagnostics before table coverage checks.");
+  }
+  return original.blocks.filter((block) => {
+    if (block.kind !== "unsupported" || block.origin !== "authored") {
+      return false;
+    }
+    try {
+      literalTableBlock(original, block.id);
       return true;
     } catch {
       return false;

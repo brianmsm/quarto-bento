@@ -46,15 +46,17 @@ validate every later native layout edit.
 ```
 
 The supported original format is one contiguous pipe table with explicit outer
-pipes, at least three dashes per separator cell and a single identified fenced
-div containing no other blocks. Cells contain literal plain text; escaped
+pipes and at least three dashes per separator cell. A unique bare table now
+works directly; an identified fenced div containing no other blocks remains
+the explicit alternative. See [ordinary tables and reviewed identity
+acquisition](PLAIN-TABLES.md). Cells contain literal plain text; escaped
 punctuation can remain literal. Rich Markdown or transformations that differ
 from the exact original text refuse. Visual frame attributes can use the
 existing single-object wrapper mechanism.
 
 The original scanner continues to call the table fragment `unsupported` for
 reverse mapping. It is **not reclassified by matching an ID**. A separate parser
-reads the original bytes, verifies the unique wrapper and literal noncomputed
+reads the original bytes, verifies the unique fragment/wrapper and literal noncomputed
 fragment, and independently compares every cell, header and alignment against
 the executed native projection. `validateProjectionOrigins` repeats this proof.
 The verified origin is authored, while the source kind remains unsupported for
