@@ -1,6 +1,13 @@
 import { renderProject, saveProject } from "../src/core/project.ts";
 import { previewSync } from "../src/core/sync.ts";
 import { retainedKpiAppearances } from "../src/core/kpi-appearance.ts";
+import { executeQuarto } from "../src/render/quarto.ts";
+import {
+  projectAst,
+  validateProjectionOrigins,
+} from "../src/render/project.ts";
+import type { PandocAttr as Attr } from "../src/render/design.ts";
+import type { Node } from "../src/render/types.ts";
 import { measureNativeText } from "../src/render/measure.ts";
 import { kpiSource } from "../src/source/kpi.ts";
 import { scanSource } from "../src/source/mod.ts";
@@ -400,8 +407,11 @@ Deno.test("source-owned enclosing frame blocks capacity rescue before default bo
   }
 });
 
-Deno.test("executed KPI ancestor attributes must match the original source rather than merely reusing its ID", async () => {
+Deno.test("authored KPI Lua ancestor attributes must match the original source rather than merely reusing its ID", async () => {
   const qmd = (await Deno.readTextFile(new URL("deck.qmd", root))).replace(
+    '`r sprintf("%.2f", mean(read.csv("data.csv")$value))`',
+    "20.00",
+  ).replace(
     "engine: knitr",
     "engine: knitr\nfilters:\n  - mutate.lua",
   );
@@ -419,6 +429,82 @@ Deno.test("executed KPI ancestor attributes must match the original source rathe
     } catch (error) {
       ok(error instanceof Deno.errors.NotFound, String(error));
     }
+  } finally {
+    await Deno.remove(f.dir, { recursive: true });
+  }
+});
+
+Deno.test("computed KPI user filters refuse before running and preserve the previous publication", async () => {
+  const f = await fixture(
+    (await Deno.readTextFile(new URL("deck.qmd", root))).replace(
+      'sprintf("%.2f", mean(read.csv("data.csv")$value))',
+      'local({ cat("run\\n", file="counter.txt", append=TRUE); sprintf("%.2f", mean(read.csv("data.csv")$value)) })',
+    ),
+  );
+  try {
+    await renderProject(f.source);
+    eq(await Deno.readTextFile(`${f.dir}/counter.txt`), "run\n");
+    const original = await Deno.readTextFile(f.source),
+      filtered = original.replace(
+        "engine: knitr",
+        "engine: knitr\nfilters: [mutate.lua]",
+      ),
+      state = await Deno.readTextFile(`${f.dir}/.qbento/state.json`),
+      html = await Deno.readTextFile(`${f.dir}/deck.bento.html`);
+    await Deno.writeTextFile(f.source, filtered);
+    await Deno.writeTextFile(
+      `${f.dir}/mutate.lua`,
+      'function Meta(meta) local f=io.open("filter-ran.txt","w"); f:write("ran"); f:close(); return meta end\n',
+    );
+    await refuses(() => renderProject(f.source), "UNSUPPORTED_COMPUTED_FILTER");
+    eq(await Deno.readTextFile(f.source), filtered);
+    eq(await Deno.readTextFile(`${f.dir}/.qbento/state.json`), state);
+    eq(await Deno.readTextFile(`${f.dir}/deck.bento.html`), html);
+    await refuses(() => Deno.stat(`${f.dir}/filter-ran.txt`), "No such file");
+    eq(await Deno.readTextFile(`${f.dir}/counter.txt`), "run\n");
+  } finally {
+    await Deno.remove(f.dir, { recursive: true });
+  }
+});
+
+Deno.test("trusted computed KPI AST rejects fabricated card and layout ancestor attributes", async () => {
+  const f = await fixture();
+  try {
+    const sourceText = await Deno.readTextFile(f.source),
+      source = scanSource(sourceText),
+      executed = await executeQuarto(f.source, `${f.dir}/build`);
+    const good = validateProjectionOrigins(
+      source,
+      await projectAst(executed, "computed-kpi-context", [], source),
+    );
+    eq(
+      good.document.slides[0].elements.find((e) =>
+        e.id === "value/paragraph:1"
+      )!.html,
+      "20.00",
+    );
+    const find = (nodes: Node[], id: string): Attr | undefined => {
+      for (const node of nodes) {
+        if (node.t !== "Div") continue;
+        const [attr, children] = node.c as [Attr, Node[]];
+        if (attr[0] === id) return attr;
+        const nested = find(children, id);
+        if (nested) return nested;
+      }
+    };
+    for (const id of ["card", "grid"]) {
+      const attr = find(executed.blocks, id);
+      ok(attr, `missing ancestor ${id}`);
+      // Keep the invocation's attached trust: cloning would only test receipt
+      // rejection. Mutate and restore the original ancestor attributes in place.
+      attr[2].push(["opacity", "0.5"]);
+      await refuses(
+        () => projectAst(executed, "computed-kpi-context", [], source),
+        "KPI_SOURCE_CONTEXT",
+      );
+      attr[2].pop();
+    }
+    eq(await Deno.readTextFile(f.source), sourceText);
   } finally {
     await Deno.remove(f.dir, { recursive: true });
   }
