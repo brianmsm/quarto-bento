@@ -48,6 +48,17 @@ project hooks use the fixed paths `_extensions/qbento/pre.ts` and
 `_extensions/qbento/post.ts` relative to the project directory. Keep the installed
 extension at that location.
 
+For executed R chunks, the producer guard retains the original absolute
+`.rmarkdown` input in its manifest and derives Quarto's active input by calling the
+already-loaded `rmarkdown::file_name_without_shell_chars(file)` helper. This was
+verified with Quarto 1.10.19 and rmarkdown 2.31 on Linux: the helper changes
+shell-sensitive characters in the basename while preserving the original directory.
+The guard checks that the active input resolves to that exact mapped file in the
+original directory; it keeps the source hash and parsed-chunk-body proofs, and
+nested/foreign knit inputs still fail closed. If the internal helper is absent or its
+signature changes, rendering stops with an actionable compatibility error instead of
+guessing at filename rules.
+
 **Measured Quarto 1.10.19 path issue:** bare extension hook declarations such as
 `pre-render: pre.ts` were resolved to an absolute path by `readExtension`, then
 split by `runScripts` through `parseShellRunCommand`. A project named
@@ -133,10 +144,12 @@ They verify:
 - Failed computation retains baseline; explicit recovery permits a subsequent run.
 - A native save arriving during execution survives post-render refusal and recovery;
   recovery while the renderer is still alive is rejected.
-- A project path with spaces, single and double quotes, and a QMD filename with
-  spaces and single quotes, renders once through both hooks. Uncaptured native
-  edits and unsafe output arguments are refused before execution; changed-data
-  recomputation retains captured geometry and stable `docId`.
+- A project path with spaces and single/double quotes and a QMD filename with
+  spaces, an apostrophe and Unicode renders once through both hooks. A separate
+  ordinary render with a QMD basename containing spaces, both quote types and
+  Unicode executes its hidden R chunk once through the producer mapping.
+  Uncaptured native edits and unsafe output arguments are refused before execution;
+  changed-data recomputation retains captured geometry and stable `docId`.
 
 These are Linux execution and file-persistence tests. They do not establish browser
 visual fidelity, native editor interaction, macOS/Windows packaging, Quarto preview

@@ -10,7 +10,7 @@ function assert(value: unknown, message = "assertion failed"): asserts value {
 Deno.test("ordinary Quarto hooks handle spaces and quotes without bypassing preflight", async () => {
   const root = await Deno.makeTempDir({ prefix: "qbento-quarto-paths-" });
   const directory = resolve(root, `project with spaces 'quoted' "double"`);
-  const source = resolve(directory, "slides with spaces 'quoted'.qmd");
+  const source = resolve(directory, "slides with spaces 'quoted' β café.qmd");
   const output = source.replace(/\.qmd$/, ".bento.html");
   try {
     await Deno.mkdir(directory);
@@ -109,6 +109,55 @@ plot(values$x, values$y, type="b", col="#156f65", pch=19)
     assert(
       await Deno.readTextFile(source) === qmd,
       "QMD changed during render",
+    );
+  } finally {
+    await Deno.remove(root, { recursive: true });
+  }
+});
+
+Deno.test("ordinary Quarto producer mapping accepts double-quoted Unicode basenames", async () => {
+  const root = await Deno.makeTempDir({ prefix: "qbento-quarto-quoted-path-" });
+  const directory = resolve(root, "project with 'quoted' path");
+  const source = resolve(
+    directory,
+    "slides with spaces 'single' \"double\" β café.qmd",
+  );
+  const output = source.replace(/\.qmd$/, ".bento.html");
+  const qmd = `# Quoted source path {#quoted-source-path}
+
+\`\`\`{r}
+#| label: path-proof
+#| echo: false
+#| include: false
+cat("executed\\n", file="executions.txt", append=TRUE)
+\`\`\`
+`;
+  try {
+    await Deno.mkdir(directory);
+    await Deno.writeTextFile(source, qmd);
+    await installQuartoProject(source);
+    const result = await new Deno.Command("quarto", {
+      cwd: directory,
+      args: ["render", basename(source)],
+      env: {
+        XDG_CACHE_HOME: resolve(root, "cache"),
+        QUARTO_RUN_NO_NETWORK: "true",
+      },
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    const log = new TextDecoder().decode(result.stdout) +
+      new TextDecoder().decode(result.stderr);
+    assert(result.success, log);
+    assert((await Deno.stat(output)).size > 0, "rendered Bento output missing");
+    assert(
+      await Deno.readTextFile(resolve(directory, "executions.txt")) ===
+        "executed\n",
+      "quoted Unicode source should execute exactly once",
+    );
+    assert(
+      await Deno.readTextFile(source) === qmd,
+      "render should preserve the original QMD path and contents",
     );
   } finally {
     await Deno.remove(root, { recursive: true });

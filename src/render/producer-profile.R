@@ -14,10 +14,58 @@ local({
   original <- get('call_block',ns)
   if (!identical(names(formals(original)), 'block')) stop('UNSUPPORTED_KNITR_PRODUCER_ADAPTER: expected call_block(block)')
   active <- FALSE
+  expected_input <- NULL
+  expected_dir <- NULL
+  resolve_expected_input <- function() {
+    if (!is.null(expected_input)) return(invisible(NULL))
+    if (!('rmarkdown' %in% loadedNamespaces())) {
+      stop('UNSUPPORTED_RMARKDOWN_PATH_ADAPTER: the rmarkdown namespace is not loaded while knitting; Quarto must load its render engine before producer chunks run')
+    }
+    rmarkdown_ns <- asNamespace('rmarkdown')
+    file_name_without_shell_chars <- get0(
+      'file_name_without_shell_chars',
+      envir=rmarkdown_ns,
+      inherits=FALSE,
+      ifnotfound=NULL
+    )
+    if (!is.function(file_name_without_shell_chars) ||
+        !identical(names(formals(file_name_without_shell_chars)), 'file')) {
+      stop('UNSUPPORTED_RMARKDOWN_PATH_ADAPTER: this rmarkdown version does not expose the expected file_name_without_shell_chars(file) mapping; verify the installed Quarto/rmarkdown integration before rendering')
+    }
+    mapped_input <- tryCatch(
+      file_name_without_shell_chars(manifest$input),
+      error=function(error) error
+    )
+    if (inherits(mapped_input, 'error') || !is.character(mapped_input) ||
+        length(mapped_input)!=1L || is.na(mapped_input) || !nzchar(mapped_input) ||
+        !identical(dirname(mapped_input), dirname(manifest$input))) {
+      stop('UNSUPPORTED_RMARKDOWN_PATH_ADAPTER: rmarkdown did not map the original input to one filename in its original directory; verify the installed Quarto/rmarkdown integration before rendering')
+    }
+    expected_input <<- tryCatch(
+      normalizePath(mapped_input, mustWork=TRUE),
+      error=function(error) NULL
+    )
+    expected_dir <<- tryCatch(
+      normalizePath(dirname(manifest$input), mustWork=TRUE),
+      error=function(error) NULL
+    )
+    if (is.null(expected_input) || is.null(expected_dir)) {
+      expected_input <<- NULL
+      expected_dir <<- NULL
+      stop('UNSUPPORTED_RMARKDOWN_PATH_ADAPTER: the normalized input or original directory is unavailable; verify Quarto input staging before rendering')
+    }
+    invisible(NULL)
+  }
   adapter <- function(block) {
     input <- knitr::current_input(dir=TRUE)
-    if (active || !is.character(input) || length(input)!=1L ||
-        !identical(normalizePath(input, mustWork=TRUE), normalizePath(manifest$input, mustWork=TRUE))) {
+    resolve_expected_input()
+    resolved_input <- if (is.character(input) && length(input)==1L &&
+                          !is.na(input) && nzchar(input)) {
+      tryCatch(normalizePath(input, mustWork=TRUE), error=function(error) NULL)
+    } else NULL
+    if (active || is.null(resolved_input) ||
+        !identical(dirname(resolved_input), expected_dir) ||
+        !identical(resolved_input, expected_input)) {
       stop("UNMAPPED_PRODUCER_RECEIPT: nested or foreign knit input needs an explicit execution adapter")
     }
     active <<- TRUE
