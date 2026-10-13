@@ -1,421 +1,424 @@
-# Usar la implementación de desarrollo
+# Use the development implementation
 
-Esta guía describe los flujos implementados. La evidencia actual corresponde a
-Linux; [el registro de implementación](IMPLEMENTATION_STATUS.md) separa las
-pruebas realizadas de las capacidades pendientes. No es una versión v1
-publicada.
+This guide describes implemented workflows. Current acceptance evidence is from
+local Linux; the [implementation ledger](IMPLEMENTATION_STATUS.md) distinguishes
+verified behavior from pending capabilities. The Linux development objective is
+complete for its documented scope. Public source availability does not establish
+a full v1 release. Windows and macOS qualification remains future work.
 
-## Preparar una presentación
+Studio currently uses Spanish control labels. This guide preserves the exact
+labels you will see and provides their English meanings here:
 
-Necesitas Deno 2, Quarto y las dependencias que utilice tu documento. La
-ejecución local se ha verificado con Deno 2.9.6, Quarto 1.10.19 y R 4.6.1. Un
-documento sin cálculos no requiere R. Quarto-Bento no instala ni administra esos
-entornos.
+| Studio label                                 | English meaning                   |
+| -------------------------------------------- | --------------------------------- |
+| **Guardar proyecto**                         | Save project                      |
+| **Revisar cambios**                          | Review changes                    |
+| **Aplicar estos cambios a QMD**, **Aplicar** | Apply these changes to QMD; Apply |
+| **Recalcular**                               | Recalculate                       |
+| **Comparar con QMD**                         | Compare with QMD                  |
+| **Guardar decisiones**                       | Save decisions                    |
+| **Diapositivas**                             | Slides                            |
+| **Notas del orador**                         | Speaker notes                     |
+| **Añadir componente**                        | Add component                     |
+| **Tarjeta**, **Indicador**                   | Card; KPI indicator               |
+| **Relaciones**, **Desde**, **Hacia**         | Relationships; From; To           |
+| **Guardar relación pendiente**               | Save pending relationship         |
+| **Deshacer**                                 | Undo                              |
+| **Aplicar diseño**                           | Apply layout                      |
+| **Vista previa de posiciones**               | Preview positions                 |
+| **Diseños y temas**, **Guardar diseños**     | Layouts and themes; Save layouts  |
+| **Descartar borrador y recargar registro**   | Discard draft and reload registry |
+| **Presentar con gráficos**                   | Present with charts               |
 
-Desde este repositorio:
+## Prepare a presentation
+
+You need Deno 2, Quarto, and the dependencies used by your document. Local
+execution has been verified with Deno 2.9.6, Quarto 1.10.19, and R 4.6.1. A
+document without computation does not require R. Quarto-Bento does not install
+or manage these environments.
+
+From this repository:
 
 ```sh
 deno task qbento doctor
-deno task qbento render /ruta/a/mi-presentacion/deck.qmd
-deno task qbento edit /ruta/a/mi-presentacion/deck.qmd
+deno task qbento render /path/to/my-presentation/deck.qmd
+deno task qbento edit /path/to/my-presentation/deck.qmd
 ```
 
-`edit` mantiene un servidor local en ejecución e imprime una URL en `127.0.0.1`.
-Abre esa URL en tu navegador. Si el proyecto todavía no tiene estado, lo genera;
-si ya existe, abre el estado guardado para permitir recuperar y resolver cambios
-pendientes. Usa **Recalcular** para incorporar cambios nuevos del QMD o de los
-datos. Al cerrar el proceso del servidor, la página deja de guardar; vuelve a
-ejecutar `edit` para continuar.
+`edit` keeps a local server running and prints a URL on `127.0.0.1`. Open that
+URL in your browser. If the project has no state yet, it generates the state;
+otherwise, it opens the saved state so you can recover and resolve pending
+changes. Use **Recalcular** to incorporate new QMD or data changes. When you
+stop the server process, the page can no longer save; run `edit` again to
+continue.
 
-También puedes crear una [carpeta portátil de desarrollo](PACKAGING.md) y
-utilizar su lanzador `qbento` en lugar de `deno task qbento`.
+You can also create a [portable development directory](PACKAGING.md) and use its
+`qbento` launcher instead of `deno task qbento`.
 
-Mantén **una presentación QMD por carpeta de proyecto**: el directorio
-`.qbento/` se vincula a un único documento. Para experimentar sin alterar los
-ejemplos del repositorio, copia `deck.qmd` y `data.csv` de
-[`examples/semantic-roundtrip`](../examples/semantic-roundtrip) a una carpeta
-nueva. Este ejemplo necesita R y usa una figura SVG calculada a partir del CSV.
+Keep **one QMD presentation per project directory**: `.qbento/` is associated
+with a single document. To experiment without changing the repository examples,
+copy `deck.qmd` and `data.csv` from
+[`examples/semantic-roundtrip`](../examples/semantic-roundtrip) into a new
+directory. That example requires R and uses an SVG figure computed from the CSV.
 
-Es recomendable definir IDs explícitos antes de comenzar el diseño. Por ejemplo:
+Explicit IDs are useful before you start designing. For example:
 
 ```qmd
 ---
-title: Mi presentación
+title: My presentation
 ---
 
-## Resultados {#resultados}
+## Results {#results}
 
-::: {#hallazgo}
-Este texto se puede editar en Bento y sincronizar al QMD.
+::: {#finding}
+This text can be edited in Bento and synchronized to QMD.
 :::
 
-## Conclusión {#conclusion}
+## Conclusion {#conclusion}
 
-::: {#cierre}
-Siguiente paso del estudio.
+::: {#closing}
+The next step of the study.
 :::
 ```
 
-Los IDs permiten verificar a qué fragmento corresponde cada edición. También
-puedes empezar con encabezados y párrafos Markdown normales, sin IDs. Si una
-sincronización necesita identidades estables, **Revisar cambios** puede proponer
-los IDs de origen como parches explícitos, incluso para contenido que no
-modificaste. Revisa y aplica esos parches junto con los cambios semánticos; no
-se añaden al guardar ni al recalcular. Cambiar identidades cuando ya hay diseño
-guardado todavía puede requerir resolver su correspondencia. Consulta
-[la sintaxis y sus límites](AUTHORING.md) para componentes, código, ecuaciones,
-notas, tablas y gráficos, y la [prueba de QMD normal](evidence/PLAIN-QMD.md).
+IDs let the project verify which source fragment corresponds to each edit. You
+can also start with ordinary Markdown headings and paragraphs without IDs. If
+synchronization needs stable identities, **Revisar cambios** can propose source
+IDs as explicit patches, including for content you have not edited. Review and
+apply those patches alongside semantic changes; save and recalculate do not add
+them. Changing identities after saving design may still require reconciliation.
+See [authoring syntax and limits](AUTHORING.md) for components, code, equations,
+notes, tables, and charts, and the [plain-QMD receipt](evidence/PLAIN-QMD.md).
 
-## Imágenes locales y pies de figura
+## Local images and captions
 
-Puedes escribir una imagen Markdown ordinaria, sin preparar un contenedor con
-identidad:
+You can write an ordinary Markdown image without first creating an identified
+wrapper:
 
 ```markdown
-## Resultados
+## Results
 
-![Comparación con **β** y `código`](figuras/resultado.svg)
+![Comparison with **β** and `code`](figures/result.svg)
 ```
 
-La imagen y su pie se proyectan como dos objetos nativos vinculados. Edita el
-pie en Studio y pulsa **Guardar proyecto** para conservarlo pendiente. **Revisar
-cambios** muestra las identidades necesarias y el cambio exacto del pie;
-**Aplicar** lo escribe en QMD. **Recalcular** conserva la ruta del recurso y el
-diseño. Un pie vacío `![](figuras/resultado.svg)` puede recibir texto mediante
-el mismo flujo. La creación y el vaciado del pie no eliminan la imagen.
+The image and its caption project as two linked native objects. Edit the caption
+in Studio and select **Guardar proyecto** to retain it as a pending change.
+**Revisar cambios** shows the required identities and exact caption patch;
+**Aplicar** writes it to QMD. **Recalcular** preserves the asset path and
+design. An empty caption, `![](figures/result.svg)`, can receive text through
+the same workflow. Creating or clearing a caption does not delete its image.
 
-El recurso debe existir dentro del proyecto fuente. Se admiten PNG, JPEG, WebP y
-SVG autocontenidos compatibles; los SVG que dependen de archivos externos o
-scripts se rechazan. Si actualizas el archivo antes de recalcular, se incorporan
-los nuevos bytes manteniendo el diseño. Modificarlo durante la ejecución se
-rechaza para evitar publicar una combinación incoherente.
+The asset must exist within the source project. PNG, JPEG, WebP, and compatible
+self-contained SVG are supported; SVG that depends on external files or scripts
+is refused. Updating the file before recalculation incorporates its new bytes
+while retaining design. Changes during execution are refused to avoid producing
+an inconsistent combination.
 
-La sustitución de la ruta desde Bento, el borrado del par, las figuras numeradas
-y los pies calculados necesitan adaptadores adicionales. Sus cambios pendientes
-no se descartan. Consulta el [ejemplo](../examples/plain-images/deck.qmd) y la
-[evidencia de imágenes](evidence/PLAIN-IMAGES.md) para los límites actuales.
+Replacing the asset path from Bento, deleting the pair, numbered figures, and
+computed captions require additional adapters. Their pending edits are retained.
+See the [example](../examples/plain-images/deck.qmd) and
+[image evidence](evidence/PLAIN-IMAGES.md) for the current limits.
 
-## Diseñar, guardar y sincronizar
+## Design, save, and synchronize
 
-1. Mueve, redimensiona o estiliza los objetos en el editor Bento. Puedes añadir
-   formas decorativas y editar contenido redactado compatible.
-2. Pulsa **Guardar proyecto**. Se conservan diseño y cambios semánticos
-   pendientes en `.qbento/`; el QMD sigue intacto. Puedes cerrar y volver a
-   abrir Studio.
-3. Pulsa **Revisar cambios**. Revisa el contenido anterior y propuesto, los
-   fragmentos exactos del QMD y cualquier diagnóstico. Los cambios puramente
-   visuales del sidecar no necesitan convertirse en Markdown.
-4. Pulsa **Aplicar estos cambios a QMD** cuando apruebes la propuesta. El
-   proceso verifica que el documento y el estado sigan correspondiendo al plan.
-   Las eliminaciones de diapositiva y de elementos fuente requieren además sus
-   confirmaciones visibles específicas.
-5. Pulsa **Recalcular** para ejecutar Quarto y actualizar la presentación con el
-   contenido sincronizado y el diseño guardado.
+1. Move, resize, or style objects in the Bento editor. You can add decorative
+   shapes and edit supported authored content.
+2. Select **Guardar proyecto**. Design and pending semantic edits are retained
+   in `.qbento/`; QMD stays unchanged. You can close and reopen Studio.
+3. Select **Revisar cambios**. Inspect the old and proposed content, exact QMD
+   fragments, and any diagnostics. Purely visual sidecar changes do not need to
+   become Markdown.
+4. Select **Aplicar estos cambios a QMD** when you approve the proposal. The
+   operation checks that the document and state still match the plan. Slide and
+   source-element deletions also require their specific visible confirmations.
+5. Select **Recalcular** to execute Quarto and update the presentation with the
+   synchronized content and saved design.
 
-El guardado nativo de Bento descarga un HTML independiente. **Guardar proyecto**
-es el control que conserva el trabajo en este proyecto. Las ediciones computadas
-no se transforman en código R/Python: modifica su cálculo o utiliza la
-resolución explícita disponible.
+Bento's native Save downloads a standalone HTML file. **Guardar proyecto** is
+the control that persists work in this project. Edits to computed output do not
+become R/Python code: change the computation or use the available explicit
+resolution.
 
-Si has cambiado el QMD y Bento de forma incompatible, abre **Comparar con QMD**.
-Esa comparación ejecuta el documento. Revisa el origen y los valores de cada
-diferencia y elige una de las alternativas ofrecidas. **Guardar decisiones**
-resuelve el estado del proyecto; escribir el QMD sigue requiriendo revisión y
-sincronización. Separar explícitamente un resultado computado del cálculo hace
-que ese objeto deje de actualizarse como resultado vinculado.
+If QMD and Bento have incompatible changes, open **Comparar con QMD**. That
+comparison executes the document. Inspect the source and values of each
+difference and select an offered resolution. **Guardar decisiones** resolves
+project state; writing QMD still requires reviewed synchronization. Explicitly
+detaching a computed result from its calculation stops that object from updating
+as a linked result.
 
-En **Diapositivas** puedes ocultar o volver a mostrar una diapositiva sin borrar
-su QMD. Marcarla para eliminar conserva una operación pendiente que puede
-restaurarse antes de sincronizar. Eliminar código productor, referencias u otros
-casos ambiguos puede ser rechazado con un diagnóstico.
+In **Diapositivas**, hide or show a slide without deleting its QMD. Marking a
+slide for deletion retains a pending operation that can be restored before
+synchronization. Removing producer code, references, or other ambiguous cases
+may be refused with a diagnostic.
 
-También puedes borrar del lienzo ciertos elementos respaldados por el QMD.
-**Guardar proyecto** conserva la eliminación pendiente. En la revisión, marca la
-confirmación que identifica el elemento; antes de aplicar puedes usar **Comparar
-con QMD** para restaurarlo con su texto y diseño pendientes. La eliminación
-confirmada solo sincroniza unidades fuente independientes admitidas (párrafos,
-código mostrado o ecuaciones de visualización con identidad técnica estable, o
-una de esas unidades cuando es hija única de un div sencillo, identificado y de
-nivel superior). Encabezados, resultados calculados y estructuras compartidas o
-ambiguas se conservan y muestran un diagnóstico. Ver el
-[alcance y la prueba nativa de eliminación](evidence/ELEMENT-DELETION.md).
+You can also delete certain QMD-backed elements from the canvas. **Guardar
+proyecto** retains the pending deletion. In review, select the confirmation that
+identifies the element. Before applying, use **Comparar con QMD** to restore it
+with its pending text and design. Confirmed deletion synchronizes only supported
+independent source units: paragraphs, displayed code, or display equations with
+stable technical identity, including a unit that is the only child of a simple,
+identified top-level div. Headings, computed results, and shared or ambiguous
+structures are retained with a diagnostic. See the
+[deletion scope and native receipt](evidence/ELEMENT-DELETION.md).
 
-También puedes añadir un cuadro de texto independiente en una diapositiva
-existente. **Guardar proyecto** lo conserva como pendiente; **Revisar cambios**
-propone insertarlo como un bloque identificado al final de esa sección del QMD.
-Tras aplicar y recalcular, conserva su posición, tamaño y estilo. La inserción
-admite un párrafo del subconjunto de texto compatible; objetos agrupados y
-estructuras ambiguas pueden requerir autoría explícita en QMD. Consulta el
-[alcance y la prueba nativa](evidence/TEXT-INSERTION.md).
+You can add a standalone text box to an existing slide. **Guardar proyecto**
+retains it as pending; **Revisar cambios** proposes an identified block at the
+end of that slide's QMD section. After apply and recalculate, its position,
+size, and style survive. Insertion supports one paragraph in the supported text
+subset; grouped objects and ambiguous structures may require explicit QMD
+authoring. See the [scope and native receipt](evidence/TEXT-INSERTION.md).
 
-En **Notas del orador** puedes escribir notas aunque la diapositiva todavía no
-tenga un bloque de notas en QMD, incluso si acabas de crearla en Bento.
-**Guardar proyecto** conserva ese texto pendiente. **Revisar cambios** muestra
-el bloque `.notes` que se insertará y las identidades técnicas necesarias; solo
-**Aplicar** escribe QMD. Las notas admiten texto plano y párrafos, con los
-[límites de espacios y ejecución documentados](evidence/NOTES.md).
+In **Notas del orador**, write notes even if the slide does not yet have a QMD
+notes block, including a slide just created in Bento. **Guardar proyecto**
+retains the pending text. **Revisar cambios** shows the `.notes` block to insert
+and any required technical identities; only **Aplicar** writes QMD. Notes
+support plain text and paragraphs with the
+[documented whitespace and execution limits](evidence/NOTES.md).
 
-Las listas Markdown, incluidas las anidadas y las numeradas desde 1, se
-conservan como listas nativas editables. Puedes crear listas en cuadros de texto
-nuevos y convertir un párrafo independiente en lista, o volver a párrafo, con la
-barra de formato de Bento. Guardar conserva el cambio pendiente; Revisar muestra
-la inserción o conversión y sólo Aplicar escribe el QMD. El borrado exige
-confirmar el elemento; antes de aplicarlo puedes recuperarlo desde Comparar con
-QMD. Consulta el [alcance actual de listas](evidence/LISTS.md).
+Markdown lists, including nested lists and numbered lists starting at 1, remain
+editable native lists. Create lists in new text boxes or convert an independent
+paragraph to a list and back using Bento's formatting toolbar. Save retains the
+pending change; review shows insertion or conversion; apply writes QMD. Deletion
+requires element confirmation, and **Comparar con QMD** can recover the list
+before apply. See the [current list scope](evidence/LISTS.md).
 
-## KPI declarados en QMD
+## KPI components declared in QMD
 
-El adaptador de fuente `.bento-kpi` admite un componente identificado al nivel
-de la diapositiva o dentro de tarjetas y layouts identificados de la fuente, con
-contenedores directos identificados para `label`, `value` y, opcionalmente,
-`detail`. El ejemplo reproducible está en
-[`examples/kpi`](../examples/kpi/deck.qmd) y la composición en
-[`examples/composed-kpis`](../examples/composed-kpis/deck.qmd); la
-[evidencia KPI](evidence/KPI.md) detalla el esquema admitido y sus rechazos. El
-valor puede ser texto literal o una expresión Quarto en línea compatible. Si es
-calculado, sigue vinculado a su expresión: editar el valor presentado no
-modifica el código; la reconciliación permite restaurarlo o separarlo
-explícitamente. Studio también puede crear un KPI nuevo con un valor de texto
-literal; el formulario no crea una expresión calculada. Ese flujo está descrito
-a continuación.
+The `.bento-kpi` source adapter supports an identified component at slide level
+or within identified source cards and layouts, with identified direct containers
+for `label`, `value`, and optional `detail`. Reproducible examples are
+[`examples/kpi`](../examples/kpi/deck.qmd) and
+[`examples/composed-kpis`](../examples/composed-kpis/deck.qmd).
+[KPI evidence](evidence/KPI.md) details the supported schema and refusals.
 
-## Crear una tarjeta o un KPI en Studio
+A value can be literal text or a supported Quarto inline expression. A computed
+value stays linked to its expression: editing the displayed value does not
+change code; reconciliation offers restoration or explicit detachment. Studio
+can also create a new KPI with a literal text value. Its form does not create a
+computed expression; that workflow is described below.
 
-Pulsa **Añadir componente** en una presentación abierta. Studio guarda primero
-los cambios actuales del editor y luego muestra el formulario. Elige una
-diapositiva existente procedente del QMD y selecciona **Tarjeta** o
-**Indicador**. La tarjeta pide un título y un cuerpo; el indicador pide una
-etiqueta y un valor escrito, con detalle opcional. Los campos son texto de
-autoría explícita con roles definidos; la acción no ejecuta código ni interpreta
-el valor del KPI como una fórmula. Si el resultado debe actualizarse con los
-datos, decláralo en QMD mediante el adaptador `.bento-kpi`.
+## Create a card or KPI in Studio
 
-Si el QMD cambió desde el último recálculo, Studio bloquea la creación y
-conserva los cambios pendientes; recalcula y resuelve las diferencias antes de
-volver a abrir el formulario.
+Select **Añadir componente** in an open presentation. Studio first saves the
+editor's current changes, then opens the form. Choose an existing QMD-backed
+slide and select **Tarjeta** or **Indicador**. A card requests a title and body;
+a KPI requests a label, a written value, and optional detail. Fields are
+explicit authored text with defined roles. The action does not execute code or
+interpret the KPI value as a formula. Declare a data-linked result in QMD
+through the `.bento-kpi` adapter.
 
-La nueva tarjeta o indicador se guarda como contenido pendiente en `.qbento/`.
-**Guardar proyecto** no modifica el QMD, y puedes editar el texto o el diseño en
-Bento antes de sincronizar. En **Revisar cambios**, conserva juntos todos los
-cambios semánticos de los campos que forman un componente: seleccionar solo una
-parte de la tarjeta o del indicador se rechaza. Revisa el bloque QMD propuesto y
-usa **Aplicar estos cambios a QMD** para insertar su esquema de autoría
-explícita en la sección de la diapositiva elegida. Luego usa **Recalcular** para
-reconstruir y comprobar la presentación; el diseño nativo guardado se conserva
-por separado.
+If QMD changed since the last recalculation, Studio blocks creation and retains
+pending edits. Recalculate and resolve differences before reopening the form.
 
-Si al guardar falta uno de los objetos gestionados de la creación, la intención
-y las últimas instantáneas permanecen en el proyecto. Vuelve a abrir **Añadir
-componente** para restaurar los miembros ausentes en su orden previo o descartar
-esa creación pendiente. Si el objeto presente cambió de tipo o hay miembros
-adicionales en su grupo nativo, resuélvelo en Bento o descarta la creación; la
-sincronización no adivina su pertenencia. Este flujo tiene pruebas enfocadas de
-contrato y de la interfaz Studio, y aceptación en Chromium headless sobre Linux
-con el editor Bento fijado. Consulta el
-[recibo de creación nativa](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
-Esto no acredita interacción con el escritorio en primer plano ni con otras
-plataformas.
+The new component is saved as pending content in `.qbento/`. **Guardar
+proyecto** does not change QMD; you can edit text or design in Bento before
+sync. In **Revisar cambios**, keep all semantic field changes for a component
+together: selecting only part of a card or KPI is refused. Review the proposed
+QMD block and use **Aplicar estos cambios a QMD** to insert its explicit
+authoring schema into the chosen slide section. Then use **Recalcular** to
+rebuild and check the presentation; saved native design is retained separately.
 
-## Diagramas y líneas de tiempo
+If a managed object is missing at save time, the creation intent and latest
+snapshots remain in the project. Reopen **Añadir componente** to restore missing
+members in their previous order or discard that pending creation. If a retained
+object changed type or its native group has additional members, resolve it in
+Bento or discard the creation; synchronization does not guess membership.
 
-El ejemplo [source-graphs](../examples/source-graphs/deck.qmd) contiene un
-diagrama, una bifurcación, una línea de tiempo y una figura calculada. Ejecútalo
-con:
+This workflow has focused contract and Studio-interface tests, plus headless
+Chromium Linux acceptance using the pinned Bento editor. See the
+[native creation receipt](evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
+The receipt establishes that browser workflow; foreground desktop interaction
+and other platforms have separate qualification requirements.
+
+## Diagrams and timelines
+
+The [source-graphs example](../examples/source-graphs/deck.qmd) contains a
+diagram, a fork, a timeline, and a computed figure. Run it with:
 
 ```sh
 deno task qbento render examples/source-graphs/deck.qmd
 ```
 
-Los diagramas declaran nodos y relaciones con IDs del QMD. Abre **Relaciones**
-para elegir la diapositiva, el diagrama, la conexión y los nodos **Desde** y
-**Hacia**. Las opciones muestran la etiqueta y el ID fuente; los dos extremos
-deben ser distintos y pertenecer al mismo diagrama. Al abrir el control Studio
-guarda primero los cambios actuales del editor en `.qbento/` y carga una
-instantánea verificada del proyecto y QMD. Si cambió el proyecto o la fuente,
-cierra y vuelve a abrir el diálogo después de resolver o recalcular las
-diferencias.
+Diagrams declare nodes and relationships using QMD IDs. Open **Relaciones** to
+choose the slide, diagram, connection, and **Desde** / **Hacia** nodes. Options
+show source labels and IDs; endpoints must be distinct and belong to the same
+diagram. Opening this control first saves current editor changes to `.qbento/`
+and loads a verified project/QMD snapshot. If the project or source changed,
+close and reopen the dialog after resolving or recalculating the differences.
 
-En la versión fijada de Bento, arrastrar el extremo nativo de un conector
-desvincula su ancla en lugar de reasignar la relación al nodo bajo el puntero.
-La revisión bloquea ese cambio incompleto. Puedes restaurarlo con **Deshacer** o
-seleccionar explícitamente ambos extremos fuente en **Relaciones**. Pulsa
-**Guardar relación pendiente** para guardar el par `from`/`to` como una sola
-actualización de `.qbento/`, conservando los lados de anclaje visuales. Este
-guardado no modifica QMD ni ejecuta R. Los conflictos con QMD o las identidades
-fuera del diagrama se rechazan; la sincronización también comprueba que la
-relación pendiente aún coincida con el conector guardado y que la topología
-resultante esté admitida.
+In the pinned Bento version, dragging a native connector endpoint detaches its
+anchor instead of assigning the relationship to the node under the pointer.
+Review blocks that incomplete change. Restore it with **Deshacer** or explicitly
+select both source endpoints in **Relaciones**. Select **Guardar relación
+pendiente** to save the `from`/`to` pair as one `.qbento/` update, retaining
+visual anchor sides. This save does not change QMD or execute R. QMD conflicts
+and identities outside the diagram are refused; sync also checks that the
+pending relationship still matches the saved connector and the resulting
+topology is supported.
 
-Después usa **Revisar cambios** para inspeccionar los atributos fuente exactos y
-el QMD propuesto; **Aplicar estos cambios a QMD** escribe solo el parche
-revisado. **Recalcular** es el paso separado que ejecuta QMD y actualiza la
-proyección. Guardar, sincronizar y recalcular no son la misma operación.
+Use **Revisar cambios** to inspect exact source attributes and proposed QMD;
+**Aplicar estos cambios a QMD** writes the reviewed patch. **Recalcular** is the
+separate step that executes QMD and updates projection. Save, sync, and
+recalculate are distinct operations.
 
-El diálogo muestra las líneas de tiempo como secuencias de solo lectura: sus
-relaciones derivan del orden de los bloques `.bento-milestone` en QMD. Reordena
-esos bloques y recalcula para cambiar la adyacencia; el orden visual de los
-objetos en Bento no cambia el significado. Las etiquetas admitidas son párrafos
-escritos en QMD. Este adaptador cubre solo topologías y métricas de texto
-delimitadas; rechaza cruces, desbordamiento, relaciones ambiguas, rótulos
-computados y composiciones no admitidas. Consulta el
-[contrato del ejemplo](../examples/source-graphs/README.md) y la
-[aceptación Linux de los controles de relación](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux)
-para los límites exactos y la revisión nativa headless.
+The dialog shows timelines as read-only sequences. Their relationships derive
+from QMD order of `.bento-milestone` blocks. Reorder those blocks and
+recalculate to change adjacency; native visual order does not change their
+meaning. Supported labels are authored QMD paragraphs. The adapter supports
+bounded topology and text metrics; it refuses crossings, overflow, ambiguous
+relationships, computed labels, and unsupported composition. See the
+[example contract](../examples/source-graphs/README.md) and
+[Linux relationship-control acceptance](evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux)
+for exact limits and native headless validation.
 
-## Anotaciones y diseños reutilizables
+## Annotations and reusable layouts
 
-Para redistribuir contenido existente, usa **Aplicar diseño** en Studio o el
-botón nativo de Bento. Elige la diapositiva y el diseño, asigna explícitamente
-objetos a cada columna y pulsa **Vista previa de posiciones** antes de aplicar.
-El título y los objetos no seleccionados conservan su posición. El diseño
-cambia geometría y conserva contenido, identidades y cambios pendientes; los
-atributos geométricos escritos en QMD siguen requiriendo revisión y sincronización.
+To redistribute existing content, use **Aplicar diseño** in Studio or Bento's
+native layout button. Choose the slide and layout, explicitly assign objects to
+each column, and select **Vista previa de posiciones** before applying. The
+title and unselected objects retain their positions. Applying a layout changes
+geometry while retaining content, identities, and pending edits. Geometric
+attributes authored in QMD still require reviewed synchronization.
 
-Los objetos libres guardan una instantánea de las posiciones aplicadas. Si
-modificas la definición en **Diseños y temas**, vuelve a aplicarla cuando quieras
-actualizar esos objetos. Los componentes declarados en QMD conservan su contrato
-de referencia al registro. Tablas y gráficos simples se comprueban con sus
-métricas admitidas; un diseño incompatible muestra un diagnóstico y conserva el
-trabajo. Consulta [la evidencia y los límites](evidence/REUSABLE-LAYOUTS.md).
+Free objects retain a snapshot of applied positions. After changing a definition
+in **Diseños y temas**, reapply it to update those objects. QMD-declared
+components retain their registry-reference contract. Simple tables and charts
+are checked against their supported metrics; an incompatible layout produces a
+diagnostic and retains work. See
+[evidence and limits](evidence/REUSABLE-LAYOUTS.md).
 
-Las anotaciones informativas del QMD se controlan con
-`qbento-annotations: none|minimal|detailed` en su YAML inicial. El valor por
-defecto es `minimal`: señala las diapositivas con diseño adicional mediante la
-clase `.qbento-design`. `detailed` añade una referencia descriptiva al sidecar,
-sin copiar las coordenadas; `none` omite esas trazas opcionales. Cambiarlas
-forma parte de un plan revisado, nunca de un guardado o render implícito. Si
-añadirlas no es seguro para las identidades existentes, Studio explica la
-omisión.
+Informational QMD annotations are controlled by
+`qbento-annotations: none|minimal|detailed` in front matter. The default,
+`minimal`, marks slides with additional design using `.qbento-design`.
+`detailed` adds a descriptive sidecar reference without copying coordinates;
+`none` omits optional annotations. Changing them is part of a reviewed plan,
+never an implicit save or render. When adding them is unsafe for existing
+identities, Studio explains the omission.
 
-Si el QMD conserva una de esas trazas pero faltan los datos de diseño
-correspondientes, Studio muestra `MISSING_DESIGN` al abrir y recalcular. Puedes
-ver una presentación base, pero eso no recupera la apariencia original. Restaura
-los archivos indicados desde Git o una copia de seguridad, o revisa
-explícitamente una traza que ya no corresponda al proyecto. Guardar y renderizar
-no eliminan automáticamente la anotación del QMD.
+If QMD retains an annotation but its associated design data is missing, Studio
+reports `MISSING_DESIGN` on open and recalculate. You can view a base
+presentation, but that does not recover its original appearance. Restore the
+reported files from Git or a backup, or explicitly review an annotation that no
+longer belongs to the project. Save and render do not automatically remove the
+QMD annotation.
 
-Después de recalcular, `OVERFLOW` identifica las cajas que sobrepasan
-verticalmente la altura de la diapositiva, con el diseño guardado ya aplicado.
-Corrige la posición o el tamaño y vuelve a recalcular. El aviso comprueba las
-cajas; no mide texto recortado, sombras, rotación o desbordamiento horizontal.
+After recalculation, `OVERFLOW` identifies boxes that extend below the slide
+height with saved design applied. Correct position or size and recalculate. This
+warning checks boxes; it does not measure clipped text, shadows, rotation, or
+horizontal overflow.
 
-Abre **Diseños y temas** para añadir o cambiar layouts con nombre y temas
-básicos reutilizables. Selecciona el tema activo explícitamente. **Guardar
-diseños** actualiza `.qbento/design.json`; no cambia el QMD, el HTML ni ejecuta
-cálculos. Después, **Recalcular** aplica los valores guardados conservando las
-modificaciones visuales y el contenido pendiente del proyecto. Los atributos
-visuales declarados explícitamente en QMD mantienen su autoridad.
+Open **Diseños y temas** to add or change named layouts and basic reusable
+themes. Explicitly select the active theme. **Guardar diseños** updates
+`.qbento/design.json`; it does not change QMD or HTML or execute calculations.
+**Recalcular** applies saved defaults while retaining project visual overrides
+and pending content. Explicit source visual attributes retain their authority.
 
-Los layouts se seleccionan en QMD con `bento-layout-name`. Renombrar o eliminar
-un layout en el formulario requiere revisar esas referencias. Si el registro
-cambió en otro editor, el guardado se rechaza y conserva el borrador: revísalo
-antes de pulsar **Descartar borrador y recargar registro**. También puedes
-editar el JSON siguiendo el [contrato del registro](DESIGN_REGISTRY.md).
+Select a layout in QMD with `bento-layout-name`. Renaming or removing a layout
+in the form requires reviewing those references. If another editor changed the
+registry, save refuses and retains the draft: review it before selecting
+**Descartar borrador y recargar registro**. You can also edit JSON following the
+[registry contract](DESIGN_REGISTRY.md).
 
-## Cambiar datos y reconstruir
+## Change data and rebuild
 
-Modifica los datos de entrada y pulsa **Recalcular**, o ejecuta:
+Change input data and select **Recalcular**, or run:
 
 ```sh
-deno task qbento render /ruta/a/mi-presentacion/deck.qmd
+deno task qbento render /path/to/my-presentation/deck.qmd
 ```
 
-Los resultados admitidos se recomputan y mantienen sus modificaciones visuales
-guardadas y el mismo `docId`. Las ediciones semánticas pendientes no se
-descartan. Un conflicto o una conversión que no pueda conservarse fielmente
-puede impedir la publicación y requerir resolución.
+Supported results recompute while retaining saved visual overrides and the same
+`docId`. Pending semantic changes remain available. Conflicts or a conversion
+that cannot preserve content faithfully may prevent output publication and
+require resolution.
 
-Para reconstruir desde Git, conserva el QMD, sus entradas y los archivos
-versionados de `.qbento/`, especialmente `project.json` y `state.json`, además
-de cualquier configuración o recurso propio del proyecto. Mantén el entorno de
-ejecución compatible. El HTML generado, los directorios de compilación y las
-generaciones derivadas de widgets se pueden volver a producir. La reproducción
-no promete píxeles idénticos entre sistemas operativos.
+To rebuild from Git, retain QMD, its inputs, and versioned `.qbento/` files,
+especially `project.json` and `state.json`, alongside project configuration and
+assets. Keep a compatible execution environment. Generated HTML, build
+directories, and derived widget generations can be regenerated. Reproduction
+does not promise identical pixels across operating systems.
 
-## Entregar HTML, PDF o gráficos interactivos
+## Deliver HTML, PDF, or interactive charts
 
-Las tablas calculadas compatibles de `gt` y `gtsummary` se representan mediante
-una imagen PNG a doble resolución. Conservan encabezados, valores, formatos y
-notas; modifica su contenido en el código productor. Define el ancho y la
-tipografía en R para que sean adecuados para la diapositiva. La captura requiere
-Chromium instalado y rechaza tablas que no caben completas, sin reducirlas ni
-eliminar filas automáticamente. Consulta el
-[ejemplo reproducible](../examples/rich-tables/README.md) y sus
-[límites y pruebas](evidence/RICH-TABLES.md).
+Supported computed `gt` and `gtsummary` tables become 2x-resolution PNG images.
+They retain headings, values, formats, and notes; change their content in the
+producer code. Define width and typography in R to suit the slide. Capture
+requires installed Chromium and refuses tables that cannot fit completely,
+without automatically shrinking them or dropping rows. See the
+[reproducible example](../examples/rich-tables/README.md) and
+[limits and tests](evidence/RICH-TABLES.md).
 
-El archivo `deck.bento.html` contiene la presentación estática editable y puede
-distribuirse como una copia independiente. El control nativo de exportación PDF
-de Bento utiliza su representación de impresión; las diapositivas ocultas se
-omiten. Se ha probado esa capa de impresión en Chromium sobre Linux, con PDF
-inspeccionado visualmente; los diálogos del sistema operativo son otra capa.
+`deck.bento.html` contains the editable static presentation and can be
+distributed as a standalone copy. Bento's native PDF export uses its print
+representation and omits hidden slides. That print layer has been tested in
+Chromium on Linux, with visual PDF inspection; operating-system dialogs are a
+separate qualification layer.
 
-Para Plotly compatible, **Presentar con gráficos** guarda y abre un visor que
-incluye la presentación estática y vistas interactivas separadas. Los gráficos
-no se superponen interactivamente sobre las posiciones exactas de la
-diapositiva. El HTML ordinario y el PDF conservan el SVG estático. La generación
-requiere Chromium y el runtime local compatible de Plotly; la salida interactiva
-reúne sus recursos para visualizarse sin conexión. Consulta el
-[alcance, versiones y controles del adaptador](evidence/PLOTLY.md).
+For supported Plotly output, **Presentar con gráficos** saves and opens a viewer
+containing the static presentation and separate interactive views. Interactive
+charts do not overlay the slide at its exact object positions. Ordinary HTML and
+PDF retain the static SVG. Generation requires Chromium and a compatible local
+Plotly runtime; interactive output bundles its resources for offline viewing.
+See [adapter scope, versions, and controls](evidence/PLOTLY.md).
 
-Si editaste el HTML local con el guardado nativo, captura esos cambios
-explícitamente antes de regenerar:
+If you edited local HTML through Bento's native Save, explicitly capture those
+changes before regeneration:
 
 ```sh
-deno task qbento capture /ruta/a/mi-presentacion/deck.qmd /ruta/a/copia-editada.html
+deno task qbento capture /path/to/my-presentation/deck.qmd /path/to/edited-copy.html
 ```
 
-La captura verifica identidad y generación; no es una importación de cualquier
-copia recibida o editada en paralelo. Recalcula después de una captura aceptada
-antes de volver a editar una nueva copia nativa.
+Capture verifies identity and generation. It is not an import path for arbitrary
+received copies or parallel edits. Recalculate after an accepted capture before
+editing a new native copy.
 
-## Terminal y agentes
+## Terminal and agents
 
-Los comandos emiten JSON. Puedes revisar y aplicar un plan de sincronización:
+Commands emit JSON. Review and apply a synchronization plan with:
 
 ```sh
-deno task qbento status /ruta/a/mi-presentacion/deck.qmd
-deno task qbento sync /ruta/a/mi-presentacion/deck.qmd > plan.json
-# Revisa plan.json antes de aplicar la propuesta.
-deno task qbento sync /ruta/a/mi-presentacion/deck.qmd --apply plan.json
-deno task qbento render /ruta/a/mi-presentacion/deck.qmd
+deno task qbento status /path/to/my-presentation/deck.qmd
+deno task qbento sync /path/to/my-presentation/deck.qmd > plan.json
+# Review plan.json before applying the proposal.
+deno task qbento sync /path/to/my-presentation/deck.qmd --apply plan.json
+deno task qbento render /path/to/my-presentation/deck.qmd
 ```
 
-`get` y `patch` permiten leer un snapshot y aplicar lotes JSON limitados, con
-identidad y revisión obligatorias. Sigue el [contrato de la API](AGENT-API.md):
-un parche guarda estado y no sincroniza ni ejecuta el QMD implícitamente. La
-operación `slide.create` admite una diapositiva con texto y formas decorativas y
-puede combinarse con edición o movimiento en el mismo lote. Exige un cálculo que
-corresponda al QMD actual; si devuelve `STALE_SOURCE`, recalcula y vuelve a leer
-el snapshot antes de preparar el lote. La nueva diapositiva se convierte en QMD
-sólo después de revisar y aplicar su plan de sincronización.
+`get` and `patch` read a snapshot and apply bounded JSON batches with mandatory
+identity and revision checks. Follow the [agent API contract](AGENT-API.md): a
+patch saves state and does not implicitly sync or execute QMD. `slide.create`
+supports a slide with text and decorative shapes, and can share a batch with
+edits or movement. It requires an executed baseline matching current QMD. On
+`STALE_SOURCE`, recalculate and read the snapshot again before preparing a
+batch. A new slide becomes QMD only after reviewing and applying its sync plan.
 
-`init` instala la extensión local para usar `quarto render` ordinario. Se niega
-a reemplazar configuración existente; el modo `--extension-only` copia la
-extensión y deja al usuario configurar su formato. Los hooks instalados ejecutan
-el documento una vez por render y mantienen la protección del HTML modificado.
-Consulta [la integración comprobada](evidence/QUARTO.md) antes de adaptar un
-proyecto Quarto existente.
+`init` installs the local extension for ordinary `quarto render`. It refuses to
+replace existing configuration; `--extension-only` copies the extension and
+leaves format configuration to the user. Installed hooks execute the document
+once per render and protect modified HTML. See the
+[verified integration](evidence/QUARTO.md) before adapting an existing Quarto
+project.
 
-## Diagnósticos frecuentes
+## Common diagnostics
 
-| Situación                              | Siguiente paso                                                                                                                                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UNCAPTURED_HTML_EDITS`                | Conserva el HTML editado y captura explícitamente la copia correspondiente. No lo borres para saltar el control.                                                                              |
-| Revisión obsoleta o proyecto ocupado   | Espera la operación activa y vuelve a leer el proyecto antes de preparar otra edición.                                                                                                        |
-| Conflicto entre QMD y Bento            | Compara los valores en Studio y guarda una resolución explícita; revisa después cualquier escritura a QMD.                                                                                    |
-| `UNSUPPORTED_SYNC` o `UNMAPPED_DESIGN` | Conserva el cambio pendiente. Examina el diagnóstico y el subconjunto de contenido admitido; no se puede asumir una conversión segura.                                                        |
-| Transacción interrumpida               | Ejecuta `recover deck.qmd inspect`, revisa el estado y elige explícitamente `finish` o `rollback` si el diagnóstico lo permite. Para el wrapper de Quarto, consulta también `quarto-recover`. |
-| Estado corrupto o identidad distinta   | Conserva los archivos y sus backups para investigar. Borrar `.qbento/` pierde el vínculo con el diseño y los cambios pendientes.                                                              |
-| `DESIGN_REGISTRY_RECOVERY_REQUIRED`    | Conserva el marcador y las versiones del registro. Sigue la [recuperación manual del registro](evidence/STUDIO-REGISTRY.md); el comando genérico `recover` no gestiona ese journal.           |
-| `MISSING_DESIGN`                       | Restaura el diseño externo indicado desde Git o un backup. Generar una presentación base no demuestra que su apariencia anterior haya sido recuperada.                                        |
+| Situation                               | Next step                                                                                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UNCAPTURED_HTML_EDITS`                 | Preserve the edited HTML and explicitly capture the matching copy. Do not delete it to bypass the check.                                                                        |
+| Stale revision or busy project          | Wait for the active operation and reread project state before preparing another edit.                                                                                           |
+| QMD/Bento conflict                      | Compare values in Studio and save an explicit resolution; separately review any QMD writes.                                                                                     |
+| `UNSUPPORTED_SYNC` or `UNMAPPED_DESIGN` | Retain the pending change. Inspect the diagnostic and supported content subset; safe conversion cannot be assumed.                                                              |
+| Interrupted transaction                 | Run `recover deck.qmd inspect`, review state, and explicitly choose `finish` or `rollback` if allowed by the diagnostic. For the Quarto wrapper, also consult `quarto-recover`. |
+| Corrupt state or mismatched identity    | Preserve files and backups for investigation. Deleting `.qbento/` loses the design and pending-edit association.                                                                |
+| `DESIGN_REGISTRY_RECOVERY_REQUIRED`     | Preserve the marker and registry versions. Follow [manual registry recovery](evidence/STUDIO-REGISTRY.md); generic `recover` does not manage this journal.                      |
+| `MISSING_DESIGN`                        | Restore the reported external design from Git or a backup. Generating a base presentation does not demonstrate recovery of the previous appearance.                             |
 
-Los límites de contenido y las pruebas que todavía faltan se mantienen en el
-[registro de implementación](IMPLEMENTATION_STATUS.md).
+Content limits and remaining validation gaps are recorded in the
+[implementation ledger](IMPLEMENTATION_STATUS.md).
 
-El render también avisa con `TEXT_OVERFLOW` cuando texto, listas, fórmulas o
-código nativo exceden su caja guardada, aunque la caja esté dentro de la
-diapositiva. Ajusta tamaño o tipografía y guarda; la inspección de Studio
-actualiza el aviso sin ejecutar QMD. `TEXT_MEASUREMENT_UNAVAILABLE` indica que
-no se pudo medir ese contenido: revisa la diapositiva o configura Chromium
-local. El flujo ordinario sigue disponible y conserva el trabajo. Consulta
-[el alcance y la evidencia de estos avisos](evidence/CONTENT-OVERFLOW.md).
+Render also reports `TEXT_OVERFLOW` when native text, lists, formulas, or code
+exceed their saved box, even if the box fits inside the slide. Adjust dimensions
+or typography and save; Studio inspection updates the warning without executing
+QMD. `TEXT_MEASUREMENT_UNAVAILABLE` means that content could not be measured:
+inspect the slide or configure local Chromium. The ordinary workflow remains
+available and retains work. See
+[warning scope and evidence](evidence/CONTENT-OVERFLOW.md).

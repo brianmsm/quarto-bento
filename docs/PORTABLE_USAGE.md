@@ -15,8 +15,10 @@ From your project directory, use the launcher's absolute path (quote spaces):
 
 On Windows, the corresponding launcher is `bin\qbento.cmd`. Its presence does
 not establish native Windows validation. This build has local Linux evidence;
-macOS/Windows execution and hosted CI remain deferred. Preserve the Unix
-executable bit when archiving, or invoke `bin/qbento` with `sh`.
+macOS/Windows execution remains future work. The public source repository has a
+manual Linux smoke workflow; no hosted result is inferred from its presence.
+Preserve the Unix executable bit when archiving, or invoke `bin/qbento` with
+`sh`.
 
 `edit` prints a local Studio URL. **Guardar proyecto** saves design and pending
 content to `.qbento/`, leaving QMD unchanged. Review the proposed source changes
@@ -39,12 +41,15 @@ The root `manifest.json` records the source revision and each payload's path,
 size, hash and executable flag. It is an integrity inventory, not a signature.
 Quarto-Bento's own code and documentation use the MIT License, copyright (c)
 2026 Brian Norman Peña Calero. The full terms are in the root `LICENSE` and
-`runtime/LICENSE`; initialization also copies them into the installed extension's
-`runtime/LICENSE`. Generated HTML retains the full project license with a separate
-`Quarto-Bento` label. Bento's pinned licenses/notices, font texts and dependency
-provenance remain under `runtime/vendor/bento/` with their own terms. The complete
-third-party review and public release scope remain open.
+`runtime/LICENSE`; initialization also copies them into the installed
+extension's `runtime/LICENSE`. Generated HTML retains the full project license
+with a separate `Quarto-Bento` label. Bento's pinned licenses/notices, font
+texts and dependency provenance remain under `runtime/vendor/bento/` with their
+own terms. The complete third-party review and versioned v1 scope remain open.
+The public source repository documents current Linux behavior and these
+remaining provenance limits; public source availability does not declare a
+stable release.
 
 The full source checkout contains development, acceptance and CI documentation.
-Those source-only files and verification artifacts are not part of this
-portable directory.
+Those source-only files and verification artifacts are not part of this portable
+directory.

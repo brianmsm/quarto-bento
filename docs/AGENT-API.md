@@ -1,6 +1,7 @@
 # Structured JSON operations for agents
 
-Implemented Linux vertical slice, 2026-10-11. These commands operate on the same
+Implemented Linux contract, reviewed for public source publication 2026-10-13.
+These commands operate on the same
 saved project as Studio. They do not require a browser, edit generated HTML,
 execute Quarto implicitly, or synchronize QMD implicitly. The JSON protocol is
 version 1 and validates against the bundled Bento Slides revision

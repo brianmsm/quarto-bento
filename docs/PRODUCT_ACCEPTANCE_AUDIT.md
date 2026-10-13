@@ -1,5 +1,13 @@
 # Full product acceptance audit
 
+Updated 2026-10-13. This document preserves the baseline findings and their
+subsequent closures. The current Linux-local objective is complete at runtime
+`2ee7974`: **578 tests and 4 steps, zero failures**, plus a **117-file portable
+smoke** from minimal saved state. The owner authorizes public GitHub source
+publication; see [PUBLICATION.md](PUBLICATION.md). Public source availability
+does not freeze the v1 feature/platform boundary. Windows/macOS are pending
+future work outside the completed objective, and hosted CI remains deferred.
+
 ## Baseline and interpretation
 
 The baseline is `89fc134`, containing the integrated runtime `75edcdf` and its
@@ -34,7 +42,7 @@ requirements. It did not repeat all native workflows or the complete suite.
 | Git reconstruction and offline use, **10** | Source, input and sidecar reconstruction, pending edits, identity and portable relocation are verified on Linux with compatible installed dependencies. Environment management and cross-platform pixel identity are not requirements. |
 | Structured agents and platforms | Checked JSON operations and reviewed source sync use the same core. They inherit the notes and content gaps above. Linux remains the current test platform; macOS/Windows and hosted CI are deferred by the owner. |
 
-## Next implementation gates
+## Implementation gates from the audited baseline
 
 Progress after this baseline audit: notes creation and existing-list editing are
 integrated with native Linux evidence and exact state-only reconstruction at
@@ -68,9 +76,9 @@ integrated; their combined acceptance is recorded in the later follow-up below.
    nested KPI in `tests/kpi_execution_test.ts`; those refusals identify missing
    adapters rather than establish product exclusions.
 
-These gates are not closed by implementation alone: integration, independent
-review and matching runtime/native evidence remain necessary. Any discovered
-common execution/provenance defect must be repaired rather than hidden by
+These baseline gates required integration, independent review and matching
+runtime/native evidence in addition to implementation; their later closures are
+recorded below. Any discovered common execution/provenance defect must be repaired rather than hidden by
 selecting only a passing example.
 
 ## Distribution and external gates
@@ -106,11 +114,12 @@ This audit did not rerun the complete suite or all native interactions.
 | 9: selected interaction/export | No new mandatory gap was reproduced. Existing selected Plotly, offline Presenter and static/PDF receipts do not imply arbitrary widgets or OS-dialog validation. |
 | 10: Git reconstruction | Build and exercise a new portable artifact from the final combined runtime. The historical `75edcdf` artifact cannot prove the newer helpers/adapters. |
 
-Layout association currently uses QMD `bento-layout-name`; Studio edits registry
-layout definitions and the theme and retains local geometry. There is no Studio
-operation that associates arbitrary free slide content with a registry layout.
-The existing declared-layout workflow has evidence; visual association of free
-content has not been demonstrated. This is an explicit UX limit, not evidence
+At the ordinary-QMD audit revision, layout association used QMD
+`bento-layout-name`; Studio edited registry layout definitions and the theme and
+retained local geometry. That revision had no Studio operation associating
+arbitrary free slide content with a registry layout.
+The declared-layout workflow had evidence; visual association of free content
+had not yet been demonstrated. This is an explicit UX limit, not evidence
 that the current registry is unusable or a newly agreed release boundary.
 
 The audit found no additional concrete ordinary-workflow defect outside these
@@ -169,8 +178,9 @@ it did not simulate the layout algorithm. The retained DOM overflow count came
 from a thumbnail match, so the screenshot, not that count, establishes the main
 canvas overlap. New acceptance tests must target the actual canvas explicitly.
 
-Both are active functional implementation gates. Declared QMD layouts and safe
-refusals remain useful existing behavior, but neither closes these requirements.
+At that audited revision, both were active functional implementation gates.
+Declared QMD layouts and safe refusals remained useful existing behavior, but
+neither closed those requirements.
 
 ## Redesign gates closed locally (2026-10-13)
 
@@ -189,7 +199,11 @@ independent read-only review of all ten workflows found no new concrete local
 ordinary-workflow blocker. See [the combined receipt](evidence/REDESIGN-INTEGRATED-LINUX.md).
 
 The earlier two gates are therefore historical findings, not current missing
-features. Codec limits, the unexplained prior SVG observation, distribution and
-dependency review, the owner release-scope decision and deferred other-platform
-qualification remain explicit. This closes the local functional pass and does
-not declare public v1 acceptance.
+features. Codec limits and the unexplained prior SVG observation remain explicit.
+The later [Linux security/dependency closeout](evidence/SECURITY-LINUX.md) records
+three reproduced security findings and their mitigations, the 578-test/four-step
+full suite, 117-file portable smoke, and the production/upstream-build advisory
+checks. The owner subsequently closed the local objective and authorized public
+source publication. Four historical license-source cases, the v1 scope decision
+and any future engine/platform qualification remain follow-up; public source
+availability does not declare public v1 acceptance.

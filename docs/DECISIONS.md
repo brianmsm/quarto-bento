@@ -25,13 +25,14 @@
 | Distribution | Editable standalone `.bento.html` is an independent copy; importing/reconciling later is separate functionality. |
 | Project license (owner decision, 2026-10-13) | Quarto-Bento's own code and documentation use the MIT License, copyright (c) 2026 Brian Norman Peña Calero. The [root LICENSE](../LICENSE) records the terms. Bundled third-party components retain their own terms and attributions; this decision does not settle their review or the public release boundary. |
 | Git/offline/platforms | Git-first sources, offline ordinary workflow, Linux/macOS/Windows target; Linux first for development. |
-| Current objective platforms (owner decision, 2026-10-13) | Linux only. Windows and macOS remain pending future work outside this objective, not completion blockers. This does not claim support on those systems or freeze the public v1 release boundary. Hosted CI remains deferred. |
+| Current objective platforms (owner decision, 2026-10-13) | Linux only. Windows and macOS remain pending future work outside this objective, not completion blockers. This does not claim support on those systems or freeze the public v1 release boundary. Hosted execution remains deferred; the current workflow is a manual Linux smoke. |
 | Languages | R is an important use case, but core independent of R (Quarto/Pandoc execution handles R/Python/Julia/etc.). |
 | Agents | Structured JSON core operations/CLI from the start; MCP/agent interfaces can be added on top. |
 | Collaboration | **Disabled in initial implementation**; revisit Bento CRDT collaboration later. |
 | Bento integration | Upstream first; allow small compatibility adapter if necessary; avoid maintaining a permanent fork unless unavoidable. |
 | Scope | v1 is the **full target**, developed in vertical slices; do not make a throwaway architecture. [PRODUCT_TARGET.md](PRODUCT_TARGET.md) gives behavioral acceptance; the specific public release boundary still requires explicit confirmation. |
 | First project scope | Single `.qmd` for first working implementation; data models prepare for multifile sources later. |
+| Public source publication (owner authorization, 2026-10-13) | Publish the tracked development source and documentation as a public GitHub repository. This authorizes source availability; it does not declare a stable v1 or attach binary releases. See [PUBLICATION.md](PUBLICATION.md). |
 
 ## Implemented architecture and open schema details
 

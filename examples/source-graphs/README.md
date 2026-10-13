@@ -35,14 +35,15 @@ the milestone blocks in QMD to change adjacency. Native z-order, positions and
 groups never change sequence. Native endpoint changes on derived timeline links
 stay pending and must be restored before publication.
 
-To change a diagram relationship, open **Relaciones** in Studio, choose its
-slide, diagram and connection, then select **Desde** and **Hacia** by their real
-source labels and IDs. **Guardar relación pendiente** durably saves both
-endpoints as pending semantic edits to from.el/to.el; it does not write QMD or
-execute R. Reopen Relaciones to inspect that saved choice. Use **Revisar
-cambios** to inspect the exact old/new source attribute and complete proposed
-QMD, then **Aplicar** and **Recalcular**. Derived timeline relationships are
-shown read-only, with their sequence in QMD order.
+To change a diagram relationship, open **Relaciones** (Relationships) in Studio,
+choose its slide, diagram and connection, then select **Desde** (From) and
+**Hacia** (To) by their real source labels and IDs. **Guardar relación
+pendiente** (Save pending relationship) durably saves both endpoints as pending
+semantic edits to from.el/to.el; it does not write QMD or execute R. Reopen
+Relaciones to inspect that saved choice. Use **Revisar cambios** (Review
+changes) to inspect the exact old/new source attribute and complete proposed
+QMD, then **Aplicar** (Apply) and **Recalcular** (Recalculate). Derived timeline
+relationships are shown read-only, with their sequence in QMD order.
 
 Dragging a connector endpoint in the pinned native editor detaches its anchors;
 it does not reassign source relationships. Save retains this pending detachment,

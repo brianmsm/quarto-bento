@@ -1,6 +1,12 @@
 # Product target — what “done” means
 
-**Status:** Product horizon for Quarto-Bento (2026-10-09). This document states the **agreed product destination**, not an implementation claim or a commitment to ship everything in one release. Technical decisions and syntax remain governed by the linked specifications.
+**Status:** Agreed product horizon, updated 2026-10-13. The Linux-local
+implementation objective is complete at runtime `2ee7974`: 578 tests and
+4 steps passed without failure, and the 117-file portable smoke rebuilt from
+minimal saved state. The owner has authorized public GitHub source publication.
+This document states the **product destination**; public source availability does
+not freeze the feature set of a v1 release. Current implemented scope and exact
+receipts are in [the implementation ledger](IMPLEMENTATION_STATUS.md).
 
 ## North star
 
@@ -10,7 +16,7 @@ The default experience should feel like one project with two complementary edito
 
 ### Canonical user journey
 
-1. Write a QMD with authored content and R/Python/other Quarto computations; open the deck with the proposed `qbento edit` command.
+1. Write a QMD with authored content and R/Python/other Quarto computations; open the deck with the implemented `qbento edit` command.
 2. Move figures and text, style objects, apply layouts and add purely decorative objects in Bento Studio.
 3. **Save**: retain the design and any pending semantic edits in the project, even after closing Studio.
 4. **Review/sync**: push authored text, notes, LaTeX, displayed-code changes, created/reordered/deleted slides and QMD-declared visual attributes back to the specific QMD source when safe.
@@ -33,7 +39,7 @@ Any step that cannot be completed faithfully must produce an **actionable diagno
 
 | User-visible capability | Acceptance evidence |
 |---|---|
-| **Quarto → Bento** | A supported single-QMD document with headings, text, computable figures and simple tables yields a functioning Bento deck. Ordinary `quarto render` integration and proposed `qbento` CLI are usable. |
+| **Quarto → Bento** | A supported single-QMD document with headings, text, computable figures and simple tables yields a functioning Bento deck. Ordinary `quarto render` integration and the `qbento` CLI are usable. |
 | **Visual persistence** | Changes to positions, sizes, typography, effects, decorations, layouts and themes survive save/reopen and changed-data regeneration. `docId` remains stable across rebuilds. |
 | **Safe semantic editing** | Authored text, equations, displayed code, speaker notes and slide creation/order/hide/delete are represented correctly in QMD after approved sync. QMD patches are bounded; unsupported or ambiguous reverse edits are refused. |
 | **Explicit reconciliation** | Studio shows change origin, direction, element/property diffs and conflicts; three-way merge never silently chooses an incompatible value. Pending edits remain recoverable through renders/restarts. |
@@ -62,16 +68,20 @@ An implementing agent **may** choose internal algorithms, module structure, test
 ## Current objective platform scope
 
 Owner decision, 2026-10-13: Windows and macOS remain pending future work and
-are outside the current implementation objective. Assess this objective on
-Linux; do not require those platforms to close it. They remain in the longer-term
-product horizon above, without a tested-support claim. Hosted CI remains
-deferred. This platform decision does not freeze or authorize a public v1 release.
+are outside the completed implementation objective. Its acceptance is local
+Linux only. They remain in the longer-term product horizon above, without a
+tested-support claim. Hosted CI remains deferred. Public GitHub source
+publication is authorized separately; this platform decision does not freeze a
+public v1 release.
 
 ## Definition of completion
 
 A stage is complete only when its workflows can be executed end-to-end from a clean working tree, its failure paths have tests, its changes are documented, and the results are reproducible **under compatible dependencies**. A final v1 release additionally needs its scope frozen and validated across the supported platforms.
 
-**Next action:** continue the remaining acceptance gates recorded in
-[the implementation ledger](IMPLEMENTATION_STATUS.md), retaining the demonstrated
-Linux workflows. This document defines the target; implementation and platform
-claims require the corresponding evidence in that ledger.
+**Future work:** choose an explicit v1 feature/platform boundary before making
+a v1 release claim, resolve the documented distribution/license-source follow-up,
+and qualify any newly supported execution engine or platform with its own
+receipts. Preserve the completed Linux workflows and bounded codecs. See
+[the acceptance checklist](ACCEPTANCE_GAPS.md) and
+[the implementation ledger](IMPLEMENTATION_STATUS.md) for the remaining limits;
+these future requirements do not reopen the completed Linux-local objective.

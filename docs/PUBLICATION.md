@@ -1,0 +1,78 @@
+# Public source publication
+
+The owner authorized a public GitHub repository on 2026-10-13:
+[brianmsm/quarto-bento](https://github.com/brianmsm/quarto-bento). The
+publication scope is the tracked development source, examples, tests, English
+documentation and existing pinned vendor assets with their notices and
+provenance. Local generated output, execution caches, private scan artifacts and
+worktrees are excluded. Only `main` is published; local experimental branches
+are not part of the publication.
+
+## Status and validated baseline
+
+The local Linux implementation objective is complete. Runtime `2ee7974` passed
+578 tests and four steps with zero failures and a 117-file portable
+relocation/state-only rebuild smoke. See the
+[implementation ledger](IMPLEMENTATION_STATUS.md),
+[completion audit](COMPLETION_AUDIT.md) and
+[security receipt](evidence/SECURITY-LINUX.md). Documentation-only publication
+changes do not relabel those results as a new full-suite run.
+
+Public source availability is not a versioned v1 declaration. No binary release,
+installer or portable archive is attached by this publication. Linux is the
+tested platform; macOS and Windows remain future work outside the completed
+objective. Studio currently has Spanish control labels documented in the English
+usage guide. Arbitrary widgets/HTML, broad multi-QMD editing, live collaboration
+and independently distributed-copy reconciliation remain outside the implemented
+scope.
+
+The GitHub workflow can be manually dispatched to run the Linux portable smoke.
+It does not run automatically on publication, and no hosted result is inferred
+from its configuration. It does not install R, test all computation engines or
+reproduce the complete native-browser acceptance suite.
+
+## Licenses and unresolved provenance
+
+The project's own code and documentation use MIT, copyright (c) 2026 Brian
+Norman Peña Calero. The root LICENSE applies to that authored material;
+third-party code and fonts retain their own terms. The upstream Bento MIT text,
+notices, available exact package texts, font OFL texts and integrity inventories
+are preserved under `vendor/bento/` and carried by locally generated output.
+
+The [exact-version investigation](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md)
+retains four unresolved missing or discrepant full package-source texts:
+`@cfcs/core@0.0.6`, `croact@1.0.4`, `croact-css-styled@1.1.9` and
+`keycon@1.4.0`. Existing upstream notices and archive metadata are preserved.
+This public source publication does not certify complete third-party licensing
+or replace those facts with inferred authorship or newer upstream files. Further
+binary-release review must address these open provenance items.
+
+The [security receipt](evidence/SECURITY-LINUX.md) also records two advisories
+in Bento's upstream build graph. The committed runtime uses its pinned built
+shell and does not invoke that npm graph during ordinary operation. A future
+upstream rebuild needs a fresh dependency review. Reports are welcome through
+[SECURITY.md](../SECURITY.md).
+
+## Documentation and evidence policy
+
+The README and usage guide describe current behavior. The product target,
+architecture and accepted decisions describe the longer-term contracts; sample
+target syntax is not automatically an implemented command or schema. The
+[evidence index](evidence/README.md) distinguishes committed receipts from
+historical local-only logs and screenshots. Paths under `output/verification/`
+or temporary directories in older receipts identify the original local
+observations; they are not downloadable files in this public repository.
+Historical counts, failed attempts and version-specific observations remain
+dated rather than rewritten as current results.
+
+## Publication validation
+
+The publication changes update documentation and the manual workflow; runtime
+code remains at the validated `2ee7974` baseline. Local pre-publication checks
+passed core/portable type checks, runtime and script lint/format checks, the
+portable inventory regression and two launcher-argument tests. The portable
+smoke passed again with the updated packaged guide, and the literal README
+quick-start QMD rendered successfully. A local Markdown check covered every
+non-vendor documentation file and found no missing relative targets or heading
+anchors. An independent documentation review checked current claims and scope.
+These checks are separate from the earlier complete 578-test acceptance run.

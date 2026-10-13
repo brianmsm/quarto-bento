@@ -1,67 +1,66 @@
-# Python ejecutado por Quarto/knitr
+# Python executed through Quarto/knitr
 
-Este ejemplo utiliza Python real mediante el motor `knitr` de Quarto y el
-paquete R `reticulate`. Requiere Quarto, R con `knitr`/`reticulate` y un Python
-compatible con `matplotlib` ya instalado. El lector CSV es parte de Python.
-`qbento` no instala ni administra esas dependencias. Este ejemplo no prueba el
-motor Jupyter de Quarto: Jupyter requiere sus propios paquetes instalados.
+This example executes real Python through Quarto's `knitr` engine and the R
+`reticulate` package. It requires installed Quarto, R with `knitr`/`reticulate`,
+and a compatible Python with `matplotlib`. The CSV reader is part of Python.
+`qbento` does not install or manage these dependencies. This example does not
+qualify Quarto's Jupyter engine; Jupyter needs its own installed packages.
 
-Desde la raíz del repositorio, selecciona tu Python existente y renderiza:
+From the repository root, select your existing Python interpreter and render:
 
 ```sh
-RETICULATE_PYTHON=/ruta/absoluta/a/python3 RETICULATE_USE_MANAGED_VENV=no \
+RETICULATE_PYTHON=/absolute/path/to/python3 RETICULATE_USE_MANAGED_VENV=no \
   deno task qbento render examples/python-computation/deck.qmd
 deno task qbento edit examples/python-computation/deck.qmd
 ```
 
-Para utilizar el `quarto render` ordinario con la integración local revisada:
+To use ordinary `quarto render` with the reviewed local integration:
 
 ```sh
 deno task qbento init examples/python-computation/deck.qmd
 cd examples/python-computation
-RETICULATE_PYTHON=/ruta/absoluta/a/python3 RETICULATE_USE_MANAGED_VENV=no \
+RETICULATE_PYTHON=/absolute/path/to/python3 RETICULATE_USE_MANAGED_VENV=no \
   quarto render deck.qmd
 ```
 
-La instalación anterior copia la extensión local; no instala paquetes o motores.
-Los siguientes renders deben conservar la selección explícita del mismo Python.
+This setup copies the local extension; it does not install packages or execution
+engines. Subsequent renders must retain the explicit selection of the same
+Python.
 
-En Studio puedes mover y cambiar el estilo de la figura, editar el párrafo
-literal, guardar el proyecto y revisar/aplicar la sincronización. Cambia
-`data.csv` a los valores `1`, `20`, `30` y vuelve a renderizar: la línea cambia
-y el total pasa de `6.0` a `51.0`, conservando el diseño guardado. La cifra y el
-código mostrado tienen origen computado y no se sincronizan hacia Python como si
-fueran texto redactado.
+In Studio, move or style the figure, edit the literal paragraph, save the
+project, and review/apply synchronization. Change `data.csv` to values `1`,
+`20`, and `30`, then render again: the line changes and the total goes from
+`6.0` to `51.0`, retaining saved design. The number and displayed code have
+computed provenance and do not synchronize back to Python as authored text.
 
-El chunk fija una fecha de metadata SVG y una sal reproducible para los IDs SVG
-mediante `SOURCE_DATE_EPOCH` y `svg.hashsalt`. Matplotlib introduce de forma
-predeterminada fecha/IDs que cambian entre ejecuciones; un plan de
-reconciliación se rechaza si las salidas cambian antes de aplicarlo. Estos
-ajustes son opciones de salida en el código del ejemplo.
+The chunk fixes an SVG metadata date and a reproducible SVG-ID salt through
+`SOURCE_DATE_EPOCH` and `svg.hashsalt`. Matplotlib otherwise introduces dates
+and IDs that vary between runs; a reconciliation plan is refused if outputs
+change before apply. These settings are output choices in the example code.
 
-La ejecución por `qbento render` registra el productor de cada chunk antes de
-que los hooks u opciones alteren el código mostrado. Un adaptador temporal del
-proceso R transporta ese recibo junto al resultado; el QMD original y las
-opciones de caché no reciben marcas. Esto permite varias celdas, eco parcial y
-figuras con stdout y `echo: false` sin inferir el origen por proximidad o por el
-texto del eco. La caché de knitr conserva su clave y cada render captura un
-recibo nuevo, incluso cuando la salida se recupera de caché.
+Execution through `qbento render` records each chunk's producer before hooks or
+options alter displayed code. A temporary R-process adapter carries that receipt
+alongside its result; the original QMD and cache options are unmarked. This
+supports multiple cells, partial echo, and figures with stdout and `echo: false`
+without inferring provenance from proximity or echoed text. The knitr cache
+retains its key and each render captures a fresh receipt, including when output
+comes from cache.
 
-Los filtros de usuario sobre QMD computado se rechazan antes de ejecutar porque
-pueden cambiar los límites de productor. La configuración heredada también se
-comprueba. La ruta ordinaria de Quarto utiliza una activación de recibos separada;
-consulta la [evidencia de activación](../../docs/evidence/PRODUCER-ACTIVATION.md)
-para sus comprobaciones y límites (Quarto 1.10.19).
+User filters on computed QMD are refused before execution because they can
+change producer boundaries. Inherited configuration is also checked. The
+ordinary Quarto route uses separate receipt activation; see the
+[activation evidence](../../docs/evidence/PRODUCER-ACTIVATION.md) for checks and
+limits on Quarto 1.10.19.
 
-La regresión de este ciclo se activa explícitamente cuando el entorno es
-compatible:
+Explicitly enable this cycle's regression tests in a compatible environment:
 
 ```sh
-QBENTO_PYTHON_EXECUTION_TEST=1 QBENTO_TEST_PYTHON=/ruta/absoluta/a/python3 \
+QBENTO_PYTHON_EXECUTION_TEST=1 QBENTO_TEST_PYTHON=/absolute/path/to/python3 \
   deno test --allow-read --allow-write --allow-env --allow-run \
   --allow-net=127.0.0.1 tests/python_execution_test.ts tests/python_quarto_execution_test.ts
 ```
 
-La prueba selecciona ese intérprete existente, desactiva la creación automática
-de entornos por reticulate y utiliza una caché temporal de Matplotlib. Si falta
-una dependencia con la prueba activada, falla con un diagnóstico; no la instala.
+The test selects that existing interpreter, disables reticulate's automatic
+environment creation, and uses a temporary Matplotlib cache. An absent
+dependency makes an enabled test fail with a diagnostic; the test does not
+install it.

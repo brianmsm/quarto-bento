@@ -1,9 +1,14 @@
 # Functional acceptance follow-up
 
-This checklist follows the full product objective. Passing a suite does not
-prove requirements outside its fixtures. Current validation is limited to the
-owner's Linux machine; other operating systems and hosted CI are deferred.
-Public release scope is a separate decision.
+Updated 2026-10-13. The owner has completed the Linux-local implementation
+objective at runtime `2ee7974`: **578 tests and 4 steps, zero failures**, plus a
+**117-file portable smoke** rebuilding from minimal saved state. Public GitHub
+source publication is authorized. See [the latest receipt](evidence/SECURITY-LINUX.md).
+
+This checklist retains the broader product follow-up and historical gap
+closures. Passing a suite does not prove requirements outside its fixtures.
+Windows/macOS are future work outside the completed objective; hosted CI is
+deferred. The public v1 boundary remains a separate decision.
 
 ## Native redesign gates — closed locally
 
@@ -51,7 +56,8 @@ See [the final local receipt](evidence/ORDINARY-INTEGRATED-LINUX.md), including
 the earlier failed runs and the unexplained intermittent widget SVG mismatch.
 Documenting a
 conservative refusal does not make a missing ordinary workflow an accepted
-product exclusion. Local work continues under the owner's Linux-only scope.
+product exclusion. The subsequent ordinary, redesign and security receipts
+complete the owner's Linux-only objective for the documented workflows.
 
 ## Closed gaps from the audit at `0bf0d9c`
 
@@ -132,7 +138,26 @@ endpoint changes and exact HTML-free reconstruction. Weak slide bindings require
 current original-source receipts; labels, positions and coincident IDs cannot
 substitute for provenance.
 
-## Local integrated verification completed
+## Latest local closeout and remaining gates
+
+Runtime `2ee7974` passed **578 tests, 4 steps, zero failures** with native browser
+and installed computation checks. The 117-file portable smoke reconstructed
+from QMD and minimal saved state without prior HTML. This supersedes the suite
+counts below for current local acceptance, while preserving their historical
+receipts. [Security/dependency closure](evidence/SECURITY-LINUX.md) records exact
+scope, test log hashes and the production-lockfile advisory check.
+
+Remaining follow-up consists of a frozen public v1 boundary, four unresolved
+historical full-license-source cases, two advisories in the upstream build-only
+dependency graph, and evidence for any newly supported engine/platform. R and
+Python via installed knitr/reticulate have execution receipts; Quarto's Jupyter
+engine and Julia do not. The project does not install or manage those runtimes.
+See [license-source investigation](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md),
+[Python/engine evidence](evidence/PYTHON-COMPUTATION.md) and the latest security
+receipt. Public source authorization does not certify those outstanding
+matters or imply an artifact release.
+
+## Historical integrated verification
 
 Runtime `75edcdf` passed **430 tests, 4 steps, 0 failures and 0 ignored
 tests** in **9m44s** with the optional pinned math, Studio and Relations
@@ -142,8 +167,9 @@ launcher rebuilt the two-component native demo with an exact emitted document
 and zero pending changes. See [the complete receipt](evidence/INTEGRATED-LINUX.md).
 
 This closes the audited local acceptance pass for the documented workflows.
-Other-platform execution remains deferred at the owner's request; complete
-release/dependency review and a frozen public v1 scope remain separate gates.
+Other-platform execution remains future work outside the completed Linux
+objective; complete distribution review and a frozen public v1 scope remain
+separate gates. The later security receipt supplies the scoped dependency audit.
 
 Unsupported arbitrary widgets, general TeX, ambiguous source spans, automatic
 computed-value reverse edits and inference of an entire parent transform from

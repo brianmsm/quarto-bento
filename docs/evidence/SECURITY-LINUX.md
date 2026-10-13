@@ -6,16 +6,15 @@ qualify native macOS/Windows execution.
 
 ## Audited baseline
 
-Codex Security scan `e590ec97-2d00-401f-a707-5c7493202b79` is sealed against
-`7ce569c36e0fa70230f21143c4d30d7a2cb93a17`, before the fixes below. Its local
-report is retained under
-`~/.codex/state/plugins/codex-security/scans/quarto-bento/7ce569c36e0fa70230f21143c4d30d7a2cb93a17_20261013T133023Z_9_51rx7l/report.md`.
-The source review used independent implementation-area reviews, a pinned Bento
-runtime check, a native Chromium reproduction and a real Quarto path
-reproduction. It reported three findings and partial coverage: the full 1.4 MB
-vendored Bento runtime and every documentation/test file were not reviewed line
-by line. This is a scoped local code audit, not a claim that no other
-vulnerabilities exist.
+A scoped Codex Security review was completed against
+`7ce569c36e0fa70230f21143c4d30d7a2cb93a17`, before the fixes below. Its raw
+report is retained privately by the repository owner; this committed receipt
+records the public-safe findings, mitigations and validation scope. The source
+review used independent implementation-area reviews, a pinned Bento runtime
+check, a native Chromium reproduction and a real Quarto path reproduction. It
+reported three findings and partial coverage: the full 1.4 MB vendored Bento
+runtime and every documentation/test file were not reviewed line by line. This
+is a scoped local code audit, not a claim that no other vulnerabilities exist.
 
 | Finding                             | Baseline proof                                                                                                                                                                                         | Mitigation in this change                                                                                                                                                                                                                                                                        |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

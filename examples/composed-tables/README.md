@@ -18,5 +18,8 @@ semantic classification; this slice does not reclassify column edits as design.
 A table wrapper must contain only its table (or transparent execution wrappers).
 Use separate card children for adjacent text. Rich cells, merged cells,
 captions, wrapping that exceeds the conservative width limit, excessive row
-height, and unadapted native charts refuse before publication. This is a bounded
-Linux implementation, not a full product or cross-platform release.
+height, and unsupported chart codecs refuse before publication. Bounded native
+bar and straight-line charts are supported in cards and layouts through their
+[separate adapter](../../docs/evidence/COMPOSED-CHARTS.md). This is a bounded
+Linux implementation; the full product and other-platform qualification remain
+future work.

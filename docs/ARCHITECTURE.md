@@ -1,10 +1,11 @@
 # Architecture — conceptual target
 
-**State:** agreed architectural boundaries. Implementation began 2026-10-11;
-the conceptual examples below are not a claim that every layer is finished.
+**State:** agreed architectural boundaries, updated 2026-10-13. The supported
+Linux implementation objective is complete; the conceptual examples below
+retain the longer-term product horizon.
 See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured acceptance.
 
-## Current implementation decisions (2026-10-11)
+## Current implementation decisions (2026-10-13)
 
 - Deno/TypeScript core and JSON CLI; Quarto executes the supplied environment.
   A final Lua filter captures the executed HTML AST with figure assets. A
@@ -27,7 +28,10 @@ See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured acceptance
   happen only after reviewing and applying a plan.
 - Direct Quarto integration currently validates its invoking process through
   Linux `/proc`. Unsafe output overrides are refused before Pandoc can truncate
-  the edited HTML. Portable validation remains an unresolved implementation gate.
+  the edited HTML. Linux portable relocation and state-only reconstruction are
+  validated; macOS/Windows qualification remains future work. The current
+  security/path mitigations and complete test result are in
+  [the Linux closeout](evidence/SECURITY-LINUX.md).
 
 ## Pipeline
 

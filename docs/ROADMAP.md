@@ -1,6 +1,10 @@
 # Implementation roadmap and validation gates
 
-**Status:** acceptance roadmap; implementation started 2026-10-11. The
+**Status:** Linux-local implementation objective completed 2026-10-13;
+public source publication authorized. Runtime `2ee7974` passed 578 tests and
+4 steps without failure, plus a 117-file portable reconstruction smoke.
+The product horizon and public v1 boundary remain distinct from this closeout.
+See [PUBLICATION.md](PUBLICATION.md) for source-publication scope. The
 bounded Linux implementation now includes source-authored diagrams/timelines
 and explicit Studio card/KPI creation alongside the first bidirectional slice.
 Studio also provides guarded **Relaciones** selectors for paired endpoints in
@@ -113,45 +117,53 @@ Sequences are illustrative; features may move earlier to support validation with
 - Perfect visual equivalence of optional Reveal.js output with Bento.
 - Universal Plotly/htmlwidgets or pixel-identical rendering across platforms.
 
-## Suggested next-session action
+## Completed local objective and public source publication
 
-Continue from the [Linux-local security and dependency receipt](evidence/SECURITY-LINUX.md)
-and the latest implementation ledger. The 2026-10-13 audit reproduced and
-mitigated three concrete local issues: native chart-tooltip injection, aliased
-generated-build paths and an obsolete manual bridge probe. Its pinned
-production npm lockfile audit reported zero advisories at the time of the check;
-the upstream build graph and four historical license-source cases remain
-explicit public-distribution follow-up. The final Linux suite passed 578 tests
-(4 steps) without failure, and the 117-file portable smoke rebuilt from QMD and
-minimal saved state. This closes the current Linux-local security/dependency
-objective; do not infer full v1 acceptance or other-platform qualification.
+The owner closed the Linux-local implementation objective on 2026-10-13 and
+now authorizes publication of the source repository as
+[`brianmsm/quarto-bento`](https://github.com/brianmsm/quarto-bento). See
+[the publication scope](PUBLICATION.md) and
+[the latest security/dependency receipt](evidence/SECURITY-LINUX.md).
+Runtime `2ee7974` passed **578 tests and 4 steps, zero failures**; the clean
+**117-file portable smoke** rebuilt from QMD and minimal saved state. The
+published source documentation preserves the bounded codecs and separates
+local runtime evidence from future v1 and distribution requirements.
 
-Continue from [the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md)
-and the implementation ledger. Source mapping/composition, static-code language
-sync, native content bounds and explicit reusable-layout application now have
-integrated evidence, a passing 572-test suite and a 113-file portable artifact.
-The final audit found no new concrete blocker in the documented ordinary Linux
-workflows. Preserve those workflows; retain diagnostics for the unexplained
-intermittent widget SVG comparison and the documented codec limits. Distribution
-review, public release scope and deferred other-platform qualification
-remain separate gates. The original startup sequence—pin upstream, run
-S0, then separately prove S1/S2/S4—is complete for the documented bounded
-scope and is no longer a next-session instruction.
+The complete ordinary and redesign integrations remain recorded in
+[ordinary Linux acceptance](evidence/ORDINARY-INTEGRATED-LINUX.md) and
+[combined redesign acceptance](evidence/REDESIGN-INTEGRATED-LINUX.md). Their
+older suite/artifact counts describe those earlier revisions. The initial
+startup sequence—pin upstream, prove S0, then S1/S2/S4—is complete for the
+supported scope and must not be repeated as unimplemented work.
 
-Distribution follow-up preserves full supplied notices through native HTML
-serialization and includes an exact production-archive supplement. The clean
-`74e552b` portable has 117 verified files, including the owner-selected MIT
-license in its root, runtime and generated HTML; see
-[distribution evidence](evidence/DISTRIBUTION-NOTICES.md). The
-[four-package source audit](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
-what remains unresolved after checking exact registry-linked source commits.
-Do not repeat that lookup or substitute current upstream files as if they proved
-the historical packages' provenance. The owner selected MIT for the project's
-own code, with Brian Norman Peña Calero as holder, on 2026-10-13. The public
-release boundary still needs an owner decision. On 2026-10-13 the owner excluded
-Windows and macOS from the current objective, retaining them as future pending
-work. They must not block completion of the Linux objective; hosted CI remains
-deferred. The longer-term product horizon is unchanged.
+## Future acceptance and distribution work
+
+- Freeze an explicit feature/platform boundary before declaring a public v1.
+  Public source publication is authorized; it does not make that decision.
+- Preserve the complete supplied project/third-party notices and exact
+  production-archive supplement. The owner-selected MIT License uses Brian
+  Norman Peña Calero as holder. Four historical full-license-source cases remain
+  unresolved; [the exact source audit](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md)
+  records retrieval failures and source/package discrepancies. Do not substitute
+  modern upstream files for the pinned packages' provenance.
+- Retain the two advisories in the upstream build-only dependency graph as
+  explicit upstream-rebuild follow-up. The production npm check reported zero
+  advisories on its recorded date; advisory results are time-dependent and do
+  not constitute a complete runtime security guarantee.
+- Keep the strict widget SVG assertion and opt-in failure evidence. The prior
+  intermittent mismatch has no established cause; successful later runs do not
+  prove its cause fixed.
+- Add evidence for new execution engines without introducing environment
+  management. Current execution receipts cover installed R and Python through
+  knitr/reticulate. Quarto's Jupyter engine and Julia are not qualified here.
+- Windows/macOS remain pending future work outside the completed objective.
+  Hosted CI is deferred. The workflow file is a manual-only Linux smoke recipe,
+  not a hosted success receipt or other-platform claim.
+
+These items preserve the longer-term product horizon and do not reopen the
+completed local Linux objective. Refer to [the acceptance checklist](ACCEPTANCE_GAPS.md)
+and [implementation ledger](IMPLEMENTATION_STATUS.md) before selecting future
+work.
 
 Useful references:
 - Bento: https://github.com/nyblnet/bento

@@ -1,11 +1,23 @@
-# Completion audit after MIT integration
+# Completion audit and Linux-local closeout
+
+Updated 2026-10-13. The owner has closed the Linux-local implementation
+objective at runtime `2ee7974` and authorized public source publication at
+[`brianmsm/quarto-bento`](https://github.com/brianmsm/quarto-bento). The final
+suite passed **578 tests and 4 steps, zero failures**; the **117-file portable
+smoke** reconstructed from minimal saved state without prior HTML.
+[The security closeout](evidence/SECURITY-LINUX.md) supplies the later verification
+and exact dependency scope. [PUBLICATION.md](PUBLICATION.md) defines what source
+publication means; no public v1 boundary has been frozen.
+
+## Historical independent product review
 
 Audit date: 2026-10-13. Inspected revision: `3d87133`, runtime `74e552b`.
-An independent read-only review compared the full [product target](PRODUCT_TARGET.md),
-decisions, workflows and current implementation with code, tests and receipts.
+The following independent read-only review compared the full
+[product target](PRODUCT_TARGET.md), decisions, workflows and implementation at
+that revision with code, tests and receipts.
 No new concrete ordinary Linux defect was found. This does not prove complete
-product acceptance: public release gates remain open. The owner subsequently
-excluded Windows/macOS from the current objective on 2026-10-13; they remain
+product acceptance: the v1 scope and artifact-distribution review remain open.
+The owner subsequently excluded Windows/macOS from the current objective on 2026-10-13; they remain
 pending in the longer-term horizon and no longer block the Linux objective.
 
 ## Product requirements
@@ -19,7 +31,7 @@ pending in the longer-term horizon and no longer block the Linux objective.
 | Source visual authoring | [Annotations](evidence/ANNOTATIONS.md), [components](evidence/COMPONENTS.md), [graphs](evidence/GRAPHS.md), [registry](evidence/STUDIO-REGISTRY.md), [layouts](evidence/REUSABLE-LAYOUTS.md) | Implemented and locally tested within declared component and ownership contracts. |
 | Computed and rich content | [Composed tables](evidence/COMPOSED-TABLES.md), [charts](evidence/COMPOSED-CHARTS.md), [KPI](evidence/COMPOSED-KPIS.md), [rich tables](evidence/RICH-TABLES.md) | Fresh execution, provenance, retained frames and faithful native/fallback representations demonstrated for the declared codecs; no invented reverse writes. |
 | Interaction and export | [Offline/PDF](evidence/OFFLINE-PDF.md), [Plotly](evidence/PLOTLY.md) | Static delivery and isolated supported widgets tested locally; not arbitrary widgets or OS-native dialog qualification. |
-| Rebuild, offline, Git | First slice, ordinary/redesign receipts and [current portable](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license) | Source/input/state reconstruction, identity and pending preservation tested under compatible installed dependencies. |
+| Rebuild, offline, Git | First slice, ordinary/redesign receipts and [MIT-era portable](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license) | Source/input/state reconstruction, identity and pending preservation tested under compatible installed dependencies. |
 | Platforms and agents | [Agent contract](AGENT-API.md), [packaging](PACKAGING.md), CLI/core and tests | Checked JSON operations and Linux packaging have evidence. macOS/Windows qualification remains unproven and explicitly deferred by the owner. |
 
 The six canonical journey steps map to these receipts: author/compute/open
@@ -48,10 +60,13 @@ environments, resolve remote runtime modules or enable collaboration.
 ## Evidence integrity and remaining requirements
 
 The reviewer independently recomputed all ten indexed redesign artifact hashes
-and sizes and all 117 current portable payload hashes and sizes. They match.
-The complete 572-test/four-step suite belongs to `b5b6bbe`; later notice/MIT
-changes have focused tests and portable smoke. Those results are not relabeled
-as a new complete-suite run of this revision. This audit reran no suite.
+and sizes and all 117 MIT-era portable payload hashes and sizes. They match.
+The complete 572-test/four-step suite belonged to `b5b6bbe`; the subsequent
+notice/MIT changes had focused tests and portable smoke at the time of this
+read-only audit. This audit reran no suite. The later 578-test/four-step run
+and 117-file portable smoke at runtime `2ee7974` are recorded separately in
+[the security receipt](evidence/SECURITY-LINUX.md); historical results have not
+been relabeled as tests of a different revision.
 
 Remaining release requirements and evidence limits (with the owner's platform
 scope update of 2026-10-13):
@@ -59,13 +74,17 @@ scope update of 2026-10-13):
 - macOS/Windows are pending future work outside the current objective, not
   blockers for its completion. Future qualification requires systems/runners.
   The Linux-only guard in `src/integration/invocation.ts` is real; a launcher or
-  CI YAML does not establish support. Hosted CI remains deferred.
+  workflow file does not establish support. Hosted CI remains deferred; the
+  repository workflow is a manual-only Linux smoke recipe.
 - Public v1 acceptance requires the owner's explicit feature/platform boundary.
-  Choosing MIT does not freeze that boundary or authorize publication.
+  Choosing MIT did not freeze that boundary. The owner has now separately
+  authorized public source publication; see [PUBLICATION.md](PUBLICATION.md).
 - The [four-package historical source investigation](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md)
   retains unavailable/discrepant provenance. Existing notices and inventories
-  do not establish complete third-party or dependency review. New evidence is
-  needed to resolve those findings; repeating the same requests adds no proof.
+  do not establish complete third-party review. The later scoped dependency
+  audit reported zero production npm advisories and two upstream build-only
+  advisories on its recorded date; it does not resolve the license cases. New
+  evidence is needed to resolve those findings; repeating the same requests adds no proof.
 - Jupyter/Julia are not installed/qualified in this environment. No universal
   execution-engine compatibility is asserted and no automatic installation is
   part of the product contract.

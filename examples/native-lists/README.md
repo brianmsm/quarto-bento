@@ -1,36 +1,35 @@
-# Listas Markdown y edición nativa
+# Markdown lists and native editing
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```sh
 deno task qbento edit examples/native-lists/deck.qmd
 ```
 
-Las listas aparecen como objetos de texto nativos con viñetas o numeración.
-Edita el texto de un elemento en Bento y guarda el proyecto: QMD conserva sus
-bytes y la modificación queda pendiente. Revisa el plan de sincronización,
-aplícalo y recalcula. La primera diapositiva parte sin IDs explícitos; el plan
-revisado añade las identidades necesarias conservando los IDs nativos y diseño.
+Lists appear as native text objects with bullets or numbering. Edit an item's
+text in Bento and save the project: QMD retains its bytes and the change stays
+pending. Review the synchronization plan, apply it, and recalculate. The first
+slide starts without explicit IDs; the reviewed plan adds required identities
+while retaining native IDs and design.
 
-El último total proviene de R. Modificarlo en Bento produce un conflicto de
-contenido computado; no cambia la expresión. Cambia los datos o código en QMD
-para recalcularlo.
+The final total comes from R. Editing it in Bento produces a computed-content
+conflict and does not change its expression. Change data or source code in QMD
+to recalculate it.
 
-Se admiten listas anidadas, párrafos múltiples y el vocabulario rich-text
-existente. Listas numeradas usan decimales desde 1 y puntos. Otros comienzos,
-marcadores alfabéticos/romanos, checkboxes, imágenes y bloques de código requieren
-adaptadores distintos y se rechazan explícitamente. El shell Bento fijado elimina
-atributos `start`, `type` y `value`; no se simula su soporte mediante texto plano.
+Nested lists, multiple paragraphs, and the existing rich-text vocabulary are
+supported. Numbered lists use decimal numbers starting at 1 with periods. Other
+start values, alphabetical/Roman markers, checkboxes, images, and code blocks
+need separate adapters and are explicitly refused. The pinned Bento shell
+removes `start`, `type`, and `value` attributes; plain text is not used to
+simulate their support.
 
+You can also create a text object containing a native list and save it on an
+existing or new slide. Review its QMD insertion before apply and recalculate.
+Consecutive objects retain separate identities even if both are bulleted lists.
 
-También puedes crear un objeto de texto con una lista nativa y guardarlo, tanto
-en una diapositiva existente como en una nueva. Revisa su inserción en QMD antes
-de aplicar y recalcular. Los objetos consecutivos conservan sus identidades
-separadas aunque ambos sean listas de viñetas.
-
-Una lista existente puede convertirse en un párrafo y un párrafo independiente
-en una lista mediante el mismo flujo de guardado y revisión. Para eliminar una
-lista, guarda la eliminación, revisa la operación y confírmala expresamente;
-antes de aplicarla puedes recuperar texto y diseño desde Comparar con QMD.
-Contenido computado, componentes y contenedores compartidos requieren editar
-su fuente y conservan sus guardas habituales.
+An existing list can become a paragraph and an independent paragraph can become
+a list through the same save/review workflow. To delete a list, save the
+deletion, review the operation, and explicitly confirm it. Before apply, recover
+text and design through **Comparar con QMD** (Compare with QMD). Computed
+content, components, and shared containers require source editing and retain
+their usual guards.

@@ -1,251 +1,158 @@
-# Quarto-Bento (working name: `qbento`)
+# Quarto-Bento
 
-**Status:** implementation in progress (2026-10-11). The executed Quarto
-renderer, native Bento bridge, local Studio save, source-patch primitives and
-persistent three-way state core exist. The supported first bidirectional Linux
-workflow is [demonstrated end to end](docs/evidence/FIRST-SLICE.md); the full
-product target is **not yet complete**. See
-[implementation ledger](docs/IMPLEMENTATION_STATUS.md).
+Author and compute in [Quarto](https://quarto.org/), design in
+[Bento](https://github.com/nyblnet/bento), and regenerate your presentation
+while retaining its visual design. Quarto-Bento provides a local Studio,
+explicit reviewed synchronization to QMD, and an offline standalone Bento HTML
+output.
 
-Quarto-Bento's own code and documentation are licensed under the [MIT License](LICENSE),
-copyright (c) 2026 Brian Norman Peña Calero. Bundled Bento, dependencies and fonts
-retain their respective licenses and notices; see [distribution details](docs/PACKAGING.md).
+**Status:** public development source. The supported Linux implementation
+objective is complete: the runtime at `2ee7974` passed 578 tests and four steps,
+with zero failures, and the 117-file portable smoke passed. The supported
+workflows and their limits are documented in the
+[implementation ledger](docs/IMPLEMENTATION_STATUS.md) and
+[completion audit](docs/COMPLETION_AUDIT.md). This repository is available for
+use, inspection and contributions; a versioned v1 release has not been declared.
+Windows and macOS qualification are future work outside the completed Linux
+objective.
 
-Quarto-Bento aims to combine **computationally reproducible Quarto
-presentations** with **Bento's fast visual slide editor**, without losing visual
-edits when results are regenerated.
+## Quick start
 
-## The user contract
-
-- **`.qmd` owns meaning:** authored text, executable code, equations, notes,
-  semantic structure, and references to computed outputs.
-- **`.qbento/` owns presentation:** stable-ID-keyed visual overrides, layouts,
-  animations, decorative elements, and synchronization metadata. It also holds
-  recoverable _pending_ edits and explicitly detached content until otherwise
-  resolved.
-- **`.bento.html` is a rebuildable output**, not the project's only source. A
-  distributed standalone HTML remains editable as an independent copy.
-- **Bento can edit semantics:** these edits are saved as pending changes and
-  deliberately synchronized to QMD; saving a deck alone does _not_ silently
-  rewrite QMD.
-- **Regenerating Quarto updates computed results without discarding retained
-  visual design.** Conflicts are reported; nothing is silently overwritten.
-
-## Run the current development build
-
-See [the practical usage guide](docs/USAGE.md) for the implemented save, review,
-sync, rebuild and delivery workflows.
-
-Requires installed Deno 2, Quarto and the language/packages used by your QMD.
-The bundled Bento shell is pinned; ordinary rendering and editing need no cloud
-service or downloaded runtime assets. The project does not manage your R/Python
-environment.
+Install Deno and Quarto yourself. The tested Linux baseline is **Deno 2.9.6**
+and **Quarto 1.10.19**. A document with computation also needs its language and
+packages; the acceptance suite used R 4.6.1 and locally installed Python.
+Chromium is needed for supported browser-based captures and PDF workflows.
+Quarto-Bento does not install or manage these dependencies.
 
 ```sh
+git clone https://github.com/brianmsm/quarto-bento.git
+cd quarto-bento
 deno task qbento doctor
-deno task qbento render fixtures/basic/presentation.qmd
-deno task qbento edit fixtures/basic/presentation.qmd
-deno task qbento status fixtures/basic/presentation.qmd
-deno task test
 ```
 
-To build a portable development directory with launchers and the pinned offline
-runtime, run `deno task package /absolute/path/to/new-directory`. See
-[packaging instructions and platform evidence](docs/PACKAGING.md). This requires
-installed Deno/Quarto and does not install computation environments.
+Create a separate directory for each presentation. For a minimal authored deck,
+create `deck.qmd` there:
 
-`edit` prints a loopback Studio URL. Open that address in a browser. **Guardar
-proyecto** saves durable visual and pending semantic edits to `.qbento/` without
-changing QMD. Native Bento's own Save still saves a standalone HTML file.
-Capture native local edits explicitly with
-`deno task qbento capture path.qmd
-[edited-copy.html]` before regeneration. A
-changed uncaptured output is refused.
+```markdown
+---
+title: My presentation
+---
 
-Currently demonstrated projection includes plain QMD headings, paragraphs and
-bounded native Markdown lists,
-supported rich text in identified fenced divs, ordinary displayed code,
-display equations and speaker notes, local Markdown images with reviewed caption
-editing, R-generated SVG figures, plain tables,
-bounded native charts, cards, named two-column layouts, source-authored
-`.bento-kpi` components, and bounded source `.bento-diagram` and
-`.bento-timeline` components. The Studio **Relaciones** controls can reassign
-both source endpoints of an existing diagram edge as one pending operation;
-timeline adjacency is displayed read-only and remains defined by QMD order.
-Plain QMD can acquire stable identities only through an inspectable reviewed
-source plan; save and render do not add them implicitly. Native Studio also
-supports reviewed deletion of bounded source-backed elements and explicit
-creation of authored cards and literal-value KPI components on existing source
-slides. Saving a created component leaves QMD unchanged; its authored members
-remain pending until reviewed together in the source-sync plan. The Studio KPI
-value is text, not a computed expression. Focused component and Studio tests
-exist. The authored card/KPI flow also has headless Linux acceptance through the
-shipped Studio client and pinned Bento editor; see the [native creation
-receipt](docs/evidence/COMPONENT-CREATION.md#integrated-native-creation-acceptance-on-linux).
-This receipt does not claim foreground desktop or other-platform acceptance.
-These adapters do not imply support for every QMD construct. Reproducible
-sources include:
+## Results {#results}
 
-- [Semantic round-trip](examples/semantic-roundtrip/deck.qmd)
-- [Native lists](examples/native-lists/deck.qmd)
-- [Ordinary Markdown tables](examples/plain-tables/deck.qmd)
-- [Native tables](examples/native-tables/deck.qmd)
-- [Tables in cards and columns](examples/composed-tables/deck.qmd)
-- [Native charts](examples/native-charts/deck.qmd)
-- [Computed gt/gtsummary tables](examples/rich-tables/deck.qmd)
-- [Two-column components](examples/components/deck.qmd)
-- [Source-authored KPI components](examples/kpi/deck.qmd)
-- [Bounded diagrams and timelines](examples/source-graphs/deck.qmd) (see
-  [Linux graph and relationship acceptance](docs/evidence/GRAPHS.md#explicit-relationship-controls-accepted-on-linux))
-- [Offline Plotly](examples/plotly-offline/deck.qmd)
+::: {#finding} This text can be edited in Bento and synchronized to QMD after
+review. :::
+```
 
-Examples use their accompanying CSV inputs. The rich-table example also uses
-`participants.csv`. Bounded `gt`/`gtsummary` output is captured as a complete 2x
-PNG with its source formatting; native slide and offline PDF inspection are
-recorded in [rich-table evidence](docs/evidence/RICH-TABLES.md). Rendering that
-fallback requires an installed Chromium. Unknown conversions refuse rather than
-invent a result. Studio supports text/structural review, reversible slide
-actions and fresh conflict resolution. Reviewed source-element deletion can be
-restored before approval and safely applied for supported source units; see the
-[deletion evidence](docs/evidence/ELEMENT-DELETION.md). New standalone native
-text can be reviewed and inserted into an existing identified QMD slide, then
-regenerated with its saved geometry and style; see the
-[insertion scope and native acceptance](docs/evidence/TEXT-INSERTION.md). See
-the bounded [component evidence](docs/evidence/COMPONENTS.md). Source diagrams
-and timelines use declared node and relationship IDs, literal labels, and a
-bounded native layout; unsupported topology or text metrics refuse before
-publication. Studio's relationship selectors are limited to endpoints in an
-existing source diagram; timeline relationships are read-only. Saving the
-selected pair records pending project state, review/apply writes the inspected
-source patch, and only Recalculate executes QMD. Their exact source contract
-and Linux validation are documented with the
-[example](examples/source-graphs/README.md) and
-[graph evidence](docs/evidence/GRAPHS.md). The guarded
-`qbento-html` extension executes Quarto once per render (verified on Linux). The
-static standalone/PDF workflow has
-[offline browser evidence](docs/evidence/OFFLINE-PDF.md). Supported Plotly
-scatter/bar output now produces a static SVG in native Bento and a separate
-isolated interactive view through Studio's **Presentar con gráficos**. Saved
-geometry survives changed-data regeneration; headless Chromium validation
-exercised native hover and zoom offline. Rendering requires compatible installed
-R Plotly and Chromium dependencies; the emitted Presenter bundles its runtime
-locally. Interactive widgets are separate views, rather than overlays at the
-slide's exact geometry. See
-[Plotly scope and evidence](docs/evidence/PLOTLY.md). Broader semantic/content
-adapters, arbitrary widgets and native cross-platform validation remain in
-progress. The implementation ledger is the authority for acceptance evidence;
-the target documentation below remains the intended product contract.
-
-## Current commands and product boundary
+From the source checkout, run:
 
 ```sh
-qbento edit presentation.qmd     # Generate/open Bento Studio
-qbento status presentation.qmd   # Inspect pending changes
-qbento diff presentation.qmd     # Preview divergence
-qbento sync presentation.qmd     # Review/apply semantic patches
-qbento render presentation.qmd   # Rebuild output
-qbento get presentation.qmd      # Read the saved deck and its checked revision
-qbento patch presentation.qmd patch.json # Save bounded structured edits
+deno task qbento render /absolute/path/to/my-presentation/deck.qmd
+deno task qbento edit /absolute/path/to/my-presentation/deck.qmd
 ```
 
-The versioned [JSON agent API](docs/AGENT-API.md) supports existing-element and
-slide fields, order, hide/show and bounded authored slide creation with strict
-document/revision checks. Creation requires a current executed source baseline;
-it accepts native text and decorative shapes. The API saves the same visual
-state and pending semantic changes as Studio; it does not implicitly synchronize
-QMD. Reviewed deletion remains available through Studio.
+Open the printed `127.0.0.1` Studio URL in a browser. The server remains running
+while you edit. Studio currently uses Spanish labels: **Guardar proyecto** (Save
+project) preserves design and pending authored edits; **Revisar cambios**
+(Review changes) shows proposed QMD patches; **Aplicar** (Apply) commits the
+reviewed source changes; **Recalcular** (Recalculate) executes QMD again. The
+[English usage guide](docs/USAGE.md) explains the complete workflow and recovery
+choices.
 
-Ordinary `quarto render presentation.qmd` is supported through the installed
-`qbento-html` extension after `qbento init presentation.qmd`; see
-[Quarto integration evidence](docs/evidence/QUARTO.md). PDF is generated from
-Bento; Reveal.js remains an optional secondary output without visual parity
-guarantees. These commands belong to the current development build and do not
-establish full product or native cross-platform release acceptance.
+Only execute trusted QMD and code. Ordinary rendering and editing use the pinned
+local Bento runtime and need no cloud service. Compatible computation packages
+and local input assets remain your responsibility.
 
-**Save ≠ sync ≠ render.** Save persists Studio edits (including unsynchronized
-content); sync writes approved changes to QMD; render recomputes and combines
-QMD with saved visual state.
+## Save, synchronize, regenerate
 
-Studio's **Diseños y temas** edits the project's named layouts and basic themes.
-**Guardar diseños** updates `.qbento/design.json`; **Recalcular** applies its
-defaults while preserving saved overrides and pending content. Explicit QMD
-attributes retain their authority. See the
-[registry contract](docs/DESIGN_REGISTRY.md) and
-[save/conflict/recovery evidence](docs/evidence/STUDIO-REGISTRY.md).
+- **QMD owns meaning and computation:** authored content, executable source,
+  equations, notes and semantic structure.
+- **`.qbento/` owns retained visual state:** identity, geometry, design,
+  decoration and recoverable pending edits.
+- **Save** stores Studio edits without silently rewriting QMD.
+- **Synchronize** applies explicit reviewed source patches; conflicts require a
+  choice and computed output cannot be promoted into executable code.
+- **Render** recomputes source results and combines them with retained design.
 
-**Aplicar diseño**, including Bento's native button, explicitly assigns existing
-objects to columns while preserving their IDs, content and pending changes.
-Preview the positions before applying. Free objects retain the applied geometry
-as a snapshot; reapply explicitly after editing a registry definition. Studio
-also reports native text overflow and bounded table/chart layout warnings
-without silently resizing saved design. The combined native workflow, complete
-Linux suite and portable reconstruction are recorded in
-[the redesign acceptance receipt](docs/evidence/REDESIGN-INTEGRATED-LINUX.md).
+Version QMD, data/assets and the required `.qbento/` project state together. The
+generated `.bento.html` is rebuildable. Native Bento Save creates a separate
+HTML copy; use `qbento capture` for supported edits to a matching local project
+copy before rendering again. See [capture](docs/evidence/CAPTURE.md) and
+[reconstruction](docs/USAGE.md).
 
-### Proposed project files
+## Supported workflows
 
-```text
-presentation.qmd           # Semantic/computational source
-.qbento/
-  deck.yml                 # Project/slide metadata
-  theme.yml                # Theme
-  layouts/                 # Reusable layouts
-  slides/                  # Per-slide design and Bento-only objects
-  assets/                  # Design assets
-  widgets/                 # Interactive-widget support material
-  sync.lock.json           # Versioned synchronization baseline
-presentation.bento.html    # Generated artifact (usually not committed)
+The documented single-QMD Linux workflow includes ordinary headings and rich
+text, bounded lists, displayed code, display equations, speaker notes, local
+images and captions, native/simple tables and charts, cards and two-column
+layouts, literal and computed KPI content, and bounded diagrams/timelines.
+Studio supports retained visual editing, pending semantic edits, reviewed slide
+and element actions, reusable designs, conflict resolution and recovery.
+Compatible R/Python execution has local evidence. Supported Plotly views are
+isolated from the pure-data deck; static output remains available for delivery.
+
+Each codec has explicit limits. Arbitrary HTML/widgets, broad multi-QMD editing,
+live collaboration and reconciliation of independently distributed HTML copies
+are outside the implemented scope. See [authoring](docs/AUTHORING.md),
+[acceptance limits](docs/ACCEPTANCE_GAPS.md) and [examples](examples/README.md).
+The [product target](docs/PRODUCT_TARGET.md) describes the longer-term horizon.
+
+## Commands and portable use
+
+From the checkout, invoke commands with `deno task qbento`. A locally built
+portable directory supplies the equivalent `bin/qbento` launcher:
+
+```sh
+qbento doctor
+qbento render presentation.qmd
+qbento edit presentation.qmd
+qbento status presentation.qmd
+qbento diff presentation.qmd
+qbento sync presentation.qmd
+qbento get presentation.qmd
+qbento patch presentation.qmd patch.json
+qbento init presentation.qmd
 ```
 
-This directory layout and filenames are **proposed**, not finalized schemas. As
-in the original design, source-backed objects need only **visual overrides**
-(e.g. a figure's `x/y/w/h`), not a second copy of computed results. Bento-only
-elements and pending/detached content require their own persisted records. A
-stable **Bento `docId`** must be saved in project metadata and reused on every
-regeneration; do not regenerate it with the HTML.
+`init` installs the self-contained `qbento-html` extension for ordinary
+`quarto render` in that project. The versioned
+[JSON agent API](docs/AGENT-API.md) uses the same checked document/state core.
+Build a portable development directory with
+`deno task package /absolute/path/to/new-directory`; see
+[packaging and license provenance](docs/PACKAGING.md). No binary release or
+installer is attached to this source publication.
 
-The current implementation persists project identity in `.qbento/project.json`
-and checksummed design, baselines and pending edits in `.qbento/state.json`.
-Version both files with QMD and inputs; build artifacts and history are
-rebuildable or recovery material. The detailed split shown above remains a
-future storage design. **Directly saving a generated `.bento.html` edits that
-file, not `.qbento/`**: the explicit `qbento capture` command can capture a
-copy with a matching project publication receipt and generation. Capture it
-before the next render. It is not an import path for arbitrary or independently
-distributed HTML. See [capture evidence](docs/evidence/CAPTURE.md),
-[ARCHITECTURE.md](docs/ARCHITECTURE.md), and [SYNC.md](docs/SYNC.md).
+## Documentation and development
 
-## Reproducibility boundary
+- [Usage](docs/USAGE.md): preparation, Studio, sync, computation and recovery.
+- [Authoring](docs/AUTHORING.md): supported source syntax and codec limits.
+- [Workflows](docs/WORKFLOWS.md): ten practical scenarios and ownership rules.
+- [Sync](docs/SYNC.md), [architecture](docs/ARCHITECTURE.md) and
+  [decisions](docs/DECISIONS.md): implementation contracts and product
+  decisions.
+- [Current status](docs/IMPLEMENTATION_STATUS.md), [roadmap](docs/ROADMAP.md)
+  and [evidence index](docs/evidence/README.md): measured results and future
+  work.
+- [Contributing](CONTRIBUTING.md), [security](SECURITY.md) and
+  [publication scope](docs/PUBLICATION.md): development and public repository
+  policy.
 
-Given a **compatible execution environment**, the QMD, inputs, and `.qbento/`
-must regenerate the content and retained design. Quarto-Bento **does not
-install, lock, or manage** R/Python/Julia packages or environments. Tools such
-as `renv`, `uv`, and Docker are optional user choices, not Quarto-Bento
-dependencies or requirements. Pixel-identical output across platforms is not
-promised.
+The [contributor guide](CONTRIBUTING.md) lists checks and the optional full
+Linux acceptance command. The hosted workflow is a manually dispatched Linux
+portable smoke; authored workflow configuration is distinct from a passing
+hosted run. Agents should begin with [AGENTS.md](AGENTS.md).
 
-## Documentation / start a new session here
+## License and upstream
 
-The [Spanish usage guide](docs/USAGE.md) describes the current development
-commands and Studio controls. The specifications below define the product
-destination and its accepted contracts.
+Quarto-Bento's own code and documentation use the [MIT License](LICENSE),
+copyright (c) 2026 Brian Norman Peña Calero. The pinned Bento shell,
+dependencies and embedded fonts retain their own terms. Their upstream notices,
+complete available texts and provenance are preserved under
+[vendor/bento](vendor/bento). The
+[exact-version license investigation](docs/evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md)
+records four missing or discrepant package-source texts; publication does not
+turn those unresolved findings into a completed third-party review.
 
-1. [PRODUCT_TARGET.md](docs/PRODUCT_TARGET.md) — product horizon and criteria
-   for calling a milestone or v1 complete.
-2. [DECISIONS.md](docs/DECISIONS.md) — accepted decisions vs provisional
-   choices.
-3. [WORKFLOWS.md](docs/WORKFLOWS.md) — expected behavior and ten practical
-   scenarios.
-4. [AUTHORING.md](docs/AUTHORING.md) — QMD components, attributes, annotation
-   levels.
-5. [SYNC.md](docs/SYNC.md) — ownership, three-way merge, pending edits, safe
-   writes.
-6. [ARCHITECTURE.md](docs/ARCHITECTURE.md) — conceptual components and
-   integration boundaries.
-7. [ROADMAP.md](docs/ROADMAP.md) — high-risk experiments, first vertical slice,
-   acceptance tests.
-
-For coding agents, read [AGENTS.md](AGENTS.md) first, then the current
-[implementation ledger](docs/IMPLEMENTATION_STATUS.md). The original design
-documents describe target behavior; do not equate an implemented primitive with
-an accepted end-to-end milestone.
+Bento is an independent upstream project by its authors. Quarto-Bento uses a
+pinned upstream shell with a limited reviewed adapter; it is not affiliated with
+or endorsed by Bento or Quarto.

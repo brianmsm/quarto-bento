@@ -1,9 +1,18 @@
 # Implementation ledger
 
-Updated 2026-10-13. The full product destination remains `PRODUCT_TARGET.md`.
-The first supported bidirectional Linux workflow has been demonstrated end to
-end. Full product acceptance and public v1 release remain pending. See
-[first-slice evidence](evidence/FIRST-SLICE.md) for scope and reproduction.
+Updated 2026-10-13. The owner has closed the Linux-local implementation and
+validation objective at runtime `2ee7974` and authorized publication of the
+source repository on GitHub. The complete local suite passed **578 tests and
+4 steps, zero failures**; the **117-file portable smoke** rebuilt from QMD and
+minimal saved state without previous HTML. See the latest
+[security/dependency closeout](evidence/SECURITY-LINUX.md).
+
+The full product destination remains [PRODUCT_TARGET.md](PRODUCT_TARGET.md).
+See [PUBLICATION.md](PUBLICATION.md) for public source scope. Source availability
+is separate from a frozen v1 release or complete third-party distribution review. Windows/macOS remain future work outside the
+completed objective, and hosted CI is deferred. The earlier
+[first-slice evidence](evidence/FIRST-SLICE.md) remains valid for its recorded
+revision and scope.
 
 ## Execution baseline
 
@@ -47,7 +56,9 @@ are outside the portable runtime. The final host-permission Linux suite passed
 578 tests (4 steps) with zero failures; the exact log hash is in the security
 receipt. The 117-file portable smoke passed, including state-only rebuilding
 without previous HTML. This bounded review
-does not clear the four historical license-source cases or public release gates.
+does not clear the four historical license-source cases or freeze the v1
+release boundary. Public source publication is now authorized by the owner;
+artifact distribution and dependency claims retain the explicit review limits.
 
 The `3a19e7f` distribution supplement preserves exact notices from all 25
 integrity-verified production npm archives, retaining four missing-full-text
@@ -170,9 +181,9 @@ geometry and page size; it checks all four axis-aligned box edges at `6f8e1ea`, 
 | Bento standalone/PDF                                          | Static three-slide standalone opens, edits, downloads and reopens with networking disabled; native print yields visually inspected PDF with changed-data SVG and retained design. Browser harness on Linux; OS dialogs and broader widget-export acceptance remain pending. [Offline/PDF](evidence/OFFLINE-PDF.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Structured CLI/API + ordinary Quarto custom format            | JSON CLI get/patch expose saved deck/docId/revision/provenance, bounded field/order/hide/show mutations and authored slide creation through the same state core. Creation requires a current executed QMD baseline; stale source, invalid batches and identity/revision changes refuse without writing. Real create → reviewed sync → render/reopen preserves source and design. [Agent API](AGENT-API.md), [creation evidence](evidence/AGENT-CREATE.md). Reviewed deletion is available in Studio. Guarded ordinary Quarto remains verified on Linux; native other-OS qualification is pending.                                                                                                                                                                                                                                                                                                                           |
 | Rebuild from clean clone without generated HTML               | Relocated rebuild from QMD, CSV and two state files preserves pending text, native design/docId and changed-data SVG. [First slice](evidence/FIRST-SLICE.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Offline / hostile data / paths / local server security        | Script splicing, local path and resource checks, bounded Studio/API input and document identity guards are implemented. Project saves refuse transient/external or missing referenced resources, including dependencies nested in native SVG/embed snapshots; self-contained resources and hyperlinks remain supported. [Asset/resource evidence](evidence/ASSET-PATHS.md). The Linux-local security/dependency review is recorded in evidence/SECURITY-LINUX.md; public-release and license-source gates remain pending.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Linux/macOS/Windows packaging and native evidence             | Portable development directory, offline launchers and SHA256 inventory implemented; Linux relocation/clean-cache execution tested. A pinned CI matrix and an expanded portable launcher/state-only relocation smoke are committed; the latter passed locally on Linux. No hosted matrix run or native other-OS proof is claimed. Release packaging remains pending. [Packaging](PACKAGING.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Accurate end-user docs + public release scope                 | README, the [Spanish usage guide](USAGE.md), canonical semantic/table/chart/component/Plotly/rich-table examples and the [JSON agent contract](AGENT-API.md) describe bounded delivered behavior. Remaining implementation docs track active integrations; public v1 boundary is not frozen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Offline / hostile data / paths / local server security        | Script splicing, local path and resource checks, bounded Studio/API input and document identity guards are implemented. Project saves refuse transient/external or missing referenced resources, including dependencies nested in native SVG/embed snapshots; self-contained resources and hyperlinks remain supported. [Asset/resource evidence](evidence/ASSET-PATHS.md). The Linux-local security/dependency review is recorded in [SECURITY-LINUX.md](evidence/SECURITY-LINUX.md); public source publication is authorized, while v1 scope and historical license-source follow-up remain pending.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Linux packaging and future platform evidence             | Portable development directory, offline launchers and SHA256 inventory implemented; Linux relocation/clean-cache execution tested. An expanded portable launcher/state-only relocation smoke passed locally on Linux. The repository workflow is a manual-only Linux smoke recipe; it has no hosted success receipt. Windows/macOS remain future work outside the completed objective. Public binary/artifact release packaging remains pending. [Packaging](PACKAGING.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Accurate end-user docs + public release scope                 | README, the [usage guide](USAGE.md), canonical semantic/table/chart/component/Plotly/rich-table examples and the [JSON agent contract](AGENT-API.md) describe bounded delivered behavior. Implementation docs distinguish historical receipts, current bounded support and future work; public source publication is authorized, while the v1 boundary is not frozen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Combined regression follow-up (2026-10-13)
 
@@ -239,6 +250,15 @@ and rebuilding without the old HTML. See the
   sandbox. The server listens only on `127.0.0.1`.
 
 ## Recent integrated verification
+
+- The final Linux-local security closeout at runtime `2ee7974` passed **578
+  tests, 4 steps, 0 failures** in **19m09s**, with native browser and computation
+  coverage. Static source checks and the **117-file portable smoke** also
+  passed. The clean portable artifact records `2ee7974` and `dirty: false` in
+  its manifest. See [the exact verification receipt](evidence/SECURITY-LINUX.md)
+  for retained local log hashes, dependency scope and permission requirements.
+  Ignored `output/verification/` files are local receipts rather than assets
+  supplied by a Git clone.
 
 - At `75edcdf`, the final integrated suite passed **430 tests, 4 steps,
   0 failures and 0 ignored tests** in **9m44s**, with all optional browser and

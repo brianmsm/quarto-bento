@@ -138,46 +138,36 @@ label. Bento's original license and pinned third-party files retain their terms.
 This settled owner decision does not close the third-party review or public
 release acceptance scope.
 
-## Authored portability CI and local smoke
+## Manual Linux CI and local smoke
 
-In the source checkout,
-[`.github/workflows/portable.yml`](../.github/workflows/portable.yml) defines an
-independent matrix on `ubuntu-24.04`, `macos-15-intel` and `windows-2022`, using
-[GitHub's documented runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
-It runs on pull requests, pushes to `main` and manual dispatch. Each job checks
-core and portable-tool types, runtime/tool formatting and lint, the existing
-portable inventory/refusal test, bounded Windows smoke argument tests, and a
-real authored QMD smoke. It does not run the broader computation/R suite,
-install R or TinyTeX, publish a release, or upload a package.
+[`.github/workflows/portable.yml`](../.github/workflows/portable.yml) defines a
+manually dispatched authored-workflow smoke on `ubuntu-24.04`. It has no push or
+pull-request trigger. The original three-platform matrix is retained in Git
+history; the current workflow follows the owner's completed Linux-only scope.
+macOS/Windows qualification is future work. No hosted run is claimed by this
+configuration, and public source publication does not start one automatically.
 
-CI preparation explicitly installs **Deno 2.9.6** and **Quarto 1.10.19** in the
-runner. This is CI setup; `qbento`, its launchers and the local smoke continue
-to use dependencies already supplied by the user. The smoke checks the actual
-versions returned by `doctor`; an incorrect installation fails instead of
-silently widening the test baseline. Actions are pinned to release commits
-verified from their primary release pages:
+The workflow installs Deno 2.9.6 and Quarto 1.10.19 on its temporary runner,
+checks core/portable types, targeted runtime/tool formatting and lint, validates
+the inventory and bounded launcher arguments, and runs the portable smoke.
+It does not install R/TinyTeX, run the full computation/browser suite, publish
+binaries or upload a package. Runtime use continues to rely on user-installed
+dependencies. The workflow token has only `contents: read`, checkout credentials
+are not persisted, and Git line-ending conversion is disabled to preserve
+pinned payload bytes.
 
-| Action                            | Release                                                              | Immutable commit                           |
-| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
-| `actions/checkout`                | [v4.2.2](https://github.com/actions/checkout/releases/tag/v4.2.2)    | `11bd71901bbe5b1630ceea73d27597364c9af683` |
-| `denoland/setup-deno`             | [v2.0.5](https://github.com/denoland/setup-deno/releases/tag/v2.0.5) | `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` |
-| `quarto-dev/quarto-actions/setup` | [v2.1.9](https://github.com/quarto-dev/quarto-actions/releases)      | `9e48da27e184aa238fcb49f5db75469626d43adb` |
+Actions remain pinned to their reviewed release commits:
 
-The setup inputs are described by
-[Deno's action](https://github.com/denoland/setup-deno) and
-[Quarto's pinned setup action](https://raw.githubusercontent.com/quarto-dev/quarto-actions/9e48da27e184aa238fcb49f5db75469626d43adb/setup/action.yml).
-On Windows that action delegates to its PowerShell installation script using
-Scoop and forwards the requested Quarto version. Scoop is temporary CI-runner
-preparation, outside the portable payload and ordinary user workflow; `doctor`
-checks the installed version before the smoke proceeds. The ephemeral runner
-disables Git automatic line-ending conversion before checkout so the pinned
-shell bytes and inventory remain exact on Windows; see
-[Git's line-ending settings](https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf).
-Checkout credentials are not persisted and the workflow token has only
-`contents: read`. The install phase needs network access; the authored fixture
-uses no remote inputs, remote/npm Deno imports, or computation packages. A fresh
-cache and `QUARTO_RUN_NO_NETWORK=true` constrain the ordinary test path; these
-checks are not an OS-wide network isolation proof.
+| Action | Release | Immutable commit |
+| --- | --- | --- |
+| `actions/checkout` | v4.2.2 | `11bd71901bbe5b1630ceea73d27597364c9af683` |
+| `denoland/setup-deno` | v2.0.5 | `22d081ff2d3a40755e97629de92e3bcbfa7cf2ed` |
+| `quarto-dev/quarto-actions/setup` | v2.1.9 | `9e48da27e184aa238fcb49f5db75469626d43adb` |
+
+Runner setup needs network access. The authored fixture uses local inputs and
+no remote/npm Deno modules or computation packages. A fresh Deno cache and
+`QUARTO_RUN_NO_NETWORK=true` constrain the ordinary smoke path; these are not an
+OS-wide network isolation proof. See [publication scope](PUBLICATION.md).
 
 Run the same smoke locally, from a source checkout with those installed
 versions:
@@ -209,8 +199,8 @@ deleted. Linux removes the generated HTML and proves that ordinary
 retaining the saved design and pending edit. On macOS/Windows the current
 ordinary-invocation guard intentionally refuses with
 `QUARTO_EXTENSION_PLATFORM`; the smoke requires that diagnostic and verifies
-unchanged QMD, saved state and existing HTML. The portable CLI smoke remains a
-positive test on all matrix platforms. Windows batch invocation uses explicit
+unchanged QMD, saved state and existing HTML. The portable CLI smoke has authored paths for future platforms; the current
+workflow and execution evidence cover Linux only. Windows batch invocation uses explicit
 `cmd.exe /d /s /v:off /c` with bounded quoted tokens; its utility tests check
 construction/refusal, not native Windows behavior. See
 [Microsoft's cmd documentation](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cmd)
@@ -222,7 +212,7 @@ ordinary Quarto after both project relocation and portable-runtime removal. The
 existing two packaging tests passed in Linux; the two new bounded batch utility
 tests and type/lint/format/shell syntax checks passed. No hosted Action was
 dispatched, and macOS/Windows have not been executed in this session. The
-committed matrix prepares those native validation runs; its existence does not
+historical matrix prepared those native validation runs; its existence did not
 establish native support. These are CLI, source-byte and document/state
 assertions, without browser visual evidence, PDF/widget coverage or a v1 release
 claim. Ordinary integration on macOS/Windows remains deliberately unsupported
@@ -296,8 +286,19 @@ The clean `3a19e7f` artifact adds the archive supplement and contains
 The same receipt records exact-text review, native serialization/reopening,
 package refusals and the updated local portable smoke.
 
-The current clean `74e552b` artifact includes the owner-selected MIT license in
+The historical clean `74e552b` artifact includes the owner-selected MIT license in
 both the package root and runtime and contains 117 verified files. It is at
 `output/verification/portable-74e552b/distribution/`. The
 [MIT carriage receipt](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license)
 records native preservation, installation, relocation and exact license bytes.
+
+## Latest Linux security baseline
+
+Runtime `2ee7974` passed the full local Linux suite: 578 tests and four steps,
+zero failures. Its clean portable directory has 117 independently verified
+payload files and a source manifest with `dirty: false`; the local artifact is
+`output/verification/portable-2ee7974/`. The portable smoke also passed CLI and
+ordinary Quarto state-only reconstruction. These ignored local artifacts are
+not attached to the public source repository. See the
+[security and dependency receipt](evidence/SECURITY-LINUX.md) for scope, log hashes
+and unresolved upstream build/license-source findings.

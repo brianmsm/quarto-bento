@@ -30,5 +30,7 @@ capacity overflow must be corrected in source; native typography does not
 silently authorize replacement of source-owned boxes.
 
 This is bounded Linux support for identified source cards/layouts, not arbitrary
-native grouping inference or a full product/cross-platform release. Native
-charts in components remain a separate implementation slice.
+native grouping inference or a full product/cross-platform release. Bounded
+native charts in components are also implemented; see the
+[composed-chart receipt](../../docs/evidence/COMPOSED-CHARTS.md) for their
+independent scope and evidence.
