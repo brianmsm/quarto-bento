@@ -182,7 +182,8 @@ Deno.test({
       const source = dir + "/deck.qmd";
       for (
         const [body, code] of [
-          ["Text $$x^2$$ more.", "MIXED_MATH_TEXT"],
+          // Original-fragment proof now rejects mixed inline math before projection.
+          ["Text $$x^2$$ more.", "UNSUPPORTED_INLINE: Math"],
           // Single-line math remains a paragraph slot; the authored inline proof refuses it.
           ["<!-- qb:eq-main -->\n$$x^2$$", "UNSUPPORTED_INLINE: Math"],
           [
@@ -210,6 +211,32 @@ Deno.test({
     }
   },
 });
+Deno.test("direct AST projection independently refuses text around a display formula", async () => {
+  const ast: Ast = {
+    meta: {},
+    blocks: [
+      {
+        t: "Header",
+        c: [2, ["formula", [], []], [{ t: "Str", c: "Formula" }]],
+      },
+      {
+        t: "Para",
+        c: [
+          { t: "Str", c: "Text" },
+          { t: "Space" },
+          { t: "Math", c: [{ t: "DisplayMath" }, "x^2"] },
+          { t: "Space" },
+          { t: "Str", c: "more." },
+        ],
+      },
+    ],
+  };
+  await refuses(
+    () => projectAst(ast, "mixed-math-guard", []),
+    "MIXED_MATH_TEXT",
+  );
+});
+
 Deno.test("computed executed display math retains its producer and cannot be synchronized as authored LaTeX", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-computed-math-" });
   try {
