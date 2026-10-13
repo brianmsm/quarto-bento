@@ -268,7 +268,11 @@ Archive membership does not prove that every listed component ships in the shell
 NOTICE files may also describe development components. Full package license
 texts remain absent from four archives: `@cfcs/core`, `croact`,
 `croact-css-styled`, and `keycon`. This is recorded explicitly and does not close
-the complete third-party or project-license review. To reproduce the extraction
+the complete third-party or project-license review. The
+[source-revision follow-up](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
+registry-linked commits, unavailable sources and version discrepancies; it does
+not replace the archive facts or resolve the missing package texts.
+To reproduce the extraction
 without installing or downloading packages, run
 `python3 scripts/extract-runtime-licenses.py --check --cache /path/to/npm-cache`;
 the default operation is read-only, and `--write` explicitly replaces the

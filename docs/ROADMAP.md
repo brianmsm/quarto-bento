@@ -127,6 +127,17 @@ remain separate gates. The original startup sequence—pin upstream, run
 S0, then separately prove S1/S2/S4—is complete for the documented bounded
 scope and is no longer a next-session instruction.
 
+Distribution follow-up preserves full supplied notices through native HTML
+serialization and includes an exact production-archive supplement. The clean
+`3a19e7f` portable has 115 verified files; see
+[distribution evidence](evidence/DISTRIBUTION-NOTICES.md). The
+[four-package source audit](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
+what remains unresolved after checking exact registry-linked source commits.
+Do not repeat that lookup or substitute current upstream files as if they proved
+the historical packages' provenance. Project license/titleholder and the public
+release boundary still need owner decisions; other-platform execution remains
+deferred by the owner. These gates do not change the full product target.
+
 Useful references:
 - Bento: https://github.com/nyblnet/bento
 - Bento model: https://github.com/nyblnet/bento/blob/main/slides/src/model.ts
