@@ -1,8 +1,13 @@
 /** Independent proof for the supported literal original-QMD pipe-table subset. */
 import { escapeHtml } from "../render/html.ts";
 import type { PlainTable, TableAlign } from "../render/table.ts";
-import type { Element } from "../render/types.ts";
-import { scanSource, type SourceBlock, type SourceDocument } from "./mod.ts";
+import type { Element, Json } from "../render/types.ts";
+import {
+  hashSource,
+  scanSource,
+  type SourceBlock,
+  type SourceDocument,
+} from "./mod.ts";
 function fail(message: string): never {
   throw new Error(`UNMAPPED_TABLE_SOURCE: ${message}`);
 }
@@ -95,20 +100,10 @@ export function authoredTableBlock(
   parsePipeTable(blocks[0].content);
   return blocks[0];
 }
-export function validateAuthoredTable(
-  doc: SourceDocument,
-  blockId: string,
-  element: Element,
-): SourceBlock {
-  // The original bytes, not caller-supplied IDs or kind tags, establish authorship.
-  const original = scanSource(doc.text),
-    candidates = original.blocks.filter((b) => b.id === blockId);
-  if (candidates.length !== 1 || !candidates[0].parentId) {
-    fail("Table has no unique original source fragment.");
-  }
-  const block = authoredTableBlock(original, candidates[0].parentId),
-    table = parsePipeTable(block.content);
-  const expected = {
+/** Exact semantic fields, independent of native geometry and table styling. */
+export function literalTableContent(content: string): Record<string, Json> {
+  const table = parsePipeTable(content);
+  return {
     header: table.header,
     columns: table.columns.map((column) => ({ w: column.width })),
     rows: table.rows.map((row) => ({
@@ -118,19 +113,86 @@ export function validateAuthoredTable(
       })),
     })),
   };
+}
+export function tableContent(element: Element): Record<string, Json> {
+  return {
+    header: element.header,
+    columns: element.columns,
+    rows: element.rows,
+  };
+}
+/** Only the original source bytes may establish a literal table fragment. */
+export function literalTableBlock(
+  doc: SourceDocument,
+  blockId: string,
+): SourceBlock {
+  if (doc.hash !== hashSource(doc.text)) {
+    fail("Original table source snapshot is stale.");
+  }
+  const original = scanSource(doc.text),
+    candidates = original.blocks.filter((b) => b.id === blockId);
   if (
-    block.id !== blockId || element.type !== "table" ||
-    JSON.stringify({
-        header: element.header,
-        columns: element.columns,
-        rows: element.rows,
-      }) !== JSON.stringify(expected)
+    original.diagnostics.length || candidates.length !== 1 ||
+    candidates[0].kind !== "unsupported" || candidates[0].origin !== "authored"
+  ) {
+    fail("Table has no unique literal original source fragment.");
+  }
+  const block = candidates[0].parentId
+    ? authoredTableBlock(original, candidates[0].parentId)
+    : candidates[0];
+  if (block.id !== blockId) {
+    fail("Original table fragment does not match its container.");
+  }
+  parsePipeTable(block.content);
+  return block;
+}
+export function validateAuthoredTable(
+  doc: SourceDocument,
+  blockId: string,
+  element: Element,
+): SourceBlock {
+  const block = literalTableBlock(doc, blockId);
+  if (
+    element.type !== "table" ||
+    JSON.stringify(tableContent(element)) !==
+      JSON.stringify(literalTableContent(block.content))
   ) {
     fail(
       "Executed table cells, header or alignment differ from the exact literal source proof.",
     );
   }
   return block;
+}
+/** Bare tables without IDs require a unique exact whole-table source match. */
+export function matchBareTable(
+  doc: SourceDocument,
+  element: Element,
+): SourceBlock {
+  if (doc.hash !== hashSource(doc.text)) {
+    fail("Original table source snapshot is stale.");
+  }
+  const original = scanSource(doc.text);
+  if (original.diagnostics.length) {
+    fail("Resolve source mapping diagnostics before binding a bare table.");
+  }
+  const matches = original.blocks.filter((block) => {
+    if (
+      block.kind !== "unsupported" || block.parentId ||
+      block.origin !== "authored"
+    ) return false;
+    try {
+      return JSON.stringify(literalTableContent(block.content)) ===
+        JSON.stringify(tableContent(element));
+    } catch {
+      return false;
+    }
+  });
+  if (matches.length !== 1) {
+    fail(
+      "A bare table needs one exact original literal table; duplicate or transformed tables require explicit source wrappers.",
+    );
+  }
+  return matches[0];
 }
 export function tableProducer(
   doc: SourceDocument,
