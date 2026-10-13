@@ -135,7 +135,9 @@ property's schema; it does not mean delete a property.
 
 `slide.create` accepts a native slide with **1–50 elements**, including at least
 one text element. The first text is the heading; each later text is one authored
-body paragraph. Text uses the existing bounded inline codec: plain text,
+body paragraph or one supported native list. Separate list objects retain
+separate source containers, including adjacent lists on a newly created slide.
+Paragraphs and list items use the existing bounded inline codec: plain text,
 `b`/`strong`, `i`/`em`, `s`, inline `code`, explicit web links and `br` where
 the source grammar permits them. Decorations use native `type: "shape"`,
 including its `shape: "line"`, `"arrow"` and `"path"` subtypes, and remain in
@@ -237,7 +239,7 @@ Saving produces a durable authored `create-slide` pending change without writing
 QMD or generated HTML. The live source hash used to check fresh IDs is rechecked
 under the same operation lock as the revision save; a source change at that
 boundary refuses with `STALE_SOURCE`. Reviewed sync converts the text to a
-heading and identified paragraph containers, with technical
+heading and identified paragraph/list containers, with technical
 `bento-title-id`/`bento-element-id` attributes retaining the chosen native IDs.
 Its inspected plan may also include the configured optional design annotation.
 The next explicit render adopts the source-backed content and retains native

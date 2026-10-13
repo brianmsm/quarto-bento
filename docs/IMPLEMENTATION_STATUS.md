@@ -29,20 +29,27 @@ Markdown lists backed by QMD. The coordinator completed native notes/list
 Save/reopen/review/Apply/recompute and state-only reconstruction on Linux;
 the combined set at `eb57c6f` passed 52 tests. See [notes](evidence/NOTES.md) and
 [lists](evidence/LISTS.md) for exact runtime revisions and evidence layers.
-Creating/converting/deleting list objects remains in implementation.
+List creation, paragraph/list conversion and confirmed deletion are integrated
+at `2dbc8e2` after 63 author tests and 12 independent tests. The coordinator's
+native toolbar creation/conversion, deletion/restoration and confirmed source
+removal also passed; see the newer [list receipt](evidence/LISTS.md).
 
 Simple tables now compose in measured cards and layouts with unchanged internal
 typography and no box-only scaling. Independent review, real Quarto execution,
 changed-data reconstruction and pinned-renderer DOM/glyph checks passed before
 integration at `1605a37`. See [composed tables](evidence/COMPOSED-TABLES.md).
-KPI/chart composition and the common R/Python producer-receipt improvements
-remain in progress. These additions do not inherit the older full-suite result.
+KPI composition is integrated at `cea3e61` after 17 independent focal tests and
+native metric/image inspection. See [composed KPIs](evidence/COMPOSED-KPIS.md).
+Chart composition and the common R/Python producer-receipt improvements remain
+in review. These additions do not inherit the older full-suite result.
 
 Portable packages additionally pin schema, license/notice and upstream npm
 manifest/lock bytes, verify a 25-entry production dependency inventory and record
 the qbento Git revision/dirty state or explicit unknown provenance. Independent
-packaging checks passed before integration at `7ffab32`; complete OFL text and
-the project's own license decision remain outside that claim.
+packaging checks passed before integration at `7ffab32`. Full official OFL text,
+immutable source references and asset hashes for the two embedded fonts are
+integrated at `d0cadb6`; three integrated packaging tests pass. Exact font release
+versions remain unknown, and the project's own license remains an owner decision.
 
 The native standalone-text creation path is now integrated as well: Save and
 reopen retain the pending object; reviewed sync inserts a bounded identified
@@ -90,8 +97,9 @@ geometry and page size; it checks vertical box bounds, not rendered ink.
 
 The full-product audit at `89fc134` identified additional ordinary authoring
 work. Notes creation, existing Markdown lists and simple table composition have
-since advanced through the evidence above. List creation/conversion/deletion,
-KPI/chart composition and common execution provenance remain active work. See
+since advanced through the evidence above. List creation/conversion/deletion
+and KPI composition are now integrated as well. Chart composition and common
+execution provenance remain active work. See
 the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md). The historical integrated
 receipt below remains evidence only for its tested revision and scope.
 

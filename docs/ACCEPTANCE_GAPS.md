@@ -16,8 +16,11 @@ state-only reconstruction, with 52 combined tests passing at `eb57c6f`.
 Simple table composition has independently reviewed real execution and native
 DOM evidence, integrated at `1605a37`. See [notes](evidence/NOTES.md),
 [lists](evidence/LISTS.md) and [composed tables](evidence/COMPOSED-TABLES.md).
-Creating/converting/deleting lists, composing KPI/charts and strengthening the
-common execution producer receipt remain active gates. Documenting a
+List creation/conversion/deletion is integrated at `2dbc8e2`, with native
+toolbar creation/conversion and confirmed deletion/restoration evidence.
+KPI composition is integrated at `cea3e61`, with independent real-execution and
+native renderer checks. Chart composition and strengthening the common execution
+producer receipt remain active gates. Documenting a
 conservative refusal does not make a missing ordinary workflow an accepted
 product exclusion. Local work continues under the owner's Linux-only scope.
 

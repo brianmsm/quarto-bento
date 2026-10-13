@@ -41,8 +41,10 @@ integrated with native Linux evidence and exact state-only reconstruction at
 `eb57c6f`; simple table composition is integrated at `1605a37` with independent
 review and native DOM checks. See the [implementation ledger](IMPLEMENTATION_STATUS.md).
 The matrix above remains a record of the audited baseline. List creation,
-conversion/deletion and KPI/chart composition remain unfinished, as does the
-common producer-receipt work across execution entry points.
+conversion/deletion is integrated at `2dbc8e2`, with newer native evidence;
+KPI composition is integrated at `cea3e61`, with independent native measurements
+and execution tests. Chart composition and the common producer-receipt work
+across execution entry points remain under review.
 
 1. **Create plain speaker notes from Studio and the agent API.** Support existing
    slides, reviewed identity acquisition on ordinary QMD and new authored
@@ -74,9 +76,9 @@ selecting only a passing example.
 ## Distribution and external gates
 
 The portable artifact has a checked file inventory, pinned Bento shell and
-working local launchers. Remaining local work includes complete provenance for
-all vendored artifacts, a versioned component inventory and accurate source
-revision metadata. This is distinct from a complete dependency/security review
+working local launchers. The inventory now records source revision metadata,
+pinned upstream manifests and complete official OFL texts for the two embedded
+fonts; exact font release versions remain unknown. This is distinct from a complete dependency/security review
 or a legal conclusion about license coverage. The project license must not be
 chosen by an implementing agent.
 

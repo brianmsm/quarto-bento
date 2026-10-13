@@ -18,8 +18,10 @@ do not repeat the original S0/S1/S2/S4 spikes as if they were unimplemented.
 Respect the bounded codecs and remaining gates in `docs/ACCEPTANCE_GAPS.md`.
 The full-product audit in `docs/PRODUCT_ACCEPTANCE_AUDIT.md` led to integrated
 notes creation, existing Markdown lists and simple composed tables. Their newer
-receipts are in the implementation ledger. Continue list creation/conversion/
-deletion, KPI/chart composition and common execution provenance. Safe refusals
+receipts are in the implementation ledger. List creation/conversion/deletion
+and KPI composition are now also integrated; their newer receipts distinguish
+native Studio actions from core-save/native-renderer checks. Continue chart
+composition review, common execution provenance and combined acceptance. Safe refusals
 preserve work but do not close those gates.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains

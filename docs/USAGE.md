@@ -126,18 +126,23 @@ el bloque `.notes` que se insertará y las identidades técnicas necesarias;
 solo **Aplicar** escribe QMD. Las notas admiten texto plano y párrafos, con los
 [límites de espacios y ejecución documentados](evidence/NOTES.md).
 
-Las listas Markdown existentes, incluidas las anidadas y las numeradas desde 1,
-se conservan como listas nativas editables. Guardar, revisar y sincronizar sigue
-el mismo ciclo explícito. La creación de listas nuevas y la conversión de otros
-objetos requieren todavía el siguiente adaptador; consulta el
+Las listas Markdown, incluidas las anidadas y las numeradas desde 1,
+se conservan como listas nativas editables. Puedes crear listas en cuadros de
+texto nuevos y convertir un párrafo independiente en lista, o volver a párrafo,
+con la barra de formato de Bento. Guardar conserva el cambio pendiente; Revisar
+muestra la inserción o conversión y sólo Aplicar escribe el QMD. El borrado exige
+confirmar el elemento; antes de aplicarlo puedes recuperarlo desde Comparar con
+QMD. Consulta el
 [alcance actual de listas](evidence/LISTS.md).
 
 ## KPI declarados en QMD
 
 El adaptador de fuente `.bento-kpi` admite un componente identificado al nivel
-de la diapositiva, con contenedores directos identificados para `label`, `value`
+de la diapositiva o dentro de tarjetas y layouts identificados de la fuente,
+con contenedores directos identificados para `label`, `value`
 y, opcionalmente, `detail`. El ejemplo reproducible está en
-[`examples/kpi`](../examples/kpi/deck.qmd); la
+[`examples/kpi`](../examples/kpi/deck.qmd) y la composición en
+[`examples/composed-kpis`](../examples/composed-kpis/deck.qmd); la
 [evidencia KPI](evidence/KPI.md) detalla el esquema admitido y sus rechazos. El
 valor puede ser texto literal o una expresión Quarto en línea compatible. Si es
 calculado, sigue vinculado a su expresión: editar el valor presentado no

@@ -1,5 +1,44 @@
 # Native Markdown lists — implementation evidence
 
+## Native creation, conversion and deletion follow-up
+
+At Studio runtime `2dbc8e2`, the coordinator used the pinned Bento editor in
+headless Chromium on Linux (2026-10-13). Its actual formatting bar converted a
+plain-QMD paragraph containing bold β into a bullet list. Save left QMD intact;
+review showed heading/paragraph/producer identity acquisition and `convert-text`.
+Apply and Recalculate retained the exact saved native document with zero pending
+changes.
+
+The native Add text control then created a separate two-item list. Its reviewed
+insertion introduced one identified list container; Save and preview left source
+unchanged. After Apply/recompute the complete emitted document matched the saved
+one, including its new native ID and default geometry/style.
+
+Deleting that list and saving did not change QMD. Review disabled Apply until
+the element's deletion was confirmed. Before confirmation, Compare with QMD and
+the explicit Restore decision recovered the same content, stacking and design;
+only the document's modification timestamp differed. A second deletion, this
+time confirmed and inspected, removed exactly the list container. Recalculation
+left zero pending changes and preserved the second slide's source bytes exactly.
+The execution counter reached six: initial render, conversion recomputation,
+creation recomputation, comparison, fresh restore validation and final deletion
+recomputation. Save/source synchronization added no computations in these cycles.
+
+A fresh source/state-only relocation was then run at integrated `d0cadb6`.
+QMD plus `.qbento/project.json` and `.qbento/state.json` rebuilt the exact whole
+emitted document and `docId`, without the previous HTML and with zero pending
+changes. The parent independently checked these equalities and inspected the
+restored native canvas and confirmed-deletion review screenshots.
+
+Artifacts are under `output/verification/list-authoring-2dbc8e2/`: original and
+pre-delete QMD, saved/final/restored states, rebuilt project, rebuild log and
+receipts. Screenshots include `output/playwright/list-created-review-2dbc8e2.png`,
+`list-restored-2dbc8e2.png` and `list-delete-review-2dbc8e2.png`.
+This native run complements the 63-test author regression and 12-test independent
+review of author commit `5b324b8`. List-to-paragraph conversion and lists on newly
+created slides have source/core coverage in those tests; this particular UI run
+does not relabel those as manually exercised. Other platforms remain untested.
+
 ## Integrated native acceptance on Linux
 
 The coordinator ran the shipped Studio and pinned Bento in headless Chromium
