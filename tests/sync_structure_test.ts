@@ -267,8 +267,7 @@ Deno.test({
   },
 });
 Deno.test({
-  name:
-    "real R as-is headings cannot become authored source structure",
+  name: "real R as-is headings cannot become authored source structure",
   ignore: !canRun,
   fn: async () => {
     const { validateProjectionOrigins } = await import(
