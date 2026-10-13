@@ -40,3 +40,41 @@ The new focused checks do not relabel the earlier 572-test full-suite receipt
 as a run of this revision. No dependencies were installed, public release made,
 or other-platform qualification added. Project licensing, complete third-party
 coverage and unknown original font release identifiers remain unresolved.
+
+## Production archive supplement
+
+Revision `3a19e7f` adds `vendor/bento/runtime-licenses.json`. All 25 exact
+production-scoped npm archives were present in the local cache and verified
+against the pinned lockfile SHA-512 integrity values before reading members.
+No package installation, download or lifecycle script was required.
+
+The supplement retains 166 exact texts and 317 source byte ranges, including
+LICENSE/NOTICE files, README license fences and distribution headers. An
+independent reviewer verified every archive, member hash, range and decoded text.
+Two nested reveal.js font license files are retained as archive evidence;
+neither those nor the other archive entries prove byte-level inclusion in Bento.
+The unchanged upstream attribution summary is supplemented, not rewritten.
+
+Nineteen packages contain standalone license files and two provide full license
+text in README. Four do not provide full license text in the archive:
+`@cfcs/core`, `croact`, `croact-css-styled` and `keycon`. Their declarations and
+headers are preserved, and the missing full texts remain explicit. This does
+not complete the third-party review or choose a project license.
+
+The shared shell loader embeds the supplement as a sixth inert notice file.
+Six focused package/native tests passed in 6 seconds; the final four package
+tests passed after extending the omitted-entry regression. Five independent
+alteration cases also refused before destination creation, including repinned
+false text, identity/integrity, omitted packages and hidden gaps. Types, lint,
+format and Git whitespace checks passed. Python `-O` reproduced the supplement
+and refused a corrupt archive before parsing; an initial coordinator harness
+assertion was corrected for the diagnostic's capitalization.
+
+The portable smoke passed with 115 files, preserving pending content through
+state-only reconstruction and ordinary Quarto after relocation/runtime removal.
+A clean `3a19e7f` artifact is at
+`output/verification/portable-3a19e7f/distribution/`; its sibling
+`verification.json` records independent verification of every payload hash and
+size. Earlier full-suite and artifact receipts remain tied to their revisions.
+Raw logs use `output/verification/runtime-license-*.log` and
+`output/verification/runtime-licenses-*.log`.

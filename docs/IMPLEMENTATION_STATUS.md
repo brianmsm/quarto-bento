@@ -23,6 +23,12 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+The `3a19e7f` distribution supplement preserves exact notices from all 25
+integrity-verified production npm archives, retaining four missing-full-text
+cases explicitly. Independent byte review, negative package tests, native
+serialization/reopening and the 115-file portable smoke passed. See the
+[production archive receipt](evidence/DISTRIBUTION-NOTICES.md#production-archive-supplement).
+
 Distribution follow-up at `7f68207` preserves full supplied notices in standalone
 HTML, Studio and Presenter, including native serialization and fresh reopening.
 The updated portable has 114 verified files and a self-contained usage guide.

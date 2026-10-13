@@ -255,7 +255,7 @@ emitted documents, docIds, typography and zero pending changes. See
 usable directory is `output/verification/portable-f06def7/distribution/`; its
 sibling README and receipt contain commands, input inventories and hashes.
 
-## Current notice-preserving Linux artifact
+## Production archive notice supplement
 
 The runtime also carries `vendor/bento/runtime-licenses.json`, a hash-pinned
 supplement extracted offline from the exact 25 production-scoped npm archives
@@ -274,9 +274,14 @@ without installing or downloading packages, run
 the default operation is read-only, and `--write` explicitly replaces the
 supplement. This script is checkout verification tooling, not a runtime command.
 
-The clean `7f68207` portable contains 114 verified payload files and includes the
+The earlier clean `7f68207` portable contains 114 verified payload files and includes the
 shared notice-preserving shell loader. Its root `PACKAGING.md` is a standalone
 usage guide, without links to missing checkout files. The artifact is at
 `output/verification/portable-7f68207/distribution/`. Native serialization,
 focused regressions and portable smoke are recorded in
 [the distribution notice receipt](evidence/DISTRIBUTION-NOTICES.md).
+
+The current clean `3a19e7f` artifact adds the archive supplement and contains
+115 verified files. It is at `output/verification/portable-3a19e7f/distribution/`.
+The same receipt records exact-text review, native serialization/reopening,
+package refusals and the updated local portable smoke.
