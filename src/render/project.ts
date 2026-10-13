@@ -24,7 +24,12 @@ import {
 } from "../source/notes.ts";
 import { projectTable } from "./table.ts";
 import { executedChartTable, projectChart } from "./chart.ts";
-import { chartSource, validateAuthoredChart } from "../source/chart.ts";
+import {
+  chartSource,
+  chartSourceAttributes,
+  isSourceChart,
+  validateAuthoredChart,
+} from "../source/chart.ts";
 import {
   authoredTableBlock,
   tableProducer,
@@ -211,9 +216,27 @@ export async function projectAst(
   let counter = 0;
   let contentFrame: Frame | undefined;
   const tableSources = new Set<string>();
+  const expectedCharts = new Set<string>();
+  const consumedCharts = new Set<string>();
+  const chartAncestors = new Map<string, { attr: Attr; parentId?: string }>();
   const kpiAncestors = new Map<string, { attr: Attr; parentId?: string }>();
   if (source) {
     for (const block of source.blocks) {
+      if (
+        block.kind === "div" &&
+        isSourceChart(block)
+      ) {
+        expectedCharts.add(block.id);
+        for (const id of chartSource(source, block.id).ancestors) {
+          const ancestor = source.blocks.find((candidate) =>
+            candidate.id === id
+          )!;
+          chartAncestors.set(id, {
+            attr: chartSourceAttributes(ancestor),
+            parentId: ancestor.parentId,
+          });
+        }
+      }
       if (
         block.kind !== "div" || sourceComponentClass(block.raw) !== ".bento-kpi"
       ) continue;
@@ -449,6 +472,18 @@ export async function projectAst(
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
+        const chartAncestor = chartAncestors.get(attr[0]);
+        if (
+          chartAncestor && (chartAncestor.parentId !== parentId ||
+            JSON.stringify([...attr[1]].sort()) !==
+              JSON.stringify([...chartAncestor.attr[1]].sort()) ||
+            JSON.stringify([...attr[2]].sort()) !==
+              JSON.stringify([...chartAncestor.attr[2]].sort()))
+        ) {
+          throw new Error(
+            "UNMAPPED_CHART_SOURCE: executed chart ancestor attributes or ancestry differ from original source",
+          );
+        }
         const ancestor = kpiAncestors.get(attr[0]);
         if (
           ancestor && (ancestor.parentId !== parentId ||
@@ -812,6 +847,23 @@ export async function projectAst(
             );
           }
           const binding = chartSource(source, attr[0]);
+          if (consumedCharts.has(attr[0])) {
+            throw new Error(
+              "UNMAPPED_CHART_SOURCE: original chart projected more than once",
+            );
+          }
+          consumedCharts.add(attr[0]);
+          if (
+            binding.wrapper.parentId !== parentId ||
+            JSON.stringify([...attr[1]].sort()) !==
+              JSON.stringify([...binding.attr[1]].sort()) ||
+            JSON.stringify([...attr[2]].sort()) !==
+              JSON.stringify([...binding.attr[2]].sort())
+          ) {
+            throw new Error(
+              "UNMAPPED_CHART_SOURCE: executed chart attributes or ancestry differ from original source",
+            );
+          }
           const executed = executedChartTable(children);
           if (
             binding.kind !== declaration.chartKind ||
@@ -1111,6 +1163,11 @@ export async function projectAst(
     }
   }
   await walk(ast.blocks);
+  if (consumedCharts.size !== expectedCharts.size) {
+    throw new Error(
+      "UNMAPPED_CHART_SOURCE: every original chart must be projected exactly once",
+    );
+  }
   if (consumedRichTables.size !== richTables.size) {
     throw new Error(
       "RICH_TABLE_PROJECTION_MISMATCH: not every checked rich table was consumed exactly once",
@@ -1262,6 +1319,27 @@ export function validateProjectionOrigins(
         origins[slideId][elementId] = original;
         continue;
       }
+      if (element.type === "chart") {
+        const block = candidates.length === 1 ? candidates[0] : undefined;
+        if (!block?.parentId) {
+          throw new Error(
+            "UNMAPPED_CHART_SOURCE: chart lacks one original data source",
+          );
+        }
+        const binding = chartSource(source, block.parentId);
+        if (
+          binding.block.id !== block.id ||
+          element.id !== `${binding.wrapper.id}/chart` ||
+          binding.wrapper.slideId !== originalSlides.get(slideId) ||
+          element.groupId !== binding.groupId ||
+          (original.origin === "computed") !== binding.computed ||
+          (binding.computed && original.producer !== binding.block.id)
+        ) {
+          throw new Error(
+            "UNMAPPED_CHART_SOURCE: chart identity, group, slide or producer differs from original source",
+          );
+        }
+      }
       if (original.origin === "computed") {
         const producer = original.producer ??
           (candidates[0]?.kind === "chunk" ? candidates[0].id : undefined);
@@ -1376,6 +1454,21 @@ export function validateProjectionOrigins(
         sourceId: block.id,
         origin: block.origin,
       };
+    }
+  }
+  for (const block of source.blocks) {
+    if (
+      block.kind !== "div" || !isSourceChart(block)
+    ) continue;
+    const matching = projection.document.slides.flatMap((slide) =>
+      slide.elements
+    ).filter((element) =>
+      element.id === `${block.id}/chart` && element.type === "chart"
+    );
+    if (matching.length !== 1) {
+      throw new Error(
+        "UNMAPPED_CHART_SOURCE: every original chart needs one native chart identity",
+      );
     }
   }
   // A reader/filter may remove a whole authored list without emitting an

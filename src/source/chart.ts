@@ -1,14 +1,41 @@
 /** Original bytes establish chart intent and table/producer provenance. */
-import { scanSource, type SourceDocument } from "./mod.ts";
+import {
+  hashSource,
+  scanSource,
+  type SourceBlock,
+  type SourceDocument,
+} from "./mod.ts";
 import { authoredTableBlock, parsePipeTable, tableProducer } from "./table.ts";
 import { type ChartKind, chartOption } from "../render/chart.ts";
 import type { Element } from "../render/types.ts";
 import { canonical } from "../state/json.ts";
 import { type PandocAttr, parseDesignAttributes } from "../render/design.ts";
+import {
+  originalAttributeTokens,
+  originalPandocAttributes,
+} from "./attributes.ts";
 function fail(message: string): never {
   throw new Error(`UNMAPPED_CHART_SOURCE: ${message}`);
 }
+export function isSourceChart(block: SourceBlock): boolean {
+  const content = /\{([^{}]*)\}[ \t]*$/.exec(block.raw.split(/\r?\n/)[0])?.[1];
+  const tokens: string[] = content?.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) ??
+    [];
+  return tokens.includes(".bento-chart");
+}
+export function chartSourceAttributes(block: SourceBlock): PandocAttr {
+  const content = /^ {0,3}:{3,}\s*\{([^{}]*)\}\s*$/.exec(
+    block.raw.split(/\r?\n/)[0],
+  )?.[1];
+  if (content === undefined) {
+    fail("Chart ancestors require literal fenced-div attributes.");
+  }
+  return originalPandocAttributes(content, originalAttributeTokens(content));
+}
 export function chartSource(doc: SourceDocument, wrapperId: string) {
+  if (doc.hash !== hashSource(doc.text)) {
+    fail("The original chart source snapshot is stale.");
+  }
   const original = scanSource(doc.text);
   const candidates = original.blocks.filter((b) =>
     b.id === wrapperId && b.kind === "div" && b.stable && b.explicitId
@@ -76,7 +103,42 @@ export function chartSource(doc: SourceDocument, wrapperId: string) {
   const block = children[0].kind === "chunk"
     ? tableProducer(original, wrapper.id)
     : authoredTableBlock(original, wrapper.id);
-  return { original, wrapper, block, kind, computed: block.kind === "chunk" };
+  const ancestors: string[] = [];
+  let parentId = wrapper.parentId, groupId: string | undefined;
+  while (parentId) {
+    const parent = original.blocks.find((candidate) =>
+      candidate.id === parentId
+    );
+    if (
+      !parent || ancestors.includes(parentId) || parent.kind !== "div" ||
+      !parent.explicitId || parent.origin !== "authored" ||
+      parent.slideId !== wrapper.slideId
+    ) {
+      fail(
+        "Chart ancestors must be original identified source divs on the same slide, outside execution output.",
+      );
+    }
+    const component =
+      parseDesignAttributes(chartSourceAttributes(parent)).component;
+    if (component && !["card", "layout"].includes(component)) {
+      fail(
+        "Only original cards/layouts or transparent source wrappers may contain a chart.",
+      );
+    }
+    if (component) groupId = parent.id;
+    ancestors.push(parentId);
+    parentId = parent.parentId;
+  }
+  return {
+    original,
+    wrapper,
+    attr: parsed,
+    ancestors,
+    groupId,
+    block,
+    kind,
+    computed: block.kind === "chunk",
+  };
 }
 export function validateAuthoredChart(
   doc: SourceDocument,

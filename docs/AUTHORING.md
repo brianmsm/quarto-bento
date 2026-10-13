@@ -82,7 +82,8 @@ accepted source syntax yet.
 
 ### Source KPI (`.bento-kpi`, implemented subset)
 
-An identified KPI must be a top-level component on its source slide. It contains
+An identified KPI may be standalone or inside verified original cards/layouts
+on its source slide. It contains
 two or three direct, identified fenced-div children, in this order:
 `bento-role="label"`, `bento-role="value"`, and optional
 `bento-role="detail"`. Each child has exactly one paragraph; each role ID is
@@ -90,7 +91,8 @@ globally unique and the role containers have no extra classes. The value is
 literal text or one supported single-line Quarto inline expression. The adapter
 retains computed provenance and never writes a rendered number over its
 producing source. It does not infer labels, coerce or round values, or support
-nested KPI composition. See the exact [KPI schema and refusals](evidence/KPI.md),
+arbitrary nested component membership. See [composed KPI source checks and
+measured metrics](evidence/COMPOSED-KPIS.md), the exact [KPI schema and refusals](evidence/KPI.md),
 its [canonical example](../examples/kpi/deck.qmd), and [native
 acceptance](evidence/PLAIN-KPI-NATIVE.md). Studio-created KPIs use the
 separate bounded flow below and always begin with authored literal text; they

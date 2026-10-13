@@ -22,7 +22,12 @@ labelled producer proof. Extra siblings inside a data wrapper refuse. A
 transparent outer wrapper around a card chart must contain only that chart;
 put headings and text in separate card rows. Ambiguous child geometry refuses
 instead of guessing ownership. Flat native `groupId` follows the source parent
-component (the enclosing layout when a card is inside a layout).
+component (the enclosing layout when a card is inside a layout). Original-source
+checks cover each ancestor's attributes and immediate parent, the chart wrapper
+attributes and identity, and the final group and original slide for both
+literal and computed data. A transparent wrapper does not invent a group.
+Coverage requires each original chart exactly once, so deleting a whole chart
+through a filter cannot evade per-object checks.
 
 The existing semantic contract is unchanged: chart options and presets are
 content. Authored option edits remain pending; computed option edits conflict.
@@ -81,3 +86,19 @@ This is a core Save/recompute/rebuild cycle plus actual pinned native DOM and
 visual inspection. It does not claim a manual Studio drag or Presenter tooltip
 interaction for this composed fixture. Standalone native interaction evidence
 remains in [CHARTS.md](CHARTS.md).
+
+## Independent-review source-context correction
+
+Review reproduced an AST and real Lua filter moving a source chart into an
+unrelated card (including another slide) while its table proof stayed valid.
+The follow-up validates composition context independently of the table-data
+proof and checks computed charts before the general computed-origin fast path.
+`chart_context_test.ts` covers AST nesting, moving, removal and attribute
+changes; tampered native group/identity/coverage; legitimate transparent
+source wrappers; and real Lua authored/computed mutations after a prior
+publication, checking source, HTML and state bytes remain unchanged on refusal.
+
+The follow-up source-context tests passed **3/3 in 15s**. The existing eight
+chart tests and five composed-chart tests also passed with the correction;
+source type checking and targeted lint/format passed. The earlier combined
+29-test result remains attributed to `2ce6db1`, not retroactively to this fix.
