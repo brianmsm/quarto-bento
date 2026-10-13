@@ -2,6 +2,7 @@ import { renderProject, saveProject } from "../src/core/project.ts";
 import { applySync, previewSync } from "../src/core/sync.ts";
 import { applyReconcile, previewReconcile } from "../src/core/reconcile.ts";
 import { targetKey } from "../src/state/mod.ts";
+import { scanSource } from "../src/source/mod.ts";
 function assert(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
@@ -79,12 +80,17 @@ Deno.test({
       const plan = await previewSync(source);
       assert(
         plan.result ===
-          original.replace("Authored result β.", "Python result revised β.")
+          original.replace(
+            "```{r}",
+            `<!-- qb-producer:${
+              scanSource(original).blocks.find((b) => b.kind === "chunk")!.id
+            } -->\n\`\`\`{r}`,
+          ).replace("Authored result β.", "Python result revised β.")
             .replace("{#results}", "{#results .qbento-design}").replace(
               "{#summary}",
               "{#summary .qbento-design}",
             ),
-        "Unexpected source patch",
+        `Unexpected source patch: ${plan.result}`,
       );
       assert(plan.patch.patches.length === 1);
       await applySync(source, plan);
