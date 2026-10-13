@@ -1,0 +1,33 @@
+---
+qbento-annotations: none
+---
+
+## Figure {#figure}
+
+<!-- qb:finding -->
+The main finding remains editable source text.
+
+![Local **effect** figure](plot.svg)
+
+## Table {#table}
+
+| Group | N |
+|---|---:|
+| A | 12 |
+| B | 15 |
+
+<!-- qb:table-note -->
+The native table retains its cells and column weights.
+
+## Chart {#chart}
+
+::: {#effects .bento-chart bento-chart-kind="bar"}
+```{r}
+#| label: effects-maker
+#| echo: false
+knitr::kable(read.csv("data.csv"), format="pipe", col.names=c("", "N"))
+```
+:::
+
+<!-- qb:chart-note -->
+The bars recompute from data.csv while retaining the applied design.

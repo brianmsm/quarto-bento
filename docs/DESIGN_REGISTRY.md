@@ -58,9 +58,50 @@ displayed code, images and decorative shapes. Plain native tables and bounded
 bar/line charts also compose using their verified internal metrics; see the
 [table](evidence/COMPOSED-TABLES.md) and [chart](evidence/COMPOSED-CHARTS.md)
 receipts. Embeds, media and raw SVG objects still refuse component composition
-until their internal metrics are adapted. Content exceeding a frame refuses instead of
-shrinking to unreadable text. This registry is separate from Bento's native
-reusable slide templates.
+until their internal metrics are adapted. Content exceeding a frame refuses
+instead of shrinking to unreadable text. This registry is separate from Bento's
+native reusable slide templates.
+
+Studio also applies these definitions to existing free content through **Aplicar
+diseño**. Its managed Bento **Apply layout** button opens the same selector.
+Pick a saved slide and a layout, then assign each intended object to a column;
+an object starts at **Conservar posición**, never in an inferred slot. Titles
+stay outside the content frame. Selected objects retain IDs, content,
+provenance, order, grouping and typography. Each column stacks its explicit
+members in the current native order, allocating equal-height slots; a simple
+table uses only the height required by its rows. Images and their captions are
+separate explicit choices. The preview lists the resulting frames before
+applying them.
+
+Applying is a snapshot of the current definition: it saves geometry as ordinary
+visual overrides and preserves prior pending edits. Redefining the registry
+later requires applying it again to free objects; source components with
+`bento-layout-name` continue using regenerated layout defaults. Explicit QMD
+geometry remains source-owned and becomes pending. A coupled parent frame still
+cannot be reverse-mapped from a child's movement; review refuses
+`UNMAPPED_DESIGN` while retaining that movement. No placeholder text, cloned
+source objects or new semantic membership are created.
+
+The action supports ordinary text, displayed code, images, simple native tables
+and bounded bar/line charts. Table cells must retain the adapter's plain-text
+metrics; charts must retain the bounded native option grammar. Rotation or theme
+references deriving their frame/metrics need explicit resolution first. Tables
+and charts validate actual internal metrics at the final selected size, rather
+than scaling their boxes alone. Subsequent table/chart content that exceeds a
+saved frame emits `NATIVE_CONTENT_OVERFLOW` after recomputation; unsupported
+custom metrics emit `NATIVE_CONTENT_UNMEASURED`. Neither warning changes saved
+geometry. Text/code content overflow is handled by the separate native content
+measurement layer, not by the layout placement calculation.
+
+The selector saves live native edits before reading its choices. It checks the
+saved document ID, revision, current projected source hash and exact registry
+bytes during preview and application. Externally changed QMD must be recomputed
+before its old objects can be assigned: weak source identities may contain byte
+offsets, including a title's identity. Duplicate, foreign, missing or title IDs,
+a changed registry, and uncaptured HTML edits refuse without replacing source,
+output or saved state. See the
+[reusable layout receipt](evidence/REUSABLE-LAYOUTS.md) and
+[plain deck example](../examples/reusable-layouts/README.md).
 
 The theme subset accepts only `background`, `color`, `accent` and `fontFamily`,
 using the same bounded value validation as QMD design attributes. Other fields
@@ -82,12 +123,13 @@ overrides and pending semantics. The form does not rewrite QMD layout references
 when a name changes. Direct JSON editing remains supported.
 
 Studio checks the loaded registry bytes, project identity and revision before
-saving. If another editor changes them, the draft remains available and the
-save refuses; **Descartar borrador y recargar registro** explicitly replaces the
+saving. If another editor changes them, the draft remains available and the save
+refuses; **Descartar borrador y recargar registro** explicitly replaces the
 draft. Interrupted publication can leave a durable `design-save.json` marker:
-reads and renders then refuse until the documented manual recovery preserves
-the competing versions. The generic `qbento recover` command does not handle
-this separate journal. See [Studio registry evidence and recovery](evidence/STUDIO-REGISTRY.md).
+reads and renders then refuse until the documented manual recovery preserves the
+competing versions. The generic `qbento recover` command does not handle this
+separate journal. See
+[Studio registry evidence and recovery](evidence/STUDIO-REGISTRY.md).
 
 Native palette and code-palette fields also survive recomputation. Literal
 colors without `themeRefs` stay independent: changing the native document accent

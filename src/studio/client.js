@@ -1,3 +1,4 @@
+import { attachLayoutEditor } from "/layouts.js";
 import { attachComponentEditor } from "/components.js";
 import { attachGraphRelations } from "/relations.js";
 import { attachRegistryEditor } from "/registry.js";
@@ -28,6 +29,7 @@ async function api(path, body) {
       "slides/action",
       "graphs/relations",
       "components/action",
+      "layouts/apply",
     ].includes(path)
   ) {
     void refreshDiagnostics();
@@ -35,12 +37,15 @@ async function api(path, body) {
   return result;
 }
 function showDiagnostics(diagnostics) {
-  // Content and box bounds are freshly checked against saved state. Replace earlier render
-  // warnings so a corrected saved box clears them before another computation.
+  // Bounds are freshly checked against saved state so corrected boxes clear warnings.
   renderDiagnostics = renderDiagnostics.filter((d) =>
-    !["OVERFLOW", "TEXT_OVERFLOW", "TEXT_MEASUREMENT_UNAVAILABLE"].includes(
-      d.code,
-    )
+    ![
+      "OVERFLOW",
+      "TEXT_OVERFLOW",
+      "TEXT_MEASUREMENT_UNAVAILABLE",
+      "NATIVE_CONTENT_OVERFLOW",
+      "NATIVE_CONTENT_UNMEASURED",
+    ].includes(d.code)
   );
   projectDiagnostics = diagnostics;
   $("diagnostic-list").replaceChildren();
@@ -66,6 +71,8 @@ function showRenderDiagnostics(receipt) {
       "OVERFLOW",
       "TEXT_OVERFLOW",
       "TEXT_MEASUREMENT_UNAVAILABLE",
+      "NATIVE_CONTENT_OVERFLOW",
+      "NATIVE_CONTENT_UNMEASURED",
     ].includes(
       diagnostic.code,
     );
@@ -112,6 +119,7 @@ function setBusy(value) {
       "relations",
       "components",
       "designs",
+      "layouts",
       "review",
       "reconcile",
       "render",
@@ -712,6 +720,35 @@ $("presenter-dialog").onclose = () => {
   $("presenter-frame").src = "about:blank";
 };
 
+const layoutEditor = attachLayoutEditor({
+  api,
+  getState: () => state,
+  setBusy,
+  showError,
+  reloadEditor,
+  saveBefore: async () => {
+    if (!bridge) throw new Error("Espera a que abra el editor.");
+    await bridge.save();
+    if (bridge.dirty) {
+      throw new Error(
+        "Hay cambios nuevos sin guardar; vuelve a abrir Aplicar diseño.",
+      );
+    }
+  },
+});
+// WindowProxy alone survives navigation. Bind the request to the iframe's
+// immutable loaded snapshot as well, then save live edits before any changes.
+globalThis.addEventListener("message", (event) => {
+  const frame = $("editor").contentWindow, snapshot = frame?.__qbentoSnapshot;
+  if (
+    event.source !== frame || event.origin !== location.origin || busy ||
+    event.data?.type !== "qbento:apply-layout" ||
+    event.data.docId !== snapshot?.docId ||
+    event.data.revision !== snapshot?.revision ||
+    snapshot?.docId !== state?.docId
+  ) return;
+  void layoutEditor.open();
+});
 attachRegistryEditor({ api, getState: () => state, showError });
 attachGraphRelations({
   api,

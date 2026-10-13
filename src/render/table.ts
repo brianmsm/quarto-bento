@@ -134,36 +134,15 @@ export function projectTable(
 ): Element {
   const table = plainTable(node);
   const fontSize = 18, cellPadX = 16, cellPadY = 11, borderWidth = 1;
-  // Match native line-height/padding/border before adding a small rounding margin.
-  // A conservative single-line width gate avoids claiming unmeasured wrapping.
-  const width = frame?.w ?? 1120,
-    totalWeight = table.columns.reduce((sum, column) => sum + column.width, 0);
-  for (const [rowIndex, row] of table.rows.entries()) {
-    for (const [columnIndex, cell] of row.entries()) {
-      const usableWidth =
-        width * table.columns[columnIndex].width / totalWeight - cellPadX * 2 -
-        borderWidth * 2;
-      if (
-        usableWidth <= 0 ||
-        Array.from(cell.text).length * fontSize * 2 > usableWidth
-      ) {
-        throw new Error(
-          `UNSUPPORTED_TABLE_LAYOUT: row ${rowIndex + 1}, column ${
-            columnIndex + 1
-          } exceeds the conservative single-line width limit; shorten or split the source table. Wrapped table-cell layout needs separate measured support.`,
-        );
-      }
-    }
-  }
-  const rowHeight = Math.ceil(fontSize * 1.3 + cellPadY * 2 + borderWidth * 2) +
-    8;
-  const height = Math.max(100, table.rows.length * rowHeight);
-  if (
-    !Number.isFinite(width) || width <= 0 || y < 0 || y + height > 720 ||
-    frame && (y < frame.y || y + height > frame.y + frame.h + .01)
-  ) {
+  const width = frame?.w ?? 1120;
+  const height = tableHeight(
+    table,
+    frame ?? { x: 80, y, w: width, h: 720 - y },
+    y,
+  );
+  if (y + height > 720) {
     throw new Error(
-      "UNSUPPORTED_TABLE_LAYOUT: the complete table does not fit in the remaining slide area; split it into smaller source tables rather than clipping rows.",
+      "UNSUPPORTED_TABLE_LAYOUT: the complete table exceeds the projected slide area.",
     );
   }
   return {
@@ -196,4 +175,46 @@ export function projectTable(
       radius: 10,
     },
   };
+}
+
+/** Shared conservative metrics for projection and explicit reusable-layout placement. */
+export function tableHeight(
+  table: PlainTable,
+  frame: Frame,
+  y = frame.y,
+): number {
+  const fontSize = 18, cellPadX = 16, cellPadY = 11, borderWidth = 1;
+  // Match native line-height/padding/border before adding a small rounding margin.
+  // A conservative single-line width gate avoids claiming unmeasured wrapping.
+  const width = frame.w,
+    totalWeight = table.columns.reduce((sum, column) => sum + column.width, 0);
+  for (const [rowIndex, row] of table.rows.entries()) {
+    for (const [columnIndex, cell] of row.entries()) {
+      const usableWidth =
+        width * table.columns[columnIndex].width / totalWeight - cellPadX * 2 -
+        borderWidth * 2;
+      if (
+        usableWidth <= 0 ||
+        Array.from(cell.text).length * fontSize * 2 > usableWidth
+      ) {
+        throw new Error(
+          `UNSUPPORTED_TABLE_LAYOUT: row ${rowIndex + 1}, column ${
+            columnIndex + 1
+          } exceeds the conservative single-line width limit; shorten or split the source table. Wrapped table-cell layout needs separate measured support.`,
+        );
+      }
+    }
+  }
+  const rowHeight = Math.ceil(fontSize * 1.3 + cellPadY * 2 + borderWidth * 2) +
+    8;
+  const height = Math.max(100, table.rows.length * rowHeight);
+  if (
+    !Number.isFinite(width) || width <= 0 || y < 0 ||
+    (y < frame.y || y + height > frame.y + frame.h + .01)
+  ) {
+    throw new Error(
+      "UNSUPPORTED_TABLE_LAYOUT: the complete table does not fit in the remaining slide area; split it into smaller source tables rather than clipping rows.",
+    );
+  }
+  return height;
 }

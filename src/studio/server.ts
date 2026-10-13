@@ -1,3 +1,4 @@
+import { applyLayout, previewLayout, readLayouts } from "../core/layouts.ts";
 import {
   applyComponentAction,
   type ComponentRequest,
@@ -91,6 +92,9 @@ export async function startStudio(source: string, port = 0) {
   const registryClient = await Deno.readTextFile(
     new URL("./registry.js", import.meta.url),
   );
+  const layoutsClient = await Deno.readTextFile(
+    new URL("./layouts.js", import.meta.url),
+  );
   const relationsClient = await Deno.readTextFile(
     new URL("./relations.js", import.meta.url),
   );
@@ -101,6 +105,7 @@ export async function startStudio(source: string, port = 0) {
     new URL("./index.html", import.meta.url),
   );
   const managedBoot = ISOLATION_BOOTSTRAP +
+    "\ndocument.addEventListener('bento:apply-layout', e => { e.stopImmediatePropagation(); e.preventDefault(); const s=globalThis.__qbentoSnapshot; if(s) parent.postMessage({type:'qbento:apply-layout',docId:s.docId,revision:s.revision}, location.origin); }, true);" +
     "\naddEventListener('beforeunload', e => { if (globalThis.__qbentoManagedReload === true) e.stopImmediatePropagation(); }, true);";
   let origin = "";
   const presenters = new Map<string, string>();
@@ -177,6 +182,9 @@ export async function startStudio(source: string, port = 0) {
         if (req.method === "GET" && url.pathname === "/registry.js") {
           return respond(registryClient, 200, "text/javascript");
         }
+        if (req.method === "GET" && url.pathname === "/layouts.js") {
+          return respond(layoutsClient, 200, "text/javascript");
+        }
         if (req.method === "GET" && url.pathname === "/relations.js") {
           return respond(relationsClient, 200, "text/javascript");
         }
@@ -194,6 +202,28 @@ export async function startStudio(source: string, port = 0) {
         }
         if (req.method === "GET" && url.pathname === "/api/diagnostics") {
           return respond(JSON.stringify(await readProjectDiagnostics(source)));
+        }
+        if (req.method === "GET" && url.pathname === "/api/layouts") {
+          return respond(JSON.stringify(await readLayouts(source)));
+        }
+        if (
+          req.method === "POST" &&
+          ["/api/layouts/preview", "/api/layouts/apply"].includes(url.pathname)
+        ) {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(req, 32768);
+          if (text === null) {
+            return respond('{"error":"Layout request too large"}', 413);
+          }
+          return respond(
+            JSON.stringify(
+              await (url.pathname.endsWith("/apply")
+                ? applyLayout
+                : previewLayout)(source, JSON.parse(text)),
+            ),
+          );
         }
         if (req.method === "GET" && url.pathname === "/api/graphs/relations") {
           return respond(JSON.stringify(await readGraphRelations(source)));

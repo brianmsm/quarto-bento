@@ -197,7 +197,7 @@
     </style>
   </head>
   <body>
-    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="components" disabled>Añadir componente</button><button id="relations" disabled>Relaciones</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
+    <header><h1>Quarto-Bento</h1><button id="save" disabled>Guardar proyecto</button><button id="slides" disabled>Diapositivas</button><button id="components" disabled>Añadir componente</button><button id="relations" disabled>Relaciones</button><button id="layouts" disabled>Aplicar diseño</button><button id="designs" disabled>Diseños y temas</button><button id="review" disabled>Revisar cambios</button><button id="reconcile" disabled>Comparar con QMD</button><button id="render" disabled>Recalcular</button><button id="presenter" disabled>Presentar con gráficos</button><span id="status" role="status">Abriendo…</span></header>
     <section id="project-diagnostics" hidden role="status" aria-live="polite"
       aria-labelledby="diagnostic-title">
       <h2 id="diagnostic-title">Avisos del proyecto</h2>
@@ -212,6 +212,20 @@
       id="review-dialog"><h2>Revisar cambios hacia QMD</h2><p id="sync-note">Guardar conserva el proyecto; sincronizar aplica únicamente los cambios que revisas aquí.</p><div id="delete-confirmations"></div><div id="patches"></div><details><summary>Origen y detalle de los cambios</summary><div id="changes"></div></details><button id="apply" disabled>Aplicar estos cambios a QMD</button> <button id="close">Cerrar</button></dialog>
     <dialog
       id="slides-dialog"><h2>Diapositivas</h2><p>Ocultar conserva el contenido y lo omite en la presentación y el PDF. Marcar para eliminar guarda una eliminación pendiente; después debes revisarla y confirmarla para modificar QMD. Puedes restaurarla antes de sincronizar.</p><p id="slides-note" role="status"></p><div id="slide-list"></div><button id="slides-close">Cerrar</button></dialog>
+    <dialog id="layouts-dialog" aria-labelledby="layouts-title">
+      <h2 id="layouts-title">Aplicar diseño reutilizable</h2>
+      <p>Elige los objetos de cada columna. El título y los objetos no seleccionados conservan su posición. Las columnas siguen el orden actual de los objetos; dentro de cada columna reciben espacios iguales. Texto e imágenes usan ese marco y las tablas conservan la altura de sus filas.</p>
+      <p>Se aplican los valores actuales del diseño. Si cambias su definición en Diseños y temas, vuelve a aplicarlo a estos objetos. No se modifica QMD; sus atributos explícitos quedan pendientes para Revisar cambios.</p>
+      <form id="layouts-form">
+        <label for="layout-slide">Diapositiva</label><select id="layout-slide"></select>
+        <label for="layout-name">Diseño</label><select id="layout-name"></select>
+        <div id="layout-objects"></div>
+        <p id="layout-note" role="status"></p><pre id="layout-preview" hidden></pre>
+        <button id="layout-preview-button" type="button">Vista previa de posiciones</button>
+        <button id="layout-apply" type="submit" disabled>Aplicar a los objetos seleccionados</button>
+        <button id="layout-close" type="button">Cerrar</button>
+      </form>
+    </dialog>
     <dialog id="relations-dialog" aria-labelledby="relations-title">
       <h2 id="relations-title">Relaciones de diagramas QMD</h2>
       <p>Elige los nodos por su etiqueta e identidad fuente. Guardar conserva un cambio pendiente; la revisión posterior es el paso que modifica QMD.</p>

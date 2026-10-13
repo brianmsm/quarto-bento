@@ -1,3 +1,4 @@
+import { nativeLayoutDiagnostics } from "./native-layout.ts";
 import type { BentoDoc, Diagnostic } from "./types.ts";
 
 /** Axis-aligned box overflow for the actual native page, without estimating ink. */
@@ -6,7 +7,8 @@ export function refreshOverflowDiagnostics(
   diagnostics: readonly Diagnostic[],
 ): Diagnostic[] {
   const result = diagnostics.filter((diagnostic) =>
-    diagnostic.code !== "OVERFLOW"
+    !["OVERFLOW", "NATIVE_CONTENT_OVERFLOW", "NATIVE_CONTENT_UNMEASURED"]
+      .includes(diagnostic.code)
   );
   for (const slide of document.slides) {
     for (const element of slide.elements) {
@@ -30,5 +32,5 @@ export function refreshOverflowDiagnostics(
       }
     }
   }
-  return result;
+  return [...result, ...nativeLayoutDiagnostics(document)];
 }

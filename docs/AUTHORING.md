@@ -209,13 +209,16 @@ remain card content, including a nested H2; they do not create slides. Card text
 edits use bounded source patches. Explicit background fill/stroke properties can
 sync to the original card opener.
 
-`.bento-layout` requires `bento-layout-name="two-column"` and exactly two identified
-direct fenced-div children. Reuse this name across source components. It uses
-native grouped objects with proportional geometry; a flat native `groupId`
+`.bento-layout` selects `bento-layout-name="two-column"` or a named definition in
+[the local design registry](DESIGN_REGISTRY.md). It requires the declared number
+of identified direct fenced-div children. Reuse the same name across components.
+It uses native grouped objects with proportional geometry; a flat native `groupId`
 represents the outer component, while source provenance retains the nested
-containers. Custom layout/theme registries and nested native grouping are not
-claimed here. **Use the namespaced attribute:** Quarto 1.10.19 already interprets
-`layout=` as its JSON layout syntax. The former proposed `layout="two-column"`
+containers. Nested native groups are not inferred from that flat group. Existing
+plain-deck content can use Studio **Aplicar diseño** with explicit object-to-column
+assignments; it retains the original source structure and saves a geometry
+snapshot in the sidecar. **Use the namespaced attribute:** Quarto 1.10.19 already
+interprets `layout=` as its JSON layout syntax. The former proposed `layout="two-column"`
 spelling now refuses before computation in both CLI and installed Quarto hooks.
 
 Attributes for a coupled parent frame produce source-owned child geometry.

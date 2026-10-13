@@ -353,7 +353,7 @@ const defaultTheme: DesignTheme = {
   accent: "#156f65",
   fontFamily: "Arial, sans-serif",
 };
-const builtinLayouts: Record<string, LayoutDefinition> = {
+export const builtinLayouts: Readonly<Record<string, LayoutDefinition>> = {
   "two-column": { columns: 2, gap: 32, padding: 0 },
 };
 export function validateDesignDefaults(
