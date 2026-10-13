@@ -1,6 +1,6 @@
 # Agent / next-session handoff
 
-**Project status (2026-10-11): implementation in progress from Architecture & Design v0.2.** Read `docs/IMPLEMENTATION_STATUS.md` for current code and evidence. Target commands/APIs must not be assumed implemented merely because they appear in design documents; the supported first Linux bidirectional workflow is demonstrated, while the full product remains incomplete.
+**Project status (2026-10-13): implementation in progress from Architecture & Design v0.2.** Read `docs/IMPLEMENTATION_STATUS.md` for current code and evidence. Target commands/APIs must not be assumed implemented merely because they appear in design documents; the supported Linux workflows are demonstrated, while the full product remains incomplete.
 
 1. Read `README.md`, then **`docs/PRODUCT_TARGET.md`** for the finish line, `docs/DECISIONS.md` for agreements, and `docs/ROADMAP.md` for the next action. Consult `docs/WORKFLOWS.md`, `docs/SYNC.md`, `docs/AUTHORING.md`, and `docs/ARCHITECTURE.md` for the relevant implementation area.
 2. Preserve agreed behavior: QMD semantic authority, `.qbento/` visual authority, explicit safe round-trip, recoverable unsynced edits, no silent merge, computed results sourced from execution, fully offline ordinary workflow, Git-friendly rebuilds.
@@ -11,7 +11,13 @@
 7. Start with S0: **QMD → BentoDoc → native HTML edits → stable-ID visual overrides → recompute → preserved design**, including stable Bento `docId` and protection against losing edits in the generated HTML. The complete first implementation milestone must *also* prove Bento-authored edits → safe QMD synchronization.
 8. Never rewrite source or discard unsynced edits on render without a checked, approved operation. Make source patches inspectable and recoverable.
 
-**Immediate next action:** start from the integrated Linux acceptance receipts
+**Immediate next action:** start from the latest
+`docs/evidence/SECURITY-LINUX.md` receipt and implementation ledger for the
+2026-10-13 Linux-local security/dependency closeout. The reproduced issues are
+mitigated, the 578-test Linux suite passes, and the 117-file portable smoke
+rebuilds from minimal saved state. Preserve the public-release and
+other-platform gates below. The earlier implementation baseline starts from
+the integrated Linux acceptance receipts
 in `docs/IMPLEMENTATION_STATUS.md` and `docs/evidence/INTEGRATED-LINUX.md`.
 The audited local workflows and portable development artifact are validated;
 do not repeat the original S0/S1/S2/S4 spikes as if they were unimplemented.

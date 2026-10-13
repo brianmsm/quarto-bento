@@ -115,6 +115,17 @@ Sequences are illustrative; features may move earlier to support validation with
 
 ## Suggested next-session action
 
+Continue from the [Linux-local security and dependency receipt](evidence/SECURITY-LINUX.md)
+and the latest implementation ledger. The 2026-10-13 audit reproduced and
+mitigated three concrete local issues: native chart-tooltip injection, aliased
+generated-build paths and an obsolete manual bridge probe. Its pinned
+production npm lockfile audit reported zero advisories at the time of the check;
+the upstream build graph and four historical license-source cases remain
+explicit public-distribution follow-up. The final Linux suite passed 578 tests
+(4 steps) without failure, and the 117-file portable smoke rebuilt from QMD and
+minimal saved state. This closes the current Linux-local security/dependency
+objective; do not infer full v1 acceptance or other-platform qualification.
+
 Continue from [the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md)
 and the implementation ledger. Source mapping/composition, static-code language
 sync, native content bounds and explicit reusable-layout application now have

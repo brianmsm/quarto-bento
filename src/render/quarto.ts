@@ -1,4 +1,11 @@
-import { basename, dirname, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ast } from "./types.ts";
 import {
@@ -6,6 +13,50 @@ import {
   attachProducerCapture,
   prepareProducerCapture,
 } from "./producer-capture.ts";
+async function assertPrivateBuild(buildRoot: string): Promise<void> {
+  const pending = [buildRoot];
+  let entries = 0;
+  while (pending.length) {
+    const current = pending.pop()!;
+    if (++entries > 50_000) {
+      throw new Error(
+        "UNSAFE_BUILD_PATH: generated tree is too large to verify",
+      );
+    }
+    const info = await Deno.lstat(current);
+    if (info.isSymlink && current !== buildRoot) {
+      // Fontconfig can create aliases between cache files. They are safe only
+      // when the fully resolved target remains inside this generated tree.
+      let target: string;
+      try {
+        target = await Deno.realPath(current);
+      } catch {
+        throw new Error(`UNSAFE_BUILD_PATH: unresolved alias ${current}`);
+      }
+      const location = relative(buildRoot, target);
+      if (
+        isAbsolute(location) || location === ".." ||
+        location.startsWith(`..${sep}`)
+      ) {
+        throw new Error(`UNSAFE_BUILD_PATH: external alias ${current}`);
+      }
+      continue;
+    }
+    if (
+      info.isSymlink || !(info.isDirectory || info.isFile) ||
+      (info.isFile && (info.nlink === null || info.nlink > 1))
+    ) {
+      throw new Error(
+        `UNSAFE_BUILD_PATH: Quarto output must contain only private files and real directories (${current})`,
+      );
+    }
+    if (info.isDirectory) {
+      for await (const entry of Deno.readDir(current)) {
+        pending.push(resolve(current, entry.name));
+      }
+    }
+  }
+}
 export async function executeQuarto(
   source: string,
   buildDir: string,
@@ -13,6 +64,12 @@ export async function executeQuarto(
   source = resolve(source);
   buildDir = resolve(buildDir);
   await Deno.mkdir(buildDir, { recursive: true });
+  await assertPrivateBuild(buildDir);
+  if (!(await Deno.lstat(buildDir)).isDirectory) {
+    throw new Error(
+      "UNSAFE_BUILD_PATH: Quarto output must be a real directory",
+    );
+  }
   const astPath = resolve(buildDir, "executed.json");
   try {
     await Deno.remove(astPath);

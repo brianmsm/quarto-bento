@@ -12,6 +12,28 @@ export interface ShellNotices {
   }[];
 }
 
+// The pinned Bento runtime puts a chart colour into a quoted tooltip style
+// attribute before assigning innerHTML. A native dropped document reaches that
+// renderer before Quarto-Bento can validate it, so guard the sink in the shell
+// bootstrap as well as at project ingress. Keep the upstream bytes pinned and
+// fail closed if the exact reviewed runtime changes.
+const tooltipColorSink = "background:${A.color};margin-right:5px";
+const escapedTooltipColorSink =
+  'background:${String(A.color).replaceAll("&","&amp;").replaceAll(\'"\',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")};margin-right:5px';
+const runtimeBootstrap = "    var js = inflate('bento-rt')";
+function guardNativeTooltip(shell: string): string {
+  if (shell.split(runtimeBootstrap).length !== 2) {
+    throw new Error("BENTO_TOOLTIP_PIN_MISMATCH: runtime bootstrap changed");
+  }
+  const patch = `    var js = inflate('bento-rt')
+    var qbentoTooltipSink = ${JSON.stringify(tooltipColorSink)}
+    if (js.split(qbentoTooltipSink).length !== 2) throw new Error('BENTO_TOOLTIP_PIN_MISMATCH: tooltip changed')
+    js = js.replace(qbentoTooltipSink, ${
+    JSON.stringify(escapedTooltipColorSink)
+  })`;
+  return shell.replace(runtimeBootstrap, patch);
+}
+
 async function sha256(text: string): Promise<string> {
   return Array.from(
     new Uint8Array(
@@ -21,7 +43,8 @@ async function sha256(text: string): Promise<string> {
   ).join("");
 }
 
-/** Keep the vendored shell unchanged; add notices before its pristine capture.
+/** Keep the vendored shell unchanged; guard its pinned tooltip and add notices
+ * before its pristine capture.
  * The inert data block is outside BentoDoc, never a runtime-owned transient.
  * The pinned kernel therefore retains it through native serialization/save.
  * The project's MIT license is labeled separately from pinned upstream texts.
@@ -79,7 +102,7 @@ export async function loadBentoShell(): Promise<string> {
   // Escaping '<' also makes future supplied text containing script-close tokens
   // safe. JSON decoding recovers the full original text, including newlines.
   const body = JSON.stringify(notices).replaceAll("<", "\\u003c");
-  return shell.text.replace(
+  return guardNativeTooltip(shell.text).replace(
     /<head([^>]*)>/i,
     (_match, attributes) =>
       `<head${attributes}><script id="${SHELL_NOTICES_ID}" type="application/json">${body}</script>`,

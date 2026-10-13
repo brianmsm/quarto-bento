@@ -264,6 +264,38 @@ Deno.test("failed execution retains baseline and explicit recovery clears only t
       !pending.success && pending.log.includes("QUARTO_RENDER_PENDING"),
       pending.log,
     );
+    const stateDir = resolve(f.directory, ".qbento");
+    const outside = await Deno.makeTempDir({
+      prefix: "qbento-recovery-alias-",
+    });
+    try {
+      await Deno.writeTextFile(resolve(outside, "marker.txt"), "KEEP");
+      for (const child of ["history", "quarto-stage"]) {
+        const path = resolve(stateDir, child);
+        const saved = resolve(stateDir, `${child}-saved`);
+        await Deno.rename(path, saved);
+        await Deno.symlink(outside, path);
+        try {
+          await rejects(
+            () => recoverQuartoRender(f.source),
+            "UNSAFE_STAGE_PATH",
+          );
+          assert(await Deno.readTextFile(f.output) === original);
+          assert(
+            (await Deno.stat(resolve(stateDir, "quarto-run.json"))).isFile,
+          );
+          assert(
+            (await Deno.readTextFile(resolve(outside, "marker.txt"))) ===
+              "KEEP",
+          );
+        } finally {
+          await Deno.remove(path);
+          await Deno.rename(saved, path);
+        }
+      }
+    } finally {
+      await Deno.remove(outside, { recursive: true });
+    }
     const recovered = await recoverQuartoRender(f.source);
     assert(recovered.restored && recovered.retainedOutput === null);
     assert(await Deno.readTextFile(f.output) === original);

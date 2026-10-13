@@ -224,11 +224,31 @@ function boundedData(value: unknown, path: string) {
   };
   visit(value, path, 12);
 }
+function chartColors(value: unknown, path: string): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => chartColors(item, pointer(path, index)));
+  } else if (isObject(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      const at = pointer(path, key);
+      if (key === "color" && typeof item === "string") color(item, at);
+      else if (key === "color" && Array.isArray(item)) {
+        item.forEach((entry, index) => {
+          const entryPath = pointer(at, index);
+          if (typeof entry === "string") color(entry, entryPath);
+          else chartColors(entry, entryPath);
+        });
+      } else chartColors(item, at);
+    }
+  }
+}
 /** Descriptive schema fields omit a few checks implemented by untrusted.ts. */
 function supplementary(value: unknown, rule: Schema, path: string) {
   if (rule.$ref) {
     const reference = schema.$defs![rule.$ref.slice(8)];
-    if (rule.$ref === "#/$defs/prop-option") boundedData(value, path);
+    if (rule.$ref === "#/$defs/prop-option") {
+      boundedData(value, path);
+      chartColors(value, path);
+    }
     if (rule.$ref === "#/$defs/prop-doc") {
       if (typeof value === "string") css(value, path);
       else if (isObject(value)) {

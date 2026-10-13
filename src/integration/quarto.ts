@@ -404,6 +404,11 @@ export async function recoverQuartoRender(
         "STALE_REVISION: project changed since this Quarto render; inspect receipt and history manually",
       );
     }
+    // Recovery may rename an interrupted publication into history and write a
+    // restored baseline through stage. Verify both children before reading the
+    // backup or mutating either path; an imported .qbento subtree is untrusted.
+    await realDirectory(resolve(paths.stateDir, "history"));
+    await realDirectory(resolve(paths.stateDir, stageName));
     let retainedOutput: string | null = null;
     if (run.backupHash) {
       const bytes = await Deno.readFile(backupPath(paths.stateDir, run));
