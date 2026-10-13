@@ -134,3 +134,39 @@ and the strict test now saves opt-in diagnostic evidence on recurrence. This
 observation remains open for diagnosis; it is not reported as a confirmed fix.
 Image replacement/deletion and broader codecs retain their explicit limitations.
 The full product horizon and public v1 scope remain separate from this local pass.
+
+## Native redesign follow-up: two reproduced gaps (2026-10-13)
+
+Independent native checks against `1304d9e` reproduced two requirements from
+Workflow 2 that the passing `85da037` suite did not cover. The earlier statement
+that layout association was only a documented UX limit was insufficient: the
+promised application of a reusable layout to an existing deck must actually
+preserve its source identities.
+
+1. **Apply layout to existing QMD content.** The pinned native **Apply layout →
+   Two columns** control adds empty title/body placeholders to an ordinary
+   source-backed slide and leaves its existing objects unmoved. Saving preserves
+   three pending creations, whose empty content cannot synchronize. Assigning
+   native title/body roles first does distribute the content, but replaces all
+   three original IDs with template IDs, producing three deletions and three
+   creations. Even separately confirming those deletions cannot synchronize the
+   original slide-title deletion. QMD remains intact, but the redesign workflow
+   is not completed. The required operation must bind existing objects to slots
+   explicitly and preserve their content, IDs, provenance and pending edits.
+2. **Signal text overflow inside retained boxes.** After saving a paragraph at
+   `x=80, y=166, w=300, h=80, fontSize=26`, enlarging its source text leaves the
+   correct saved box but returns `diagnostics: []`. Native rendering visibly
+   overlaps the next paragraph and continues beyond the page. The coordinator
+   and independent auditor inspected the screenshot. Current edge diagnostics
+   inspect the box, not its text. The fix must measure final native content and
+   report overflow without silently resizing saved geometry or rewriting QMD.
+
+Scripts, logs, QMD/state snapshots and the inspected overflow screenshot are
+retained locally under `output/verification/redesign-audit-1304d9e/`. The audit
+invoked the real pinned editor's layout operation and the real project Save API;
+it did not simulate the layout algorithm. The retained DOM overflow count came
+from a thumbnail match, so the screenshot, not that count, establishes the main
+canvas overlap. New acceptance tests must target the actual canvas explicitly.
+
+Both are active functional implementation gates. Declared QMD layouts and safe
+refusals remain useful existing behavior, but neither closes these requirements.

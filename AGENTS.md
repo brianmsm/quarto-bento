@@ -28,6 +28,12 @@ artifact with exact native table/image reconstruction. Preserve the documented
 bounded codecs. A prior intermittent exact-widget-SVG mismatch did not reproduce;
 retain the strict assertion and opt-in diagnostics rather than claiming its cause
 fixed. Safe refusals preserve work but do not close future ordinary-workflow gaps.
+The subsequent native redesign audit at `1304d9e` reproduced two active
+Workflow 2 gaps: source-aware application of reusable layouts and warnings for
+text overflowing its retained native box. Follow the new audit section rather
+than treating the older layout UX limitation as an accepted exclusion. Displayed
+code language synchronization is also being implemented as a reviewed static
+fence-token change; it must never promote displayed code to executable chunks.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains
 `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the

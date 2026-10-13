@@ -5,6 +5,15 @@ prove requirements outside its fixtures. Current validation is limited to the
 owner's Linux machine; other operating systems and hosted CI are deferred.
 Public release scope is a separate decision.
 
+## Active native redesign gates
+
+The newer native audit at `1304d9e` reproduced two Workflow 2 gaps beyond the
+passing combined suite: native layout application does not preserve source IDs,
+and text overflowing a retained box can publish without a warning. See the
+[reproductions and acceptance criteria](PRODUCT_ACCEPTANCE_AUDIT.md#native-redesign-follow-up-two-reproduced-gaps-2026-10-13).
+Both require implementation and native verification; neither is closed by the
+existing QMD-declared layout workflow or by preserving a refused operation.
+
 ## Full-product follow-up after the local receipt
 
 The [requirement-by-requirement audit](PRODUCT_ACCEPTANCE_AUDIT.md) at `89fc134`
