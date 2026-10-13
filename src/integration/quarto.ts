@@ -1,3 +1,4 @@
+import { readSourceInline } from "../render/source-inline.ts";
 import {
   assertCompatibleProducerFilters,
   attachProducerCapture,
@@ -29,6 +30,7 @@ interface QuartoRun {
   sourceHash: string;
   designHash?: string | null;
   producerHash?: string;
+  imageAssets?: Record<string, string>;
   revision: number | null;
   backupHash: string | null;
   process: { pid: number; startTime: string };
@@ -155,6 +157,12 @@ async function readReceipt(path: string): Promise<QuartoRun> {
     !(value.producerHash === undefined ||
       typeof value.producerHash === "string" &&
         /^[a-f0-9]{64}$/.test(value.producerHash)) ||
+    !(value.imageAssets === undefined ||
+      value.imageAssets && typeof value.imageAssets === "object" &&
+        !Array.isArray(value.imageAssets) &&
+        Object.entries(value.imageAssets).every(([id, digest]) =>
+          id && typeof digest === "string" && /^[a-f0-9]{64}$/.test(digest)
+        )) ||
     !(value.revision === null || Number.isInteger(value.revision)) ||
     !(value.backupHash === null || typeof value.backupHash === "string") ||
     !Number.isInteger(value.process?.pid) ||
@@ -182,7 +190,25 @@ export async function beforeQuartoRender(): Promise<void> {
   }
   const process = await assertSafeQuartoInvocation(source);
   await assertCompatibleProducerFilters(source, "qbento-html");
-  assertCompatibleComponentSource(scanSource(await Deno.readTextFile(source)));
+  const original = scanSource(await Deno.readTextFile(source));
+  assertCompatibleComponentSource(original);
+  if (
+    original.blocks.some((block) =>
+      block.kind === "image" && block.origin === "computed"
+    )
+  ) {
+    throw new Error(
+      "UNSUPPORTED_AUTHORED_IMAGE: computed image captions/paths require a verified producer adapter",
+    );
+  }
+  const imageProofs = original.blocks.some((block) => block.kind === "image")
+    ? await readSourceInline(original, dirname(source))
+    : new Map();
+  const imageAssets = Object.fromEntries(
+    [...imageProofs].filter(([, proof]) => proof.kind === "image").map((
+      [id, proof],
+    ) => [id, hashSource(proof.image!.data!)]),
+  );
   const registry = await loadDesignRegistry(dirname(source));
   await inspectOutput(source);
   await withProject(source, async (paths, store) => {
@@ -196,10 +222,16 @@ export async function beforeQuartoRender(): Promise<void> {
       source,
       sourceHash: hashSource(await Deno.readTextFile(source)),
       designHash: registry.hash,
+      imageAssets,
       revision: state?.revision ?? null,
       backupHash: null,
       process,
     };
+    if (run.sourceHash !== original.hash) {
+      throw new Error(
+        "SOURCE_CHANGED: QMD changed during image/source preflight; execution refused",
+      );
+    }
     try {
       await Deno.writeTextFile(receipt, JSON.stringify(run, null, 2) + "\n", {
         createNew: true,
@@ -332,6 +364,7 @@ export async function afterQuartoRender(): Promise<void> {
     ast: captured.ast,
     sourceHash: run.sourceHash,
     assetDirectories: [dirname(resolve(staged[0])), paths.directory],
+    expectedImageAssets: run.imageAssets ?? {},
     expectedRevision: run.revision,
     designHash: run.designHash,
   });

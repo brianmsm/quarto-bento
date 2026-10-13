@@ -10,7 +10,10 @@ function assert(value: unknown, message = "assertion failed"): asserts value {
 Deno.test("ordinary Quarto hooks handle spaces and quotes without bypassing preflight", async () => {
   const root = await Deno.makeTempDir({ prefix: "qbento-quarto-paths-" });
   const directory = resolve(root, `project with spaces 'quoted' "double"`);
-  const source = resolve(directory, "slides with spaces 'quoted' β café.qmd");
+  const source = resolve(
+    directory,
+    `slides with spaces 'quoted' "double" β café.qmd`,
+  );
   const output = source.replace(/\.qmd$/, ".bento.html");
   try {
     await Deno.mkdir(directory);

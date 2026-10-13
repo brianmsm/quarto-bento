@@ -131,7 +131,10 @@ interface OpenTag {
   href?: string;
 }
 /** Parse only the reviewed subset. Unsupported markup never disappears silently. */
-function convertInline(html: string): { markdown: string; html: string } {
+function convertInline(
+  html: string,
+  allowEmpty = false,
+): { markdown: string; html: string } {
   if (html.length > 1_000_000 || html.includes("\u0000")) {
     fail("Invalid or excessive text fragment.");
   }
@@ -236,6 +239,9 @@ function convertInline(html: string): { markdown: string; html: string } {
     "$1$2\\$3 ",
   );
   if (!markdown) {
+    if (allowEmpty && !canonical.replace(/<br>/g, "").trim()) {
+      return { markdown: "", html: "" };
+    }
     fail("An empty text field requires explicit deletion, not text sync.");
   }
   return { markdown, html: canonical.trim() };
@@ -245,4 +251,9 @@ export function inlineHtmlToMarkdown(html: string): string {
 }
 export function canonicalInlineHtml(html: string): string {
   return convertInline(html).html;
+}
+
+/** An image may retain its source asset while its caption is explicitly cleared. */
+export function imageCaptionHtmlToSource(html: string) {
+  return convertInline(html, true);
 }

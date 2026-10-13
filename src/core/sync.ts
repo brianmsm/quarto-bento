@@ -1,3 +1,4 @@
+import { IMAGE_CODEC_VERSION } from "../source/image.ts";
 import {
   literalTableBlock,
   literalTableContent,
@@ -23,6 +24,7 @@ import {
 } from "../state/mod.ts";
 import {
   canonicalInlineHtml,
+  imageCaptionHtmlToSource,
   INLINE_CODEC_VERSION,
   inlineHtmlToMarkdown,
   renderInline,
@@ -48,7 +50,7 @@ import {
 } from "../source/graphs.ts";
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { verifiedSourceSlide } from "./source-scope.ts";
-import { basename, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { projectPaths, withProject } from "./project.ts";
 import {
   canonical,
@@ -144,7 +146,45 @@ export interface SyncIdentityBinding {
   after: Provenance;
   expectedHtml?: string;
   expectedTableHash?: string;
+  expectedImageHash?: string;
   expectedCode?: { content: string; grammarName: string | null };
+}
+function identityExpectation(binding: SyncIdentityBinding): boolean {
+  const fields = [
+    binding.expectedHtml,
+    binding.expectedCode,
+    binding.expectedTableHash,
+    binding.expectedImageHash,
+  ];
+  if (fields.filter((value) => value !== undefined).length !== 1) return false;
+  const kind = binding.after?.source?.kind;
+  if (kind === "image") {
+    const image = binding.after.source?.image;
+    if (
+      !image || typeof image !== "object" || Array.isArray(image) ||
+      binding.after.source?.imageCodec !== IMAGE_CODEC_VERSION
+    ) return false;
+    if (image.role === "asset") {
+      return typeof binding.expectedImageHash === "string" &&
+        /^[a-f0-9]{64}$/.test(binding.expectedImageHash) &&
+        image.assetDigest === binding.expectedImageHash &&
+        image.imageId === binding.target.elementId;
+    }
+    return image.role === "caption" &&
+      image.captionId === binding.target.elementId &&
+      typeof binding.expectedHtml === "string";
+  }
+  if (binding.expectedImageHash !== undefined) return false;
+  if (kind === "unsupported") {
+    return typeof binding.expectedTableHash === "string" &&
+      /^[a-f0-9]{64}$/.test(binding.expectedTableHash);
+  }
+  if (kind === "code") {
+    return typeof binding.expectedCode?.content === "string" &&
+      (binding.expectedCode.grammarName === null ||
+        typeof binding.expectedCode.grammarName === "string");
+  }
+  return typeof binding.expectedHtml === "string";
 }
 export interface SyncApproval {
   version: 1;
@@ -298,19 +338,7 @@ export function validateSyncApproval(
         typeof binding.target.slideId !== "string" || !binding.target.slideId ||
         typeof binding.target.elementId !== "string" ||
         !binding.target.elementId ||
-        (binding.after?.source?.kind === "unsupported"
-          ? typeof binding.expectedTableHash !== "string" ||
-            !/^[a-f0-9]{64}$/.test(binding.expectedTableHash) ||
-            binding.expectedCode !== undefined ||
-            binding.expectedHtml !== undefined
-          : binding.expectedTableHash !== undefined ||
-            (binding.after?.source?.kind === "code"
-              ? binding.expectedHtml !== undefined ||
-                typeof binding.expectedCode?.content !== "string" ||
-                !(binding.expectedCode.grammarName === null ||
-                  typeof binding.expectedCode.grammarName === "string")
-              : typeof binding.expectedHtml !== "string" ||
-                binding.expectedCode !== undefined)) ||
+        !identityExpectation(binding) ||
         binding.before?.origin !== "authored" ||
         binding.after?.origin !== "authored" ||
         typeof binding.before.source?.hash !== "string" ||
@@ -449,7 +477,10 @@ export function prepareApprovedSync(
       canonical(state.provenance[key]) !== canonical(binding.before) ||
       canonical(fresh) !== canonical(binding.after) ||
       fresh?.source?.hash !== sourceHash ||
-      (binding.expectedTableHash
+      (binding.expectedImageHash
+        ? element?.type !== "image" || typeof element.src !== "string" ||
+          hashSource(element.src) !== binding.expectedImageHash
+        : binding.expectedTableHash
         ? element?.type !== "table" ||
           hashSource(canonical(tableContent(element))) !==
             binding.expectedTableHash
@@ -643,14 +674,18 @@ async function identityAcquisition(
   text: string,
   state: ProjectState,
   selected: Change[],
+  sourcePath?: string,
 ) {
   if (!selected.length) return undefined;
   const document = scanSource(text), requests: IdentityRequest[] = [];
   const codeProofs =
     document.blocks.some((block) =>
-        block.kind === "code" && block.origin === "authored"
+        ["code", "image"].includes(block.kind) && block.origin === "authored"
       )
-      ? await readSourceInline(document)
+      ? await readSourceInline(
+        document,
+        sourcePath ? dirname(sourcePath) : undefined,
+      )
       : undefined;
   for (const [key, proof] of Object.entries(state.provenance)) {
     if (proof.origin === "computed") continue;
@@ -658,6 +693,26 @@ async function identityAcquisition(
     const block = document.blocks.find((candidate) =>
       candidate.id === binding?.blockId
     );
+    if (
+      block?.kind === "image" && binding?.image &&
+      typeof binding.image === "object" && !Array.isArray(binding.image) &&
+      binding.image.role === "asset"
+    ) {
+      const fresh = codeProofs?.get(block.id)?.image;
+      const image = state.generatedBaseline.slides.find((slide) =>
+        slide.id === JSON.parse(key)[0]
+      )?.elements.find((element) => element.id === JSON.parse(key)[1]);
+      if (
+        !fresh?.data || image?.type !== "image" || image.src !== fresh.data ||
+        binding.image.assetDigest !== hashSource(fresh.data)
+      ) {
+        fail(
+          "STALE_IMAGE_ASSET",
+          "Recalculate before syncing a caption whose original source image bytes changed; pending edits are retained.",
+        );
+      }
+      continue;
+    }
     const singleton = binding?.siblings === 1 &&
       typeof binding.parentId === "string" &&
       document.blocks.some((parent) =>
@@ -691,7 +746,7 @@ async function identityAcquisition(
       block.content !== binding.content || block.kind !== binding.kind ||
       block.origin !== "authored" || !block.editable && !table ||
       !table &&
-        !["heading", "paragraph", "list", "math", "code"].includes(
+        !["heading", "paragraph", "list", "math", "code", "image"].includes(
           block.kind,
         ) ||
       (table
@@ -718,6 +773,21 @@ async function identityAcquisition(
         "Display math/code identity requires the exact original codec content and language in the executed baseline.",
       );
     }
+    if (block.kind === "image") {
+      const image = binding.image;
+      if (
+        !image || typeof image !== "object" || Array.isArray(image) ||
+        image.role !== "caption" || image.captionId !== elementId ||
+        codeProofs?.get(block.id)?.html !== element!.html ||
+        typeof image.imageId !== "string"
+      ) {
+        fail(
+          "AMBIGUOUS_IDENTITY",
+          "Caption identity requires the exact original image/caption pair.",
+        );
+      }
+      if (requests.some((request) => request.blockId === block.id)) continue;
+    }
     const title = block.kind === "heading" &&
       document.slides.some((slide) => slide.headingId === block.id);
     requests.push({
@@ -730,6 +800,9 @@ async function identityAcquisition(
           hashSource(canonical([state.docId, slideId, elementId])).slice(0, 24)
         }`,
       nativeId: elementId,
+      ...(block.kind === "image"
+        ? { imageNativeId: (binding.image as JsonObject).imageId as string }
+        : {}),
       title,
     });
   }
@@ -900,7 +973,7 @@ async function buildPlan(
       "This element belongs to a slide also marked for deletion. Restore the pending element deletion through Compare with QMD before reviewing the slide deletion, or restore the slide before reviewing the element. No QMD changes are proposed.",
     );
   }
-  const identities = await identityAcquisition(text, state, selected);
+  const identities = await identityAcquisition(text, state, selected, source);
   const identityResult = identities?.result ?? text;
   const acquiredIds = new Map(
     identities?.bindings.map((
@@ -1277,6 +1350,12 @@ async function buildPlan(
       if (!displayedCode && !displayedMath) {
         assertMappedDisplayMath(change.after.value);
       }
+      const imageSource = state.provenance[targetKey(change.target)]?.source;
+      const imageRole = imageSource?.image;
+      const displayedImage = imageSource?.kind === "image" &&
+        imageRole && typeof imageRole === "object" &&
+        !Array.isArray(imageRole) &&
+        imageRole.role === "caption";
       const displayedList =
         state.provenance[targetKey(change.target)]?.source?.kind === "list";
       const beforeKind = state.provenance[targetKey(change.target)]?.source
@@ -1316,6 +1395,9 @@ async function buildPlan(
           continue;
         }
       }
+      const parsedImage = displayedImage
+        ? imageCaptionHtmlToSource(change.after.value)
+        : undefined;
       const parsedList = displayedList
         ? parseNativeList(change.after.value)
         : undefined;
@@ -1330,19 +1412,22 @@ async function buildPlan(
             ? ["code"]
             : displayedMath
             ? ["math"]
+            : displayedImage
+            ? ["image"]
             : displayedList
             ? ["list"]
             : ["heading", "paragraph"],
         ),
         normalized = displayedCode
           ? change.after.value.replace(/\r\n|\r/g, "\n")
-          : parsedList?.html ?? parsedMath?.html ??
+          : parsedImage?.html ?? parsedList?.html ?? parsedMath?.html ??
             canonicalInlineHtml(change.after.value),
         after = displayedCode
           ? normalized + "\n"
           : parsedMath
           ? parsedMath.tex + "\n"
-          : parsedList?.markdown ?? inlineHtmlToMarkdown(change.after.value);
+          : parsedImage?.markdown ?? parsedList?.markdown ??
+            inlineHtmlToMarkdown(change.after.value);
       textRequests.push({ blockId: block.id, expected, replacement: after });
       changes.push({
         changeId: change.id,
@@ -1725,47 +1810,60 @@ async function buildPlan(
   const identityBindings: SyncIdentityBinding[] = [];
   if (identities) {
     const document = scanSource(result),
-      inline = await readSourceInline(document);
+      inline = await readSourceInline(document, dirname(source));
     for (const binding of identities.bindings) {
-      const entry = Object.entries(state.provenance).find(([, proof]) =>
-        proof.source?.blockId === binding.blockId
-      );
-      if (
-        entry && selected.some((change) =>
-          change.kind === "delete-element" &&
-          targetKey(change.target) === entry[0]
-        )
-      ) continue;
-      const block = document.blocks.find((block) =>
-          block.id ===
-            (conversions.find((c) => c.operation.blockId === binding.newBlockId)
-              ?.blockId ?? binding.newBlockId)
-        ),
-        html = inline.get(block?.id ?? binding.newBlockId)?.html;
-      const tableHash = block?.kind === "unsupported"
-        ? hashSource(
-          canonical(
-            literalTableContent(literalTableBlock(document, block.id).content),
+      const matchingEntries = Object.entries(state.provenance).filter((
+        [, proof],
+      ) => proof.source?.blockId === binding.blockId);
+      for (const entry of matchingEntries) {
+        if (
+          entry && selected.some((change) =>
+            change.kind === "delete-element" &&
+            targetKey(change.target) === entry[0]
+          )
+        ) continue;
+        const block = document.blocks.find((block) =>
+            block.id ===
+              (conversions.find((c) =>
+                c.operation.blockId === binding.newBlockId
+              )
+                ?.blockId ?? binding.newBlockId)
           ),
-        )
-        : undefined;
-      if (!entry || !block || typeof html !== "string" && !tableHash) {
-        fail(
-          "AMBIGUOUS_IDENTITY",
-          "Acquired source identity has no faithful approved content proof.",
-        );
+          html = inline.get(block?.id ?? binding.newBlockId)?.html;
+        const tableHash = block?.kind === "unsupported"
+          ? hashSource(
+            canonical(
+              literalTableContent(
+                literalTableBlock(document, block.id).content,
+              ),
+            ),
+          )
+          : undefined;
+        if (!entry || !block || typeof html !== "string" && !tableHash) {
+          fail(
+            "AMBIGUOUS_IDENTITY",
+            "Acquired source identity has no faithful approved content proof.",
+          );
+        }
+        const [slideId, elementId] = JSON.parse(entry[0]) as [string, string];
+        identityBindings.push({
+          target: { slideId, elementId },
+          before: clone(entry[1]),
+          after: acquiredProvenance(entry[1], block, document),
+          ...(block.kind === "image" && entry[1].source?.image &&
+              typeof entry[1].source.image === "object" &&
+              !Array.isArray(entry[1].source.image) &&
+              entry[1].source.image.role === "asset"
+            ? {
+              expectedImageHash: hashSource(inline.get(block.id)!.image!.data!),
+            }
+            : tableHash
+            ? { expectedTableHash: tableHash }
+            : block.kind === "code"
+            ? { expectedCode: inline.get(block.id)!.code! }
+            : { expectedHtml: html }),
+        });
       }
-      const [slideId, elementId] = JSON.parse(entry[0]) as [string, string];
-      identityBindings.push({
-        target: { slideId, elementId },
-        before: clone(entry[1]),
-        after: acquiredProvenance(entry[1], block, document),
-        ...(tableHash
-          ? { expectedTableHash: tableHash }
-          : block.kind === "code"
-          ? { expectedCode: inline.get(block.id)!.code! }
-          : { expectedHtml: html }),
-      });
     }
     for (const patch of identities.patches) {
       const binding = identityBindings.find((binding) =>

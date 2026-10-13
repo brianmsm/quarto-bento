@@ -1,3 +1,4 @@
+import { IMAGE_CODEC_VERSION } from "../source/image.ts";
 import {
   preserveRescuedKpiGeometry,
   retainedKpiAppearances,
@@ -158,6 +159,7 @@ export interface ExecutedRender {
   ast: Ast;
   sourceHash: string;
   assetDirectories: string[];
+  expectedImageAssets?: Record<string, string>;
   expectedRevision?: number | null;
   designHash?: string | null;
 }
@@ -262,6 +264,28 @@ export async function projectProjection(
       "SOURCE_CHANGED: QMD differs from the executed source snapshot",
     );
   }
+  if (
+    mapping.blocks.some((block) =>
+      block.kind === "image" && block.origin === "computed"
+    )
+  ) {
+    throw new Error(
+      "UNSUPPORTED_AUTHORED_IMAGE: computed image captions/paths require a verified producer adapter",
+    );
+  }
+  const imageProofs = await readSourceInline(mapping, paths.directory);
+  if (executed?.expectedImageAssets) {
+    const actual = Object.fromEntries(
+      [...imageProofs].filter(([, proof]) => proof.kind === "image").map((
+        [id, proof],
+      ) => [id, hashSource(proof.image!.data!)]),
+    );
+    if (!equal(actual, executed.expectedImageAssets)) {
+      throw new Error(
+        "AUTHORED_IMAGE_ASSET_CHANGED: original source asset changed during Quarto execution; preserve the project and render from a stable asset",
+      );
+    }
+  }
   const build = resolve(paths.stateDir, "build");
   const ast = executed?.ast ?? await executeQuarto(paths.source, build);
   if (hashSource(await Deno.readTextFile(paths.source)) !== mapping.hash) {
@@ -285,8 +309,10 @@ export async function projectProjection(
       richTables,
       retainedComponentFrames(state, mapping),
       kpiAppearances,
+      imageProofs,
+      paths.directory,
     ),
-    await readSourceInline(mapping),
+    imageProofs,
   );
   const generated = prepareIsolatedDocument(
     projected.document,
@@ -338,11 +364,15 @@ export async function projectProjection(
         source: {
           hash: mapping.hash,
           ...(origin.graph ? { graph: origin.graph } : {}),
+          ...(origin.image ? { image: origin.image } : {}),
           ...(origin.richTable ? { richTable: origin.richTable } : {}),
           ...(declaration ? { design } : {}),
           ...(block
             ? {
               inlineCodec: INLINE_CODEC_VERSION,
+              ...(block.kind === "image"
+                ? { imageCodec: IMAGE_CODEC_VERSION }
+                : {}),
               ...(block.kind === "list"
                 ? { listCodec: LIST_CODEC_VERSION }
                 : {}),

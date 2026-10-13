@@ -1,3 +1,11 @@
+import {
+  assertImageShape,
+  authoredImageData,
+  executedImageShape,
+  imageNativeIdentities,
+} from "./images.ts";
+import { readSourceInline } from "./source-inline.ts";
+import { hashSource } from "../source/mod.ts";
 import { producerOutputChildren, producerReceipt } from "./producer-capture.ts";
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
 import { kpiSource, kpiSourceAttributes } from "../source/kpi.ts";
@@ -39,7 +47,7 @@ import {
   tableProducer,
   validateAuthoredTable,
 } from "../source/table.ts";
-import { isAbsolute, relative, resolve } from "node:path";
+import { assetData } from "./assets.ts";
 import { renderInline as inline } from "./inline.ts";
 import { renderList } from "./lists.ts";
 import { mathToNativeHtml } from "./math.ts";
@@ -89,59 +97,6 @@ function images(nodes: Node[]): Node[] {
   walk(nodes);
   return result;
 }
-async function assetData(src: string, assetRoots: string[]): Promise<string> {
-  // UNC and device paths must refuse before realPath can contact a share on Windows.
-  if (/^[a-z][a-z0-9+.-]*:/i.test(src) || /^[/\\]{2}/.test(src)) {
-    throw new Error("EXTERNAL_ASSET: local bundled image required");
-  }
-  for (const root of assetRoots) {
-    try {
-      const candidate = resolve(root, src);
-      const lexical = relative(resolve(root), candidate);
-      if (
-        lexical === ".." || lexical.startsWith("../") ||
-        lexical.startsWith("..\\") || isAbsolute(lexical)
-      ) continue;
-      const actual = await Deno.realPath(candidate);
-      const rel = relative(await Deno.realPath(root), actual);
-      if (
-        rel === ".." || rel.startsWith("../") || rel.startsWith("..\\") ||
-        isAbsolute(rel)
-      ) continue;
-      const bytes = await Deno.readFile(actual);
-      const extension = actual.split(".").pop()?.toLowerCase();
-      const mime = ({
-        svg: "image/svg+xml",
-        png: "image/png",
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        webp: "image/webp",
-      } as Record<string, string>)[extension || ""];
-      if (!mime) {
-        throw new Error("UNSUPPORTED_ASSET: image format is not supported");
-      }
-      if (extension === "svg") {
-        const text = new TextDecoder().decode(bytes);
-        if (
-          /<(?:script|foreignObject)\b|\bon\w+\s*=|(?:href|src)\s*=\s*["']\s*(?:https?:|\/\/|javascript:)|<!ENTITY/i
-            .test(text)
-        ) {
-          throw new Error(
-            "UNSAFE_SVG: scripts, external references and entities are not supported",
-          );
-        }
-      }
-      let binary = "";
-      for (const byte of bytes) binary += String.fromCharCode(byte);
-      return `data:${mime};base64,${btoa(binary)}`;
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) throw error;
-    }
-  }
-  throw new Error(
-    `MISSING_ASSET: ${src} is not within the source/build directory`,
-  );
-}
 export interface WidgetProjection {
   element: Element;
   origin: Origin;
@@ -158,6 +113,8 @@ export async function projectAst(
   richTables: ReadonlyMap<string, RichTableSnapshot> = new Map(),
   retainedFrames: ReadonlyMap<string, Frame> = new Map(),
   kpiAppearances: ReadonlyMap<string, KpiAppearance> = new Map(),
+  inlineProofs?: ReadonlyMap<string, SourceInlineProof>,
+  authoredImageRoot = assetRoots.at(-1),
 ): Promise<Projection> {
   const expectedRichTables = new Map(
     source
@@ -180,6 +137,9 @@ export async function projectAst(
     }
     await verifyRichTableSnapshot(expected, snapshot);
   }
+  const imageProofs = inlineProofs ??
+    (source ? await readSourceInline(source, authoredImageRoot) : new Map());
+  const consumedImages = new Set<string>();
   const consumedRichTables = new Set<string>();
   const theme = designTheme(defaults);
   const consumedWidgets = new Set<string>();
@@ -387,6 +347,97 @@ export async function projectAst(
     slide.elements[slide.elements.findIndex((e) => e.id === element.id)] =
       applied.element;
   }
+  async function authoredFigure(node: Node, parentId?: string, outer?: Attr) {
+    if (!source || !authoredImageRoot || !slide) {
+      throw new Error(
+        "UNMAPPED_AUTHORED_IMAGE: original source and source asset directory are required",
+      );
+    }
+    const block = source.blocks.find((candidate) =>
+      candidate.kind === "image" && candidate.origin === "authored" &&
+      candidate.parentId === parentId && !consumedImages.has(candidate.id)
+    );
+    const proof = block && imageProofs.get(block.id);
+    if (!block || !proof?.image?.data || proof.sourceHash !== source.hash) {
+      throw new Error(
+        "UNMAPPED_AUTHORED_IMAGE: image lacks its original independent source/asset proof",
+      );
+    }
+    const shape = executedImageShape(node);
+    assertImageShape({
+      target: proof.image.target,
+      captionHtml: proof.image.captionHtml,
+      captioned: proof.image.captioned,
+    }, shape);
+    const ids = imageNativeIdentities(source, block);
+    if (
+      outer &&
+      (!ids.attributes ||
+        JSON.stringify(outer) !== JSON.stringify(ids.attributes))
+    ) {
+      throw new Error(
+        "UNMAPPED_AUTHORED_IMAGE: executed image binding or ancestry differs from original source",
+      );
+    }
+    const data = await authoredImageData(proof.image, authoredImageRoot);
+    if (data !== proof.image.data) {
+      throw new Error(
+        "AUTHORED_IMAGE_ASSET_CHANGED: source asset changed during execution; preserve the project and render from a stable source asset",
+      );
+    }
+    const shared = {
+      target: shape.target,
+      assetDigest: hashSource(data),
+      imageId: ids.imageId,
+      captionId: ids.captionId,
+    };
+    const imageHeight = contentFrame
+      ? Math.max(100, contentFrame.h - 90)
+      : Math.max(100, Math.min(400, 570 - y));
+    const x = contentFrame?.x ?? 160, w = contentFrame?.w ?? 880;
+    add({
+      id: ids.imageId,
+      type: "image",
+      x,
+      y,
+      w,
+      h: imageHeight,
+      rotation: 0,
+      opacity: 1,
+      src: data,
+      fit: "contain",
+      groupId: ids.groupId,
+    }, {
+      origin: "authored",
+      sourceId: block.id,
+      image: { ...shared, role: "asset" },
+    });
+    add({
+      id: ids.captionId,
+      type: "text",
+      x,
+      y: y + imageHeight + 10,
+      w,
+      h: 80,
+      rotation: 0,
+      opacity: 1,
+      html: shape.captionHtml,
+      fontSize: 20,
+      fontFamily: theme.fontFamily,
+      fontWeight: 400,
+      color: theme.color,
+      align: "center",
+      valign: "top",
+      lineHeight: 1.25,
+      groupId: ids.groupId,
+    }, {
+      origin: "authored",
+      sourceId: block.id,
+      image: { ...shared, role: "caption" },
+    });
+    consumedImages.add(block.id);
+    y += imageHeight + 110;
+  }
   async function figure(
     node: Node,
     computed: boolean,
@@ -492,6 +543,8 @@ export async function projectAst(
           }
         }
         design(attr, [slide!.elements.at(-1)!]);
+      } else if (node.t === "Figure" && source && !computed) {
+        await authoredFigure(node, parentId);
       } else if (node.t === "Div") {
         const [attr, children] = node.c as [Attr, Node[]];
         const chartAncestor = chartAncestors.get(attr[0]);
@@ -531,6 +584,24 @@ export async function projectAst(
               "UNMAPPED_PROVENANCE: authored source wrapper moved outside its original ancestry",
             );
           }
+        }
+        if (
+          source && !computed &&
+          (attr[1].includes("quarto-figure") ||
+            attr[2].some(([name]) => name === "bento-image-id"))
+        ) {
+          if (attr[2].some(([name]) => name === "bento-image-id")) {
+            if (children.length !== 1) {
+              throw new Error(
+                "UNMAPPED_AUTHORED_IMAGE: bound image wrapper needs exactly one source image",
+              );
+            }
+            await authoredFigure(children[0], attr[0], attr);
+            design(attr, slide!.elements.slice(groupStart));
+          } else await authoredFigure(node, parentId);
+          if (groups) groups.push(slide!.elements.slice(groupStart));
+          contentFrame = previousFrame;
+          continue;
         }
         const ancestor = kpiAncestors.get(attr[0]);
         if (
@@ -1142,6 +1213,12 @@ export async function projectAst(
             ...(computed && parentId ? { producer: parentId } : {}),
           });
         } else if (imgs.length) {
+          if (source && !computed) {
+            await authoredFigure(node, parentId);
+            if (groups) groups.push(slide!.elements.slice(groupStart));
+            contentFrame = previousFrame;
+            continue;
+          }
           if (content.some((n) => n.t !== "Image" && n.t !== "Space")) {
             throw new Error("MIXED_IMAGE_TEXT: split figure and paragraph");
           }
@@ -1295,6 +1372,15 @@ export async function projectAst(
     }
   }
   await walk(ast.blocks);
+  if (
+    source &&
+    consumedImages.size !==
+      source.blocks.filter((block) => block.kind === "image").length
+  ) {
+    throw new Error(
+      "UNMAPPED_AUTHORED_IMAGE: every original source image must be projected once with its caption",
+    );
+  }
   if (consumedCharts.size !== expectedCharts.size) {
     throw new Error(
       "UNMAPPED_CHART_SOURCE: every original chart must be projected exactly once",
@@ -1545,6 +1631,38 @@ export function validateProjectionOrigins(
           "UNMAPPED_PROVENANCE: authored object moved outside its verified original source slide",
         );
       }
+      if (block.kind === "image") {
+        const proof = sourceInline?.get(block.id),
+          metadata = original.image as Record<string, Json> | undefined;
+        const ids = imageNativeIdentities(source, block);
+        const role = metadata?.role;
+        if (
+          !proof?.image?.data || !metadata ||
+          !["asset", "caption"].includes(String(role)) ||
+          metadata.target !== proof.image.target ||
+          metadata.assetDigest !== hashSource(proof.image.data) ||
+          metadata.imageId !== ids.imageId ||
+          metadata.captionId !== ids.captionId ||
+          element.groupId !== ids.groupId ||
+          block.slideId !== originalSlides.get(slideId) || (role === "asset"
+            ? element.type !== "image" || element.id !== ids.imageId ||
+              element.src !== proof.image.data
+            : element.type !== "text" || element.id !== ids.captionId ||
+              element.html !== proof.html) ||
+          used.has(`${block.id}:${role}`)
+        ) {
+          throw new Error(
+            "UNMAPPED_AUTHORED_IMAGE: image/caption pair, bytes, group or slide differs from the original source proof",
+          );
+        }
+        used.add(`${block.id}:${role}`);
+        origins[slideId][elementId] = {
+          ...original,
+          sourceId: block.id,
+          origin: "authored",
+        };
+        continue;
+      }
       if (used.has(block.id)) {
         throw new Error(
           `UNMAPPED_PROVENANCE: multiple executed objects claim authored source block ${block.id}`,
@@ -1630,6 +1748,13 @@ export function validateProjectionOrigins(
         sourceId: block.id,
         origin: block.origin,
       };
+    }
+  }
+  for (const block of source.blocks.filter((block) => block.kind === "image")) {
+    if (!used.has(`${block.id}:asset`) || !used.has(`${block.id}:caption`)) {
+      throw new Error(
+        "UNMAPPED_AUTHORED_IMAGE: original image/caption pair is incomplete",
+      );
     }
   }
   for (const block of source.blocks) {

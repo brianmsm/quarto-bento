@@ -1,0 +1,7 @@
+---
+title: "Local figure and authored caption"
+---
+
+## Local figure
+
+![Offline figure with **β** and `bounded evidence`](plot.svg)

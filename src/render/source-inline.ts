@@ -1,3 +1,8 @@
+import {
+  authoredImageData,
+  type AuthoredImageShape,
+  originalImageShape,
+} from "./images.ts";
 /** Read authored fragments with Pandoc only; never execute Quarto or infer output. */
 import type { SourceDocument } from "../source/mod.ts";
 import { mathToNativeHtml } from "./math.ts";
@@ -7,17 +12,21 @@ import type { Node } from "./types.ts";
 export interface SourceInlineProof {
   sourceHash: string;
   blockId: string;
-  kind: "heading" | "paragraph" | "list" | "math" | "code";
+  kind: "heading" | "paragraph" | "list" | "math" | "code" | "image";
   html: string;
+  image?: AuthoredImageShape & { data?: string };
   code?: { content: string; grammarName: string | null };
   readerId?: string;
 }
 export async function readSourceInline(
   source: SourceDocument,
+  imageRoot?: string,
 ): Promise<ReadonlyMap<string, SourceInlineProof>> {
   const fragments = source.blocks.filter((block) =>
     block.origin === "authored" && block.editable &&
-    ["heading", "paragraph", "list", "math", "code"].includes(block.kind)
+    ["heading", "paragraph", "list", "math", "code", "image"].includes(
+      block.kind,
+    )
   );
   const proofs = new Map<string, SourceInlineProof>();
   if (!fragments.length) return proofs;
@@ -64,7 +73,19 @@ export async function readSourceInline(
       );
     }
     const node = children[0];
-    if (block.kind === "heading" && node.t === "Header") {
+    if (block.kind === "image") {
+      const image = originalImageShape(node);
+      const data = imageRoot
+        ? await authoredImageData(image, imageRoot)
+        : undefined;
+      proofs.set(block.id, {
+        sourceHash: source.hash,
+        blockId: block.id,
+        kind: "image",
+        html: image.captionHtml,
+        image: { ...image, ...(data ? { data } : {}) },
+      });
+    } else if (block.kind === "heading" && node.t === "Header") {
       const [level, headerAttr, nodes] = node.c as [
         number,
         [string, string[], unknown[]],

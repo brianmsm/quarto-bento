@@ -1,3 +1,4 @@
+import { imageCaptionSyntax } from "./image.ts";
 /** Conservative original-QMD mapping. All spans are UTF-8 bytes, end-exclusive. */
 import { isSourceIdentity } from "./identity-id.ts";
 
@@ -8,6 +9,7 @@ export interface Span {
 export type BlockKind =
   | "heading"
   | "paragraph"
+  | "image"
   | "list"
   | "div"
   | "code"
@@ -274,7 +276,8 @@ export function scanSource(
     const span = { start: lines[first].start, end: lines[last].fullEnd };
     const inner = contentSpan ?? { start: span.start, end: lines[last].end };
     const content = sliceBytes(text, inner),
-      isDynamic = kind === "chunk" || dynamic(content);
+      isDynamic = kind === "chunk" || dynamic(content) ||
+        kind === "image" && dynamic(sliceBytes(text, span));
     const parentId = stack.at(-1)?.block.id;
     const ordinal =
       blocks.filter((b) => b.parentId === parentId && b.kind === kind).length +
@@ -527,6 +530,16 @@ export function scanSource(
         .test(lines[i].text)
     ) i++;
     const raw = lines.slice(first, i).map((l) => l.text).join("\n");
+    const image = imageCaptionSyntax(
+      sliceBytes(text, { start: lines[first].start, end: lines[i - 1].end }),
+    );
+    if (image) {
+      add("image", first, i - 1, {
+        start: lines[first].start + image.start,
+        end: lines[first].start + image.end,
+      });
+      continue;
+    }
     add(
       raw.split("\n").some(unsupported) || raw.includes("<!--")
         ? "unsupported"
@@ -605,6 +618,31 @@ function findBlock(doc: SourceDocument, id: string): SourceBlock {
   return matches[0];
 }
 function validateReplacement(block: SourceBlock, replacement: string): void {
+  if (block.kind === "image") {
+    const original = imageCaptionSyntax(block.raw);
+    if (!original) {
+      throw new SourceError(
+        "structural-replacement",
+        "Image caption boundary is not exact.",
+      );
+    }
+    const bytes = new TextEncoder().encode(block.raw);
+    const candidate =
+      new TextDecoder().decode(bytes.subarray(0, original.start)) +
+      replacement + new TextDecoder().decode(bytes.subarray(original.end));
+    const fresh = imageCaptionSyntax(candidate);
+    if (
+      !fresh || fresh.start !== original.start ||
+      fresh.caption !== replacement ||
+      fresh.end !==
+        original.start + new TextEncoder().encode(replacement).length
+    ) {
+      throw new SourceError(
+        "structural-replacement",
+        "Image caption edit must preserve the original URI and image boundaries.",
+      );
+    }
+  }
   if (block.kind === "heading" && /[\r\n]|\s\{[^}]*\}\s*$/.test(replacement)) {
     throw new SourceError(
       "structural-replacement",
@@ -642,7 +680,7 @@ function validateReplacement(block: SourceBlock, replacement: string): void {
       "A semantic edit cannot introduce executable inline content.",
     );
   }
-  if (!replacement.trim()) {
+  if (!replacement.trim() && block.kind !== "image") {
     throw new SourceError(
       "structural-replacement",
       "Deletion is a separate explicitly reviewed operation.",

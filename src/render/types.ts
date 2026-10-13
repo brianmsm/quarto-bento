@@ -43,6 +43,8 @@ export interface Origin {
   graph?: Json;
   /** Stable content receipt from a fresh, source-checked static table capture. */
   richTable?: Json;
+  /** Exact authored local image/caption pair and input-asset digest. */
+  image?: Json;
 }
 export interface Projection {
   document: BentoDoc;

@@ -18,6 +18,7 @@ export interface IdentityRequest {
   blockId: string;
   sourceId: string;
   nativeId: string;
+  imageNativeId?: string;
   title: boolean;
 }
 export interface IdentityPreview {
@@ -78,7 +79,11 @@ export function previewIdentities(
   for (const request of requests) {
     if (
       !isSourceIdentity(request.sourceId) ||
-      !isNativeIdentity(request.nativeId) || seen.has(request.blockId) ||
+      !isNativeIdentity(request.nativeId) ||
+      (request.imageNativeId !== undefined &&
+        (!isNativeIdentity(request.imageNativeId) ||
+          request.imageNativeId === request.nativeId)) ||
+      seen.has(request.blockId) ||
       reserved.has(request.sourceId)
     ) fail("Source/native identities are unsafe or collide.");
     seen.add(request.blockId);
@@ -96,7 +101,9 @@ export function previewIdentities(
       block.stable || block.origin !== "authored" ||
       !block.editable && !table ||
       !table &&
-        !["heading", "paragraph", "list", "math", "code"].includes(block.kind)
+        !["heading", "paragraph", "list", "math", "code", "image"].includes(
+          block.kind,
+        )
     ) {
       fail(
         "Only weak authored headings, paragraphs, lists, display equations and displayed code can acquire a verified identity.",
@@ -139,10 +146,18 @@ export function previewIdentities(
       newBlockId = request.sourceId;
     } else {
       if (request.title) fail("A body text block is not a slide title.");
+      if (
+        block.kind === "image" && !request.imageNativeId ||
+        block.kind !== "image" && request.imageNativeId !== undefined
+      ) fail("Image identity needs its original checked native pair.");
       const newline = document.newline;
       const body = block.raw + (block.raw.endsWith("\n") ? "" : newline);
       replacement =
-        `::: {#${request.sourceId} bento-element-id="${request.nativeId}"}${newline}${newline}${body}${newline}:::${newline}`;
+        `::: {#${request.sourceId} bento-element-id="${request.nativeId}"${
+          request.imageNativeId
+            ? ` bento-image-id="${request.imageNativeId}"`
+            : ""
+        }}${newline}${newline}${body}${newline}:::${newline}`;
       newBlockId = `${request.sourceId}/${block.kind}:1`;
     }
     patches.push({
