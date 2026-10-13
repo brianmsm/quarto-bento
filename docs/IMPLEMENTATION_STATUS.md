@@ -23,6 +23,18 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+The subsequent redesign follow-up integrates reviewed displayed-code language
+changes at `a1beef6` and native content-bounds warnings at `92be7d0`, after
+independent reviews of both author commits. Their combined focused Linux run
+passed **21 tests, zero failures (1m7s)** and type checking. The language lane
+has real native selector/review/Apply/recalculate evidence; the coordinator also
+verified native inspector resize/Save, changed-source overflow, correction and
+reopening with unchanged source authority and document identity. See
+[displayed code](evidence/DISPLAYED-CODE.md) and
+[content overflow](evidence/CONTENT-OVERFLOW.md#integrated-native-studio-acceptance).
+Source-aware application of reusable layouts remains in progress. These newer
+changes do not inherit the earlier 550-test full-suite or portable receipt.
+
 The full-product follow-up now integrates plain speaker-note creation on existing
 and new slides, reviewed retention of unlabelled producer IDs, and native
 Markdown lists backed by QMD. The coordinator completed native notes/list

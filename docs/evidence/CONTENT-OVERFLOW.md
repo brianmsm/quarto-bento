@@ -65,3 +65,28 @@ local check took approximately 497ms and an identical cached inspection 0.18ms.
 These are one-run observations, not a benchmark or performance guarantee. The
 Studio client requests diagnostics on load, Save and explicit operations; it
 does not start a periodic metric polling loop.
+
+## Integrated native Studio acceptance
+
+At `92be7d0`, the coordinator used the real inspector in headless Chromium to
+set an existing paragraph to x=80, y=166, w=300, h=80 and saved it through
+**Guardar proyecto**. QMD remained byte-identical. Expanding that paragraph in
+QMD and clicking **Recalcular** retained the frame and displayed
+`TEXT_OVERFLOW` with 1577.5px of bottom excess. The inspected screenshot shows
+both the warning and the text overlapping the code below and leaving the page.
+
+Using the native inspector again, the coordinator changed the frame to
+w=1000, h=500 and the font to 14pt. **Guardar proyecto** cleared the warning
+without executing QMD. Reloading Studio retained that geometry and the absence
+of the warning. Source contained exactly the intentional expanded paragraph,
+the `docId` stayed unchanged and no pending edits were added. This checks text
+fitting its own box; it does not claim automatic collision avoidance between
+separate objects.
+
+The integrated code-language, content-bounds and Studio diagnostic regressions
+passed **21 tests, zero failures (1m7s)**, with the optional native Studio test
+enabled. Type checking also passed. This is a focused integration result, not
+a new complete-suite receipt. Local evidence is retained in
+`output/verification/native-redesign-combined/overflow-receipt.json`, its native
+snapshots and `output/playwright/redesign-overflow-warning.png`; the test log is
+`output/verification/redesign-focused-92be7d0.log`.
