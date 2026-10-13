@@ -46,9 +46,11 @@ See [composed charts](evidence/COMPOSED-CHARTS.md). Common execution producer
 receipts and ordinary Quarto activation are integrated at `74a16cd` after
 independent startup/profile, hook and inline-filter checks. See
 [producer activation](evidence/PRODUCER-ACTIVATION.md) and
-[Python computation](evidence/PYTHON-COMPUTATION.md). Integration regression
-validation is in progress; these additions do not inherit the older full-suite
-result. The current audit also found ordinary unwrapped math/code, pipe-table
+[Python computation](evidence/PYTHON-COMPUTATION.md). The shared computed-chart receipt adapter is integrated at `b5923c2` after
+11 combined context/composition tests. Integrated Python sync/recompute/rebuild
+also passed after updating its exact expected producer-identity patch. Complete
+combined validation remains in progress; these additions do not inherit the
+older full-suite result. The current audit also found ordinary unwrapped math/code, pipe-table
 and local-image mapping gaps; their corrections remain in progress.
 
 Portable packages additionally pin schema, license/notice and upstream npm

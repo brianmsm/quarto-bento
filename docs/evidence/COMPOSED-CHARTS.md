@@ -102,3 +102,23 @@ The follow-up source-context tests passed **3/3 in 15s**. The existing eight
 chart tests and five composed-chart tests also passed with the correction;
 source type checking and targeted lint/format passed. The earlier combined
 29-test result remains attributed to `2ce6db1`, not retroactively to this fix.
+
+## Integration with original execution receipts
+
+At `b5923c2`, computed charts unwrap only an execution boundary verified for the
+current original source hash and exact expected producer. The composition and
+source-context checks run before this extraction. A valid boundary from another
+chunk cannot supply the chart's data.
+
+The updated regression distinguishes actual authored Lua transformations from
+computed-filter preflight refusal. Authored filters really execute and fail the
+original-context checks; unsupported computed filters fail before computation,
+leaving the execution counter and published state/HTML unchanged. Separate tests
+mutate an executed AST in place, retaining its private execution trust, to prove
+computed chart context cannot change or disappear at the projection boundary.
+Cloning the AST would lose that trust and would test a different rejection.
+
+The integrated context/composed-chart group passed **11 tests, 0 failures, 43s**
+on Linux. The coordinator independently reviewed the integration diff. Log:
+`output/verification/chart-producer-integrated.log`. This does not replace the
+pending complete combined acceptance run.
