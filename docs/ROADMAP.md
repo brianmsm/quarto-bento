@@ -137,8 +137,10 @@ what remains unresolved after checking exact registry-linked source commits.
 Do not repeat that lookup or substitute current upstream files as if they proved
 the historical packages' provenance. The owner selected MIT for the project's
 own code, with Brian Norman Peña Calero as holder, on 2026-10-13. The public
-release boundary still needs an owner decision; other-platform execution remains
-deferred by the owner. These gates do not change the full product target.
+release boundary still needs an owner decision. On 2026-10-13 the owner excluded
+Windows and macOS from the current objective, retaining them as future pending
+work. They must not block completion of the Linux objective; hosted CI remains
+deferred. The longer-term product horizon is unchanged.
 
 Useful references:
 - Bento: https://github.com/nyblnet/bento

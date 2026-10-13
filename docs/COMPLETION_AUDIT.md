@@ -4,7 +4,9 @@ Audit date: 2026-10-13. Inspected revision: `3d87133`, runtime `74e552b`.
 An independent read-only review compared the full [product target](PRODUCT_TARGET.md),
 decisions, workflows and current implementation with code, tests and receipts.
 No new concrete ordinary Linux defect was found. This does not prove complete
-product acceptance: the platform requirement and public release gates remain open.
+product acceptance: public release gates remain open. The owner subsequently
+excluded Windows/macOS from the current objective on 2026-10-13; they remain
+pending in the longer-term horizon and no longer block the Linux objective.
 
 ## Product requirements
 
@@ -51,11 +53,13 @@ The complete 572-test/four-step suite belongs to `b5b6bbe`; later notice/MIT
 changes have focused tests and portable smoke. Those results are not relabeled
 as a new complete-suite run of this revision. This audit reran no suite.
 
-The full objective cannot be marked complete on this evidence:
+Remaining release requirements and evidence limits (with the owner's platform
+scope update of 2026-10-13):
 
-- macOS/Windows native qualification requires the systems/runners and resumption
-  of execution tests explicitly deferred by the owner. The Linux-only guard in
-  `src/integration/invocation.ts` is real; a launcher or CI YAML does not remove it.
+- macOS/Windows are pending future work outside the current objective, not
+  blockers for its completion. Future qualification requires systems/runners.
+  The Linux-only guard in `src/integration/invocation.ts` is real; a launcher or
+  CI YAML does not establish support. Hosted CI remains deferred.
 - Public v1 acceptance requires the owner's explicit feature/platform boundary.
   Choosing MIT does not freeze that boundary or authorize publication.
 - The [four-package historical source investigation](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md)

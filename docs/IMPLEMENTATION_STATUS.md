@@ -10,8 +10,9 @@ end. Full product acceptance and public v1 release remain pending. See
 - Root documentation preserved in Git before code changes (`e7f3f46`).
 - Quarto 1.10.19, Deno 2.9.6, R 4.6.1 on Linux.
 - Current owner-requested validation scope: this local Linux machine only
-  (2026-10-11). Native macOS/Windows and hosted CI validation are deferred; they
-  are not prerequisites for closing this local validation pass.
+  (2026-10-11). On 2026-10-13 the owner explicitly excluded Windows and macOS
+  from the current objective, retaining them as future pending work. They are
+  not completion prerequisites for this objective. Hosted CI remains deferred.
 - Bento revision and bundled shell digest: `vendor/bento/pin.json`.
 - Isolated managed worktrees separate source mapping, bridge/state, Quarto
   integration, document validation, Studio hardening, math, notes and packaging.
@@ -26,8 +27,10 @@ end. Full product acceptance and public v1 release remain pending. See
 The [post-MIT completion audit](COMPLETION_AUDIT.md) maps all nine product
 capabilities and six canonical steps to current code and scoped evidence.
 It independently verifies the receipt/artifact hashes, corrects historical
-ledger drift and preserves the unmet platform/public-release requirements.
-It does not declare the full objective complete.
+ledger drift and preserves unmet public-release requirements. Its platform
+assessment now records the owner's exclusion of Windows/macOS from this objective;
+those future requirements no longer block the current Linux objective.
+It does not declare a public v1 release.
 
 The owner-selected MIT license is integrated at `74e552b`, with copyright 2026
 Brian Norman Peña Calero. The 117-file portable, installed extension and native

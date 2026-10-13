@@ -37,8 +37,10 @@ runtime rebuilt the combined native workflow exactly. An independent audit found
 no new concrete blocker in the documented ten ordinary Linux workflows. Preserve
 the bounded codecs and distinguish this local pass from public release gates;
 do not repeat these completed slices as if they were unimplemented.
-The owner currently limits execution tests to local Linux; native macOS/Windows
-and hosted CI are deferred. The product horizon remains
+Owner decision (2026-10-13): Windows and macOS implementation/qualification
+remain pending future work and are outside the current objective; do not use
+them as blockers for its completion. Execution tests remain local Linux only;
+hosted CI is deferred. The product horizon remains
 `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the
 exact v1 release boundary is not frozen**; do not claim a full v1 release
 without confirming its acceptance scope.

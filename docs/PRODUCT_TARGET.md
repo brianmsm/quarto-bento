@@ -59,6 +59,14 @@ An implementing agent **may** choose internal algorithms, module structure, test
 
 **Request an explicit product decision before changing**: source-of-truth rules, loss/conflict handling, data provenance, offline expectations, design retention, compatibility promises, live collaboration scope, an upstream fork strategy, or the feature set declared “v1 shipped.” The existence of an unresolved technical design detail **does not block** S0/S1/S2 experiments.
 
+## Current objective platform scope
+
+Owner decision, 2026-10-13: Windows and macOS remain pending future work and
+are outside the current implementation objective. Assess this objective on
+Linux; do not require those platforms to close it. They remain in the longer-term
+product horizon above, without a tested-support claim. Hosted CI remains
+deferred. This platform decision does not freeze or authorize a public v1 release.
+
 ## Definition of completion
 
 A stage is complete only when its workflows can be executed end-to-end from a clean working tree, its failure paths have tests, its changes are documented, and the results are reproducible **under compatible dependencies**. A final v1 release additionally needs its scope frozen and validated across the supported platforms.
