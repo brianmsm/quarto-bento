@@ -1,3 +1,4 @@
+import { loadBentoShell } from "../render/shell.ts";
 import { IMAGE_CODEC_VERSION } from "../source/image.ts";
 import {
   preserveRescuedKpiGeometry,
@@ -510,9 +511,7 @@ async function render(source: string, executed?: ExecutedRender) {
     const textDiagnostics = await textOverflowDiagnostics(
       composed.document as unknown as RenderDoc,
     );
-    const shell = await Deno.readTextFile(
-      new URL("../../vendor/bento/shell.html", import.meta.url),
-    );
+    const shell = await loadBentoShell();
     const assembled = spliceDocument(
       shell,
       composed.document as unknown as RenderDoc,

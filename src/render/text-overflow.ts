@@ -1,4 +1,5 @@
 /** Content bounds from the pinned native renderer, never a character estimate. */
+import { loadBentoShell } from "./shell.ts";
 import { withHeadlessChromium } from "../browser/chromium.ts";
 import {
   ISOLATION_BOOTSTRAP,
@@ -94,9 +95,7 @@ async function measureTextOverflow(
     }],
   });
   try {
-    const shell = await Deno.readTextFile(
-      new URL("../../vendor/bento/shell.html", import.meta.url),
-    );
+    const shell = await loadBentoShell();
     const html = spliceDocument(
       shell,
       probes,

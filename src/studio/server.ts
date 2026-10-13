@@ -1,3 +1,4 @@
+import { loadBentoShell } from "../render/shell.ts";
 import { applyLayout, previewLayout, readLayouts } from "../core/layouts.ts";
 import {
   applyComponentAction,
@@ -80,9 +81,7 @@ export async function readStudioBody(
 
 export async function startStudio(source: string, port = 0) {
   const token = crypto.randomUUID() + crypto.randomUUID();
-  const shell = await Deno.readTextFile(
-    new URL("../../vendor/bento/shell.html", import.meta.url),
-  );
+  const shell = await loadBentoShell();
   const bridge = await Deno.readTextFile(
     new URL("../bridge/browser.js", import.meta.url),
   );

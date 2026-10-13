@@ -111,6 +111,15 @@ review of Bento's other components or decide Quarto-Bento's own licensing.
 Remaining unknown font releases and the broader notice review are explicit in
 the inventory.
 
+Managed standalone HTML also carries an inert, readable JSON notice block in the
+document head with the full supplied Bento MIT text, upstream notices, font
+provenance note and both OFL texts. Studio and the isolated deck Presenter use
+the same shell loader. Native Bento's pristine-shell serialization retains this
+block in saved copies; the texts remain outside BentoDoc and do not affect slide
+content. The vendored shell and its original NOTICE remain unchanged. This
+preserves already-supplied notices without assigning Quarto-Bento a license or
+claiming a complete third-party audit.
+
 At the pinned revision, `slides/package.json` declares version `1.2.6`, but the
 root entry (`packages[""]`) in the original `slides/package-lock.json` declares
 `1.1.0`. The exact upstream files are preserved and independently hash-pinned;
@@ -230,18 +239,18 @@ exact clean source revision. Its real launcher rebuilt the native table and
 image-caption fixtures from source/assets/state only, retaining exact emitted
 documents, docIds and zero pending changes; the table executed R once. The
 portable smoke also passed relocation and ordinary Quarto with pending edits.
-See [its receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable
-directory is `output/verification/portable-85da037/distribution/`; the sibling
-README documents local launch commands. Older artifact receipts remain historical.
+See [its receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable directory
+is `output/verification/portable-85da037/distribution/`; the sibling README
+documents local launch commands. Older artifact receipts remain historical.
 
 ## Current combined Linux artifact
 
-The clean `f06def7` development artifact contains **113 verified payload files**;
-every payload byte also matches the later test-only revision `b5b6bbe`. The real
-launcher passed relocation, retained pending edits and ordinary Quarto. It
-rebuilt the reusable-layout example and the combined native redesign/code-language
-fixture from source/assets/state only, preserving exact emitted documents,
-docIds, typography and zero pending changes. See
-[the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md).
-The usable directory is `output/verification/portable-f06def7/distribution/`;
-its sibling README and receipt contain commands, input inventories and hashes.
+The clean `f06def7` development artifact contains **113 verified payload
+files**; every payload byte also matches the later test-only revision `b5b6bbe`.
+The real launcher passed relocation, retained pending edits and ordinary Quarto.
+It rebuilt the reusable-layout example and the combined native
+redesign/code-language fixture from source/assets/state only, preserving exact
+emitted documents, docIds, typography and zero pending changes. See
+[the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md). The
+usable directory is `output/verification/portable-f06def7/distribution/`; its
+sibling README and receipt contain commands, input inventories and hashes.

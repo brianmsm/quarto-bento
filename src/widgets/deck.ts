@@ -1,4 +1,5 @@
 /** Full native static deck with explicitly selected isolated interactive widget views. */
+import { loadBentoShell } from "../render/shell.ts";
 import type { BentoDoc } from "../state/types.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
 import { spliceDocument } from "../render/html.ts";
@@ -11,9 +12,7 @@ export async function createDeckPresenter(
 ): Promise<string> {
   const doc = structuredClone(document);
   doc.readonly = true;
-  const shell = await Deno.readTextFile(
-    new URL("../../vendor/bento/shell.html", import.meta.url),
-  );
+  const shell = await loadBentoShell();
   const deck = spliceDocument(
     shell,
     doc as unknown as RenderDoc,

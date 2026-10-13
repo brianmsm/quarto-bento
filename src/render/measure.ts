@@ -1,3 +1,4 @@
+import { loadBentoShell } from "./shell.ts";
 import { withHeadlessChromium } from "../browser/chromium.ts";
 import { spliceDocument } from "./html.ts";
 import {
@@ -102,9 +103,7 @@ export async function measureNativeText(
     ...(resourceFields?.fonts ? { fonts: resourceFields.fonts } : {}),
     ...(resourceFields?.assets ? { assets: resourceFields.assets } : {}),
   });
-  const shell = await Deno.readTextFile(
-    new URL("../../vendor/bento/shell.html", import.meta.url),
-  );
+  const shell = await loadBentoShell();
   const html = spliceDocument(
     shell,
     metricsDocument as unknown as BentoDoc,
