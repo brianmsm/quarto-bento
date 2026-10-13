@@ -70,3 +70,21 @@ codecs, four historical license-source gaps and upstream build-only advisory
 limits remain documented. Linux is the only npm package platform currently
 declared. macOS/Windows, stable v1, registry publication and global user
 installation are separate future actions.
+
+## Clean prepared artifact
+
+The final local tarball was built from clean source commit
+`02ac65f9909d754f96d7e6269d6572217a51e8c9`; its distribution manifest records
+that exact commit with `dirty: false`.
+`output/npm/brianmsm-quarto-bento-0.1.0.tgz` contains 122 files and is 893786
+bytes, SHA-256
+`6e5904d06b7236d646e0f16df43fb78b3125a284cf6075af2a622486a0b945e9`. This ignored
+local artifact is not a registry publication or a GitHub release.
+
+The clean-commit npm smoke passed again. Its local receipt is
+`output/npm/check-02ac65f.json`, SHA-256
+`0223afbdc1d05981fc6a29204a0dc9563f35bd67ea78559e3297ddec0bec9719`. The mise
+helper installed that exact final tarball, checked its archive hash and all 117
+installed payloads, and passed version/doctor. Its local receipt is
+`output/npm/mise-02ac65f.json`, SHA-256
+`dd4e565cd65799769667cebe308a3b82d4adf5d2aed2c63cb74135d6aa7daf54`.
