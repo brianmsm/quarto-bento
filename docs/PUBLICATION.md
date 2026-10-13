@@ -31,6 +31,19 @@ It does not run automatically on publication, and no hosted result is inferred
 from its configuration. It does not install R, test all computation engines or
 reproduce the complete native-browser acceptance suite.
 
+## npm CLI package preparation
+
+The Linux npm CLI package is prepared locally under the name
+`@brianmsm/quarto-bento`, version `0.1.0`. This preparation adds a constrained
+package staging script, a Node launcher for application source run by external Deno and
+consumer-facing installation documentation. It does not mean that a tarball
+was published to npm: **the registry package is not published**. No installation
+from the public npmjs.org registry can be claimed until publication and
+unauthenticated package availability have both been verified. The package is
+Linux-only and remains a development build, not a stable v1 release. See the
+[npm package guide](NPM.md) for local tarball preparation and the exact future
+mise command.
+
 ## Licenses and unresolved provenance
 
 The project's own code and documentation use MIT, copyright (c) 2026 Brian
@@ -89,5 +102,7 @@ reviewed local bytes exactly (SHA-256
 vulnerability reporting is enabled, issues are enabled and the wiki is disabled.
 No hosted workflow run was present after the initial push. This receipt is a
 later documentation update; the initial snapshot remains available in Git
-history. Only source publication occurred, with no GitHub release or binary
+history. That initial publication snapshot contained source only. The later
+local npm package preparation does not alter this historical receipt and has
+not been published to npm; there is still no GitHub release or binary
 attachment.

@@ -1,0 +1,35 @@
+{
+  "name": "@brianmsm/quarto-bento",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline Quarto and Bento authoring with retained design and reviewed QMD synchronization",
+  "type": "module",
+  "bin": {
+    "qbento": "bin/qbento-npm.mjs"
+  },
+  "files": [
+    "bin/qbento-npm.mjs",
+    "distribution/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": ["linux"],
+  "license": "MIT",
+  "author": "Brian Norman Peña Calero",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brianmsm/quarto-bento.git"
+  },
+  "homepage": "https://github.com/brianmsm/quarto-bento#readme",
+  "bugs": {
+    "url": "https://github.com/brianmsm/quarto-bento/issues"
+  },
+  "keywords": ["quarto", "bento", "presentations", "deno", "offline"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

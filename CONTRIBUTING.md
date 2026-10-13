@@ -11,9 +11,11 @@ and [architecture](docs/ARCHITECTURE.md). Coding agents must also read
 
 Use installed Deno 2.9.6 and Quarto 1.10.19 for the tested baseline. Computation
 tests need their installed R/Python packages; browser tests need Chromium.
-Quarto-Bento does not install or lock these environments. No npm install is
-needed to use the committed runtime. Bento's upstream package files are pinned
-provenance, not instructions to build or install its dependencies.
+Quarto-Bento does not install or lock these environments. The source checkout
+does not require `npm install` to use its committed runtime. The separate
+Linux npm CLI package is staged from the reviewed portable distribution; Bento's
+upstream package files are pinned provenance, not instructions to build or
+install its dependencies.
 
 ```sh
 deno task qbento doctor
@@ -21,6 +23,25 @@ deno task check
 deno lint src tests scripts
 deno fmt --check src scripts
 ```
+
+To prepare the consumer npm tarball for local review, run the staging script
+from the repository root into a new directory outside the checkout:
+
+```sh
+deno run --no-config --allow-read --allow-write --allow-run=git \
+  scripts/npm-package.ts /tmp/qbento-npm-0.1.0
+npm pack --ignore-scripts --pack-destination /tmp /tmp/qbento-npm-0.1.0
+```
+
+The staging script validates the package metadata and builds the self-contained
+runtime payload. It does not publish to npm. See [NPM.md](docs/NPM.md) for the
+local install workflow and publication status. Do not publish a registry
+package until its provenance and licensing review is complete.
+
+Run `deno task npm-check` for the real offline tarball installation and relocated
+state-only rebuild smoke. Run `python3 scripts/mise-npm-check.py <tarball>` for
+the isolated real mise backend check. These helpers use temporary prefixes and
+configuration; neither publishes a package or changes the user's global setup.
 
 Run the tests relevant to the changed behavior. `deno task test` includes real
 Quarto/computation tests and expects the necessary local dependencies; optional

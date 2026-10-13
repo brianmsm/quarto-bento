@@ -97,7 +97,7 @@ are outside the implemented scope. See [authoring](docs/AUTHORING.md),
 [acceptance limits](docs/ACCEPTANCE_GAPS.md) and [examples](examples/README.md).
 The [product target](docs/PRODUCT_TARGET.md) describes the longer-term horizon.
 
-## Commands and portable use
+## Commands and installation
 
 From the checkout, invoke commands with `deno task qbento`. A locally built
 portable directory supplies the equivalent `bin/qbento` launcher:
@@ -119,8 +119,12 @@ qbento init presentation.qmd
 [JSON agent API](docs/AGENT-API.md) uses the same checked document/state core.
 Build a portable development directory with
 `deno task package /absolute/path/to/new-directory`; see
-[packaging and license provenance](docs/PACKAGING.md). No binary release or
-installer is attached to this source publication.
+[packaging and license provenance](docs/PACKAGING.md). A Linux npm CLI package
+is prepared locally as version `0.1.0`, but it has **not** been published to the
+npm registry. Its [installation guide](docs/NPM.md) explains how to stage a
+tarball and install it into a local npm prefix for review. Registry installation
+through mise remains future work until the package is published. This package
+preparation is not a stable v1 release or a cross-platform claim.
 
 ## Documentation and development
 
@@ -133,6 +137,8 @@ installer is attached to this source publication.
 - [Current status](docs/IMPLEMENTATION_STATUS.md), [roadmap](docs/ROADMAP.md)
   and [evidence index](docs/evidence/README.md): measured results and future
   work.
+- [npm CLI package](docs/NPM.md): Linux package contents, local tarball
+  preparation and future registry installation.
 - [Contributing](CONTRIBUTING.md), [security](SECURITY.md) and
   [publication scope](docs/PUBLICATION.md): development and public repository
   policy.

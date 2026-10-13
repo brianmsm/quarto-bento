@@ -1,5 +1,9 @@
 # Portable development directory
 
+For the separately staged Linux npm CLI wrapper and local tarball installation,
+see [NPM.md](NPM.md). Its installation and isolated mise checks are recorded in
+[the npm receipt](evidence/NPM-CLI.md). Registry publication is deferred.
+
 This package is a local development artifact, not a v1 release or a native
 installer. It contains the current TypeScript runtime, Lua filters, offline
 Quarto extension, pinned Bento shell/schema and provenance, upstream license and

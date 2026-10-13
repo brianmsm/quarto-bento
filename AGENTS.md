@@ -12,6 +12,12 @@
 8. Never rewrite source or discard unsynced edits on render without a checked, approved operation. Make source patches inspectable and recoverable.
 
 **Current handoff:** read `docs/PUBLICATION.md`, the implementation ledger and
+`docs/NPM.md` for the prepared Linux npm CLI. The owner requested preparation
+only; do not publish to npm without a new instruction. Its local installation,
+relocation/rebuild and isolated mise checks are recorded in
+`docs/evidence/NPM-CLI.md`. The Node shim delegates to external Deno; package
+metadata must not trigger lifecycle hooks or environment installation.
+The earlier application baseline is recorded in
 `docs/evidence/SECURITY-LINUX.md`. Runtime `2ee7974` passed 578 tests and four
 steps with zero failures. Its 117-file clean portable and state-only smoke are
 validated locally. The original S0/S1/S2/S4, ordinary authoring and redesign

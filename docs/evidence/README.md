@@ -10,6 +10,8 @@ See [publication scope](../PUBLICATION.md) for the current baseline.
 
 ## Current combined results
 
+- [Prepared npm CLI](NPM-CLI.md): explicit tarball inventory, npm installation,
+  prefix relocation/state rebuilding, and an isolated real mise backend check.
 - [Security and dependencies](SECURITY-LINUX.md): mitigations, 578 tests and
   four steps, zero failures, plus 117-file portable smoke at runtime `2ee7974`.
 - [Redesign integration](REDESIGN-INTEGRATED-LINUX.md): source-aware layout,

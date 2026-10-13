@@ -52,4 +52,8 @@ stable release.
 
 The full source checkout contains development, acceptance and CI documentation.
 Those source-only files and verification artifacts are not part of this portable
-directory.
+directory. The separate
+[npm CLI package](https://github.com/brianmsm/quarto-bento/blob/main/docs/NPM.md)
+wraps the portable runtime with a `qbento` launcher for local prefix
+installation; its registry publication and mise-based registry installation are
+still pending.
