@@ -3,8 +3,9 @@
 This package is a local development artifact, not a v1 release or a native
 installer. It contains the current TypeScript runtime, Lua filters, offline
 Quarto extension, pinned Bento shell/schema and provenance, upstream license and
-notices, Unix and Windows command launchers, and a sorted SHA256 inventory. It
-requires installed Deno 2, Quarto (tested with 1.10.19), and the
+notices, the complete OFL texts and authored provenance note for the two
+embedded fonts, Unix and Windows command launchers, and a sorted SHA256
+inventory. It requires installed Deno 2, Quarto (tested with 1.10.19), and the
 language/packages used by the user's QMD. It does not install or manage these
 dependencies.
 
@@ -84,18 +85,31 @@ The Bento shell, schema, upstream MIT license, upstream third-party notice,
 `slides/package.json`, and `slides/package-lock.json` are tied to the revision
 in `runtime/vendor/bento/pin.json` by their pinned SHA256 values. The package
 builder checks the shell and each pinned upstream/provenance file before
-creating its destination. The offline `runtime-dependencies.json` inventory
+creating its destination. It also verifies the authored font provenance note and
+each full font-license file against their recorded hashes and official,
+commit-specific source URLs. The offline `runtime-dependencies.json` inventory
 records the three direct dependencies from Bento's `slides/package.json` and the
 lockfile's production entries (`dev` not true), with exact versions, declared
 license metadata and lockfile paths. The builder cross-checks the inventory
 against the included Bento package manifest and lockfile and verifies that those
 direct roots agree. This is a traceable dependency inventory, not a claim that
 every production-scoped entry contributes bytes to the shell or a complete legal
-audit. The shell embeds upstream notices. The inventory marks verification of
-the authoritative full SIL Open Font License 1.1 text for Fraunces and
-Instrument Sans, and its inclusion in the package, as pending. The notice
-identifies those fonts and links to the license, but this package does not
-establish legal completeness.
+audit. The unchanged shell also embeds Bento's original third-party attribution
+text.
+
+The two embedded font assets are identified by their names in Bento's pinned
+font source, Latin subset, WOFF2 byte count and SHA256. Their exact upstream
+release identifiers are absent from that source and remain explicitly unknown.
+The full official Fraunces and Instrument Sans SIL Open Font License 1.1 texts
+are included under `runtime/vendor/bento/font-licenses/`. The authored
+`runtime/vendor/bento/FONT_NOTICES.md` records that Bento's unchanged notice
+says Fraunces copyright 2020 while the official OFL header says 2018; it
+preserves both attributions and leaves Bento's supplied notice and shell
+unchanged. The Instrument Sans attribution is Copyright 2022 in both places.
+These records cover the two named fonts; they do not establish a complete legal
+review of Bento's other components or decide Quarto-Bento's own licensing.
+Remaining unknown font releases and the broader notice review are explicit in
+the inventory.
 
 At the pinned revision, `slides/package.json` declares version `1.2.6`, but the
 root entry (`packages[""]`) in the original `slides/package-lock.json` declares
@@ -201,10 +215,10 @@ until its process/output preflight is implemented and validated there.
 
 The coordinator repeated the complete Linux smoke on runtime
 `75edcdf0dc2b04d09d6314c0630f694693c55f8e`, including source graph scope,
-retained KPI appearance, explicit Studio components and Chromium startup readiness. The portable
-inventory contained **91 payload files**; all launcher, retained-pending-edit,
-state-only rebuild and relocated ordinary-Quarto assertions passed with process
-exit **0** in 6.92 seconds. The local raw receipt is
-`output/verification/75edcdf/portable.log`. The prior 69-file receipt at
+retained KPI appearance, explicit Studio components and Chromium startup
+readiness. The portable inventory contained **91 payload files**; all launcher,
+retained-pending-edit, state-only rebuild and relocated ordinary-Quarto
+assertions passed with process exit **0** in 6.92 seconds. The local raw receipt
+is `output/verification/75edcdf/portable.log`. The prior 69-file receipt at
 `c225546` remains historical evidence. These checks extend the Linux receipt
 without changing the other-platform qualification boundary.

@@ -84,6 +84,21 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
         f.path === "runtime/vendor/bento/THIRD_PARTY_NOTICES.md"
       ),
     );
+    assert(
+      a.files.some((f) => f.path === "runtime/vendor/bento/FONT_NOTICES.md"),
+    );
+    assert(
+      a.files.some((f) =>
+        f.path ===
+          "runtime/vendor/bento/font-licenses/fraunces-OFL.txt"
+      ),
+    );
+    assert(
+      a.files.some((f) =>
+        f.path ===
+          "runtime/vendor/bento/font-licenses/instrument-sans-OFL.txt"
+      ),
+    );
     assert(a.files.some((f) => f.path === "runtime/_extensions/qbento/pre.ts"));
     assert(
       a.files.some((f) =>
@@ -111,7 +126,26 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
         item.name
       ).join(",") === "moveable,reveal.js,selecto",
     );
-    assert(dependencyInventory.noticeReview.status === "pending");
+    assert(
+      dependencyInventory.noticeReview.status ===
+        "font-texts-pinned-review-incomplete",
+    );
+    assert(
+      dependencyInventory.embeddedFonts.map((item: { asset: string }) =>
+        item.asset
+      ).join(",") === "FRAUNCES_900,INSTRUMENT_VAR",
+    );
+    assert(
+      dependencyInventory.embeddedFonts.map((item: { assetSha256: string }) =>
+        item.assetSha256
+      ).join(",") ===
+        "628051c1bd196ee82e88cb02015e46b8fc30f505215b424d29627ec613395a0d,6219bc4bfdfc5d9b2201dcdf046218b122a758f932e25ed5f168f929b7ca2311",
+    );
+    assert(
+      dependencyInventory.embeddedFonts.every((item: { version: unknown }) =>
+        item.version === null
+      ),
+    );
     assert(
       !a.files.some((f) =>
         /(?:^|\/)(\.git|node_modules|\.qbento|fixtures)(?:\/|$)/.test(f.path)
@@ -166,6 +200,9 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
       "vendor/bento/slides.schema.json",
       "vendor/bento/LICENSE",
       "vendor/bento/THIRD_PARTY_NOTICES.md",
+      "vendor/bento/FONT_NOTICES.md",
+      "vendor/bento/font-licenses/fraunces-OFL.txt",
+      "vendor/bento/font-licenses/instrument-sans-OFL.txt",
       "vendor/bento/provenance/slides.package.json",
       "vendor/bento/provenance/slides.package-lock.json",
       "vendor/bento/runtime-dependencies.json",

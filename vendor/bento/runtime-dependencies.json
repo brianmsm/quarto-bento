@@ -197,8 +197,18 @@
     {
       "name": "Fraunces",
       "asset": "FRAUNCES_900",
+      "subset": "Latin",
+      "format": "WOFF2",
+      "assetBytes": 34632,
+      "assetSha256": "628051c1bd196ee82e88cb02015e46b8fc30f505215b424d29627ec613395a0d",
       "version": null,
-      "versionEvidence": "No font version is recorded in the pinned source file.",
+      "versionEvidence": "No upstream font release identifier is recorded for this WOFF2 data in the pinned Bento source.",
+      "licenseCopyrightNotice": "Copyright 2018 The Fraunces Project Authors",
+      "bentoNoticeCopyrightNotice": "Copyright 2020 The Fraunces Project Authors",
+      "licenseKey": "fraunces",
+      "licensePath": "font-licenses/fraunces-OFL.txt",
+      "licenseSha256": "bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b",
+      "licenseSourceUrl": "https://raw.githubusercontent.com/undercasetype/Fraunces/284bc5ea73b1233a05d6ec644e641b9404cba8a0/OFL.txt",
       "licenseDeclared": "SIL Open Font License 1.1",
       "sourcePath": "slides/src/fontdata.ts",
       "sourceSha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f"
@@ -206,17 +216,29 @@
     {
       "name": "Instrument Sans",
       "asset": "INSTRUMENT_VAR",
+      "subset": "Latin",
+      "format": "WOFF2",
+      "assetBytes": 29904,
+      "assetSha256": "6219bc4bfdfc5d9b2201dcdf046218b122a758f932e25ed5f168f929b7ca2311",
       "version": null,
-      "versionEvidence": "No font version is recorded in the pinned source file.",
+      "versionEvidence": "No upstream font release identifier is recorded for this WOFF2 data in the pinned Bento source.",
+      "licenseCopyrightNotice": "Copyright 2022 The Instrument Sans Project Authors",
+      "bentoNoticeCopyrightNotice": "Copyright 2022 The Instrument Sans Project Authors",
+      "licenseKey": "instrumentSans",
+      "licensePath": "font-licenses/instrument-sans-OFL.txt",
+      "licenseSha256": "9e27a72ed30eb49a08678f6a5d6ed98ec7ba5368f541637ee0683ec9134ef966",
+      "licenseSourceUrl": "https://raw.githubusercontent.com/Instrument/instrument-sans/24690a4ab2f92d45aa23246abeba515712145d75/OFL.txt",
       "licenseDeclared": "SIL Open Font License 1.1",
       "sourcePath": "slides/src/fontdata.ts",
       "sourceSha256": "dc03aee6d312d13be30d9eee818a8915c2b0e24bd281187b2cb787ba2604c82f"
     }
   ],
   "noticeReview": {
-    "status": "pending",
+    "status": "font-texts-pinned-review-incomplete",
+    "scopeNote": "The complete official OFL texts for the two named embedded font assets are included and integrity-pinned. This is not a complete legal audit; the exact upstream font release identifiers remain unknown.",
     "pending": [
-      "Verify and include the authoritative full SIL OFL 1.1 text for the embedded Fraunces and Instrument Sans font data before any public distribution. This inventory does not establish legal completeness."
+      "The exact upstream release identifiers for both embedded font WOFF2 assets remain unknown.",
+      "A complete review of all Bento third-party notices and Quarto-Bento licensing has not been performed."
     ]
   }
 }

@@ -36,8 +36,30 @@
   },
   "runtimeDependencyInventory": {
     "vendoredPath": "runtime-dependencies.json",
-    "sha256": "8da1c8d77655d7cb7af6adc3ad726563962087c6b4f7ce0d94281cc6fe0376d3"
+    "sha256": "394895d56b28771f78e992b28d2b9672375819ed31b3685dd4188aa433ed1178"
   },
   "build": "npm ci --ignore-scripts && npm run build:single",
-  "quartoTested": "1.10.19"
+  "quartoTested": "1.10.19",
+  "fontNotices": {
+    "vendoredPath": "FONT_NOTICES.md",
+    "sha256": "cbb9b87d01e76ee52b815cce3795a68fdb347d14271139723c8318dab31fae8a"
+  },
+  "fontLicenseArtifacts": {
+    "fraunces": {
+      "repository": "https://github.com/undercasetype/Fraunces",
+      "revision": "284bc5ea73b1233a05d6ec644e641b9404cba8a0",
+      "sourcePath": "OFL.txt",
+      "sourceUrl": "https://raw.githubusercontent.com/undercasetype/Fraunces/284bc5ea73b1233a05d6ec644e641b9404cba8a0/OFL.txt",
+      "vendoredPath": "font-licenses/fraunces-OFL.txt",
+      "sha256": "bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b"
+    },
+    "instrumentSans": {
+      "repository": "https://github.com/Instrument/instrument-sans",
+      "revision": "24690a4ab2f92d45aa23246abeba515712145d75",
+      "sourcePath": "OFL.txt",
+      "sourceUrl": "https://raw.githubusercontent.com/Instrument/instrument-sans/24690a4ab2f92d45aa23246abeba515712145d75/OFL.txt",
+      "vendoredPath": "font-licenses/instrument-sans-OFL.txt",
+      "sha256": "9e27a72ed30eb49a08678f6a5d6ed98ec7ba5368f541637ee0683ec9134ef966"
+    }
+  }
 }

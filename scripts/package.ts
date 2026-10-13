@@ -36,6 +36,14 @@ interface VendoredUpstreamArtifact {
   vendoredPath?: string;
   sha256: string;
 }
+interface FontLicenseArtifact {
+  repository: string;
+  revision: string;
+  sourcePath: string;
+  sourceUrl: string;
+  vendoredPath: string;
+  sha256: string;
+}
 interface BentoPin {
   repository: string;
   revision: string;
@@ -43,6 +51,8 @@ interface BentoPin {
   shellSha256: string;
   upstreamArtifacts: Record<string, VendoredUpstreamArtifact>;
   runtimeDependencyInventory: { vendoredPath: string; sha256: string };
+  fontNotices: { vendoredPath: string; sha256: string };
+  fontLicenseArtifacts: Record<string, FontLicenseArtifact>;
 }
 const root = fileURLToPath(new URL("../", import.meta.url));
 const fixedFiles = [
@@ -51,6 +61,9 @@ const fixedFiles = [
   "vendor/bento/pin.json",
   "vendor/bento/LICENSE",
   "vendor/bento/THIRD_PARTY_NOTICES.md",
+  "vendor/bento/FONT_NOTICES.md",
+  "vendor/bento/font-licenses/fraunces-OFL.txt",
+  "vendor/bento/font-licenses/instrument-sans-OFL.txt",
   "vendor/bento/runtime-dependencies.json",
   "vendor/bento/provenance/slides.package.json",
   "vendor/bento/provenance/slides.package-lock.json",
@@ -188,6 +201,16 @@ async function verifyBentoInventory(
     "runtime/vendor/bento/shell.html",
     pin.shellSha256,
   );
+  if (
+    !pin.fontNotices || pin.fontNotices.vendoredPath !== "FONT_NOTICES.md"
+  ) {
+    mismatch("pin.json has no pinned font notice path");
+  }
+  await pinnedBytes(
+    payload,
+    "runtime/vendor/bento/FONT_NOTICES.md",
+    pin.fontNotices.sha256,
+  );
   const artifacts = [
     {
       key: "schema",
@@ -237,6 +260,46 @@ async function verifyBentoInventory(
     !/^[0-9a-f]{64}$/.test(fontSource.sha256)
   ) {
     mismatch("pin.json has no pinned Bento font source provenance");
+  }
+  const expectedFontLicenseSources = [
+    {
+      key: "fraunces",
+      repository: "https://github.com/undercasetype/Fraunces",
+      revision: "284bc5ea73b1233a05d6ec644e641b9404cba8a0",
+      sourcePath: "OFL.txt",
+      sourceUrl:
+        "https://raw.githubusercontent.com/undercasetype/Fraunces/284bc5ea73b1233a05d6ec644e641b9404cba8a0/OFL.txt",
+      vendoredPath: "font-licenses/fraunces-OFL.txt",
+    },
+    {
+      key: "instrumentSans",
+      repository: "https://github.com/Instrument/instrument-sans",
+      revision: "24690a4ab2f92d45aa23246abeba515712145d75",
+      sourcePath: "OFL.txt",
+      sourceUrl:
+        "https://raw.githubusercontent.com/Instrument/instrument-sans/24690a4ab2f92d45aa23246abeba515712145d75/OFL.txt",
+      vendoredPath: "font-licenses/instrument-sans-OFL.txt",
+    },
+  ];
+  const fontLicenseArtifacts = new Map<string, FontLicenseArtifact>();
+  for (const expected of expectedFontLicenseSources) {
+    const artifact = pin.fontLicenseArtifacts?.[expected.key];
+    if (
+      !artifact || artifact.repository !== expected.repository ||
+      artifact.revision !== expected.revision ||
+      artifact.sourcePath !== expected.sourcePath ||
+      artifact.sourceUrl !== expected.sourceUrl ||
+      artifact.vendoredPath !== expected.vendoredPath ||
+      !/^[0-9a-f]{64}$/.test(artifact.sha256)
+    ) {
+      mismatch(`pin.json has unexpected ${expected.key} license provenance`);
+    }
+    await pinnedBytes(
+      payload,
+      `runtime/vendor/bento/${expected.vendoredPath}`,
+      artifact.sha256,
+    );
+    fontLicenseArtifacts.set(expected.key, artifact);
   }
   const inventoryPath = pin.runtimeDependencyInventory.vendoredPath;
   if (inventoryPath !== "runtime-dependencies.json") {
@@ -304,15 +367,56 @@ async function verifyBentoInventory(
   }
   const fonts = inventory.embeddedFonts as Record<string, unknown>[];
   const expectedFonts = [
-    { name: "Fraunces", asset: "FRAUNCES_900" },
-    { name: "Instrument Sans", asset: "INSTRUMENT_VAR" },
+    {
+      name: "Fraunces",
+      asset: "FRAUNCES_900",
+      subset: "Latin",
+      format: "WOFF2",
+      assetBytes: 34632,
+      assetSha256:
+        "628051c1bd196ee82e88cb02015e46b8fc30f505215b424d29627ec613395a0d",
+      versionEvidence:
+        "No upstream font release identifier is recorded for this WOFF2 data in the pinned Bento source.",
+      licenseCopyrightNotice: "Copyright 2018 The Fraunces Project Authors",
+      bentoNoticeCopyrightNotice: "Copyright 2020 The Fraunces Project Authors",
+      licenseKey: "fraunces",
+      licensePath: "font-licenses/fraunces-OFL.txt",
+    },
+    {
+      name: "Instrument Sans",
+      asset: "INSTRUMENT_VAR",
+      subset: "Latin",
+      format: "WOFF2",
+      assetBytes: 29904,
+      assetSha256:
+        "6219bc4bfdfc5d9b2201dcdf046218b122a758f932e25ed5f168f929b7ca2311",
+      versionEvidence:
+        "No upstream font release identifier is recorded for this WOFF2 data in the pinned Bento source.",
+      licenseCopyrightNotice:
+        "Copyright 2022 The Instrument Sans Project Authors",
+      bentoNoticeCopyrightNotice:
+        "Copyright 2022 The Instrument Sans Project Authors",
+      licenseKey: "instrumentSans",
+      licensePath: "font-licenses/instrument-sans-OFL.txt",
+    },
   ];
   for (const [index, expected] of expectedFonts.entries()) {
     const font = fonts[index];
+    const license = fontLicenseArtifacts.get(expected.licenseKey);
     if (
       font.name !== expected.name || font.asset !== expected.asset ||
-      font.version !== null ||
+      font.subset !== expected.subset || font.format !== expected.format ||
+      font.assetBytes !== expected.assetBytes ||
+      font.assetSha256 !== expected.assetSha256 || font.version !== null ||
+      font.versionEvidence !== expected.versionEvidence ||
       font.licenseDeclared !== "SIL Open Font License 1.1" ||
+      font.licenseCopyrightNotice !== expected.licenseCopyrightNotice ||
+      font.bentoNoticeCopyrightNotice !==
+        expected.bentoNoticeCopyrightNotice ||
+      font.licenseKey !== expected.licenseKey ||
+      font.licensePath !== expected.licensePath ||
+      font.licenseSha256 !== license?.sha256 ||
+      font.licenseSourceUrl !== license?.sourceUrl ||
       font.sourcePath !== fontSource.sourcePath ||
       font.sourceSha256 !== fontSource.sha256
     ) {
@@ -321,11 +425,20 @@ async function verifyBentoInventory(
   }
   if (
     !isRecord(inventory.noticeReview) ||
-    inventory.noticeReview.status !== "pending" ||
+    inventory.noticeReview.status !==
+      "font-texts-pinned-review-incomplete" ||
+    inventory.noticeReview.scopeNote !==
+      "The complete official OFL texts for the two named embedded font assets are included and integrity-pinned. This is not a complete legal audit; the exact upstream font release identifiers remain unknown." ||
     !Array.isArray(inventory.noticeReview.pending) ||
-    inventory.noticeReview.pending.length === 0
+    inventory.noticeReview.pending.length !== 2 ||
+    inventory.noticeReview.pending[0] !==
+      "The exact upstream release identifiers for both embedded font WOFF2 assets remain unknown." ||
+    inventory.noticeReview.pending[1] !==
+      "A complete review of all Bento third-party notices and Quarto-Bento licensing has not been performed."
   ) {
-    mismatch("pending third-party notice review must remain explicit");
+    mismatch(
+      "font notice scope and remaining review limits must stay explicit",
+    );
   }
   const manifestDependencies = packageManifest.dependencies;
   const packages = packageLock.packages;
