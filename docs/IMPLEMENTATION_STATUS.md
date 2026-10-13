@@ -32,8 +32,14 @@ verified native inspector resize/Save, changed-source overflow, correction and
 reopening with unchanged source authority and document identity. See
 [displayed code](evidence/DISPLAYED-CODE.md) and
 [content overflow](evidence/CONTENT-OVERFLOW.md#integrated-native-studio-acceptance).
-Source-aware application of reusable layouts remains in progress. These newer
-changes do not inherit the earlier 550-test full-suite or portable receipt.
+Source-aware application of reusable layouts is integrated at `f06def7`, with
+independent review and a combined native selector/layout/sync/recalculate path.
+The new complete suite at `b5b6bbe` passed **572 tests, 4 steps, zero failures
+(18m39s)**; types, lint and formatting passed. The 113-file portable runtime
+rebuilt the native combined fixture and reusable-layout example exactly from
+source/assets/state only. An independent audit found no new concrete ordinary
+Linux blocker. See [the new combined receipt](evidence/REDESIGN-INTEGRATED-LINUX.md);
+the earlier 550-test result remains historical evidence.
 
 The full-product follow-up now integrates plain speaker-note creation on existing
 and new slides, reviewed retention of unlabelled producer IDs, and native

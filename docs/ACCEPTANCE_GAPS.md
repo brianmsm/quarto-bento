@@ -5,7 +5,7 @@ prove requirements outside its fixtures. Current validation is limited to the
 owner's Linux machine; other operating systems and hosted CI are deferred.
 Public release scope is a separate decision.
 
-## Active native redesign gates
+## Native redesign gates — closed locally
 
 The newer native audit at `1304d9e` reproduced two Workflow 2 gaps beyond the
 passing combined suite: native layout application does not preserve source IDs,
@@ -14,8 +14,14 @@ and text overflowing a retained box can publish without a warning. See the
 The content-bounds gate now has integrated implementation and native
 resize/Save/recompute/reopen evidence at `92be7d0`; see
 [the content-overflow receipt](evidence/CONTENT-OVERFLOW.md#integrated-native-studio-acceptance).
-Source-aware layout application remains in progress. The existing QMD-declared
-layout workflow and preservation of refused operations do not close that gate.
+Source-aware layout application is integrated at `f06def7`. The combined native
+flow preserves a real pending language change through layout application and
+reviewed sync, with exact portable reconstruction. The complete suite at
+`b5b6bbe` passed 572 tests and 4 steps, zero failures. See
+[the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md).
+An independent final audit found no new concrete blocker in the documented ten
+ordinary Linux workflows. Other-platform qualification and public release gates
+remain separate from this local functional pass.
 
 ## Full-product follow-up after the local receipt
 

@@ -264,6 +264,20 @@ para los límites exactos y la revisión nativa headless.
 
 ## Anotaciones y diseños reutilizables
 
+Para redistribuir contenido existente, usa **Aplicar diseño** en Studio o el
+botón nativo de Bento. Elige la diapositiva y el diseño, asigna explícitamente
+objetos a cada columna y pulsa **Vista previa de posiciones** antes de aplicar.
+El título y los objetos no seleccionados conservan su posición. El diseño
+cambia geometría y conserva contenido, identidades y cambios pendientes; los
+atributos geométricos escritos en QMD siguen requiriendo revisión y sincronización.
+
+Los objetos libres guardan una instantánea de las posiciones aplicadas. Si
+modificas la definición en **Diseños y temas**, vuelve a aplicarla cuando quieras
+actualizar esos objetos. Los componentes declarados en QMD conservan su contrato
+de referencia al registro. Tablas y gráficos simples se comprueban con sus
+métricas admitidas; un diseño incompatible muestra un diagnóstico y conserva el
+trabajo. Consulta [la evidencia y los límites](evidence/REUSABLE-LAYOUTS.md).
+
 Las anotaciones informativas del QMD se controlan con
 `qbento-annotations: none|minimal|detailed` en su YAML inicial. El valor por
 defecto es `minimal`: señala las diapositivas con diseño adicional mediante la

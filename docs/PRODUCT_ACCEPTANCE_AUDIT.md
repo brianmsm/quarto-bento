@@ -170,3 +170,25 @@ canvas overlap. New acceptance tests must target the actual canvas explicitly.
 
 Both are active functional implementation gates. Declared QMD layouts and safe
 refusals remain useful existing behavior, but neither closes these requirements.
+
+## Redesign gates closed locally (2026-10-13)
+
+Runtime `f06def7` closes both reproduced gates and adds reviewed displayed-code
+language synchronization. The coordinator used the native inspector, language
+selector and Apply layout button: resize/Save, source growth/Recalculate,
+warning correction/reopen, pending language Save, explicit column placement,
+review/Apply/Recalculate all passed. Independent comparison confirmed geometry
+was the only layout change, with unchanged IDs, provenance, title and pending
+language. The final whole emitted document is exact and pending is zero.
+
+The complete suite at `b5b6bbe` passed 572 tests and 4 steps, zero failures;
+the new 113-file portable rebuilt both the native combined fixture and the
+reusable-layout example from source/assets/state without prior HTML. A final
+independent read-only review of all ten workflows found no new concrete local
+ordinary-workflow blocker. See [the combined receipt](evidence/REDESIGN-INTEGRATED-LINUX.md).
+
+The earlier two gates are therefore historical findings, not current missing
+features. Codec limits, the unexplained prior SVG observation, distribution and
+dependency review, owner licensing/release decisions and deferred other-platform
+qualification remain explicit. This closes the local functional pass and does
+not declare public v1 acceptance.

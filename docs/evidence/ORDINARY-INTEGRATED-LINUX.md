@@ -1,5 +1,9 @@
 # Integrated ordinary-authoring acceptance — Linux, 2026-10-13
 
+This is the ordinary-authoring baseline receipt. The later source-aware layouts,
+content-bounds and code-language integration has a new
+[combined Linux receipt](REDESIGN-INTEGRATED-LINUX.md).
+
 The combined runtime is `85da0379ce721d91957f6f1e22f6bd1371a79658`.
 This receipt adds the later ordinary-authoring corrections to the historical
 [Linux acceptance](INTEGRATED-LINUX.md); it does not relabel the earlier native

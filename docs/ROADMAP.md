@@ -115,12 +115,15 @@ Sequences are illustrative; features may move earlier to support validation with
 
 ## Suggested next-session action
 
-Continue from [the combined ordinary-authoring receipt](evidence/ORDINARY-INTEGRATED-LINUX.md)
-and the remaining gates in the implementation ledger. The assigned local source
-mapping/composition gaps have integrated evidence and a new portable artifact.
-Retain diagnostics for the unexplained intermittent widget SVG comparison and
-the documented codec limits; public release scope and other platforms remain
-separate. Preserve the demonstrated Linux workflows. The original startup sequence—pin upstream, run
+Continue from [the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md)
+and the implementation ledger. Source mapping/composition, static-code language
+sync, native content bounds and explicit reusable-layout application now have
+integrated evidence, a passing 572-test suite and a 113-file portable artifact.
+The final audit found no new concrete blocker in the documented ordinary Linux
+workflows. Preserve those workflows; retain diagnostics for the unexplained
+intermittent widget SVG comparison and the documented codec limits. Distribution
+review, public release scope/licensing and deferred other-platform qualification
+remain separate gates. The original startup sequence—pin upstream, run
 S0, then separately prove S1/S2/S4—is complete for the documented bounded
 scope and is no longer a next-session instruction.
 

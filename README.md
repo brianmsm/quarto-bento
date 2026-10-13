@@ -169,6 +169,15 @@ attributes retain their authority. See the
 [registry contract](docs/DESIGN_REGISTRY.md) and
 [save/conflict/recovery evidence](docs/evidence/STUDIO-REGISTRY.md).
 
+**Aplicar diseño**, including Bento's native button, explicitly assigns existing
+objects to columns while preserving their IDs, content and pending changes.
+Preview the positions before applying. Free objects retain the applied geometry
+as a snapshot; reapply explicitly after editing a registry definition. Studio
+also reports native text overflow and bounded table/chart layout warnings
+without silently resizing saved design. The combined native workflow, complete
+Linux suite and portable reconstruction are recorded in
+[the redesign acceptance receipt](docs/evidence/REDESIGN-INTEGRATED-LINUX.md).
+
 ### Proposed project files
 
 ```text

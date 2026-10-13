@@ -223,13 +223,25 @@ is `output/verification/75edcdf/portable.log`. The prior 69-file receipt at
 `c225546` remains historical evidence. These checks extend the Linux receipt
 without changing the other-platform qualification boundary.
 
-## Current combined Linux artifact
+## Previous ordinary-authoring Linux artifact
 
 The `85da037` development artifact contains 108 verified files and records the
 exact clean source revision. Its real launcher rebuilt the native table and
 image-caption fixtures from source/assets/state only, retaining exact emitted
 documents, docIds and zero pending changes; the table executed R once. The
 portable smoke also passed relocation and ordinary Quarto with pending edits.
-See [the current receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable
+See [its receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable
 directory is `output/verification/portable-85da037/distribution/`; the sibling
 README documents local launch commands. Older artifact receipts remain historical.
+
+## Current combined Linux artifact
+
+The clean `f06def7` development artifact contains **113 verified payload files**;
+every payload byte also matches the later test-only revision `b5b6bbe`. The real
+launcher passed relocation, retained pending edits and ordinary Quarto. It
+rebuilt the reusable-layout example and the combined native redesign/code-language
+fixture from source/assets/state only, preserving exact emitted documents,
+docIds, typography and zero pending changes. See
+[the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md).
+The usable directory is `output/verification/portable-f06def7/distribution/`;
+its sibling README and receipt contain commands, input inventories and hashes.

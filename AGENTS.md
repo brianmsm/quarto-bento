@@ -28,16 +28,15 @@ artifact with exact native table/image reconstruction. Preserve the documented
 bounded codecs. A prior intermittent exact-widget-SVG mismatch did not reproduce;
 retain the strict assertion and opt-in diagnostics rather than claiming its cause
 fixed. Safe refusals preserve work but do not close future ordinary-workflow gaps.
-The subsequent native redesign audit at `1304d9e` reproduced two active
-Workflow 2 gaps: source-aware application of reusable layouts and warnings for
-text overflowing its retained native box. Content-bounds warnings are now
-integrated at `92be7d0`, with native inspector/Save/recompute/reopen evidence;
-source-aware layout application remains in progress. Displayed-code language
-sync is integrated at `a1beef6` as a reviewed static fence-token change; it must
-never promote displayed code to executable chunks. Their combined focused run
-passed 21 tests; a new complete-suite/portable receipt remains necessary after
-layout integration. Follow the newer audit rather than treating the old layout
-UX limitation as an accepted exclusion.
+The redesign gaps reproduced at `1304d9e` are now closed locally: content bounds
+at `92be7d0`, source-aware layout application at `f06def7`, and reviewed static
+code-language tokens at `a1beef6`. Code-language sync must never promote displayed
+code to executable chunks. Start from `docs/evidence/REDESIGN-INTEGRATED-LINUX.md`:
+`b5b6bbe` passed 572 tests and 4 steps with no failures; the 113-file portable
+runtime rebuilt the combined native workflow exactly. An independent audit found
+no new concrete blocker in the documented ten ordinary Linux workflows. Preserve
+the bounded codecs and distinguish this local pass from public release gates;
+do not repeat these completed slices as if they were unimplemented.
 The owner currently limits execution tests to local Linux; native macOS/Windows
 and hosted CI are deferred. The product horizon remains
 `docs/PRODUCT_TARGET.md`. Product-direction decisions are settled, but **the
