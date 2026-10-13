@@ -51,6 +51,7 @@ async function client(plan: unknown, revision: number) {
     "document",
     "fetch",
     "globalThis",
+    "attachLayoutEditor",
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
@@ -68,6 +69,7 @@ async function client(plan: unknown, revision: number) {
       );
     },
     { qbentoToken: "local", addEventListener() {} },
+    () => ({ open() {} }),
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
     () => {},
     () => {},

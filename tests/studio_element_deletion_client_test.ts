@@ -106,6 +106,7 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
     "document",
     "fetch",
     "globalThis",
+    "attachLayoutEditor",
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
@@ -140,6 +141,7 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
       );
     },
     { qbentoToken: "token", addEventListener() {} },
+    () => ({ open() {} }),
     () => ({ save: () => Promise.resolve(), dispose() {}, dirty: false }),
     () => {},
     () => {},

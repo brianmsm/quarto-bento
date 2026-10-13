@@ -69,6 +69,7 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
       "document",
       "fetch",
       "globalThis",
+      "attachLayoutEditor",
       "createBentoBridge",
       "attachRegistryEditor",
       "attachGraphRelations",
@@ -94,6 +95,7 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
         );
       },
       { qbentoToken: "local", addEventListener() {} },
+      () => ({ open() {} }),
       () => ({ save: async () => {}, dispose() {}, dirty: false }),
       () => {},
       () => {},

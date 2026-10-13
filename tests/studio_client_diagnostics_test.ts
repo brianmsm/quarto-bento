@@ -43,6 +43,7 @@ async function client() {
     "document",
     "fetch",
     "globalThis",
+    "attachLayoutEditor",
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
@@ -64,6 +65,7 @@ async function client() {
       );
     },
     { qbentoToken: "local", addEventListener() {} },
+    () => ({ open() {} }),
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
     () => {},
     () => {},
@@ -139,17 +141,22 @@ Deno.test("Studio drops previous render warnings on an unrelated native snapshot
 
 Deno.test("Studio clears stale native content warnings after a corrected saved inspection", async () => {
   const c = await client();
-  const overflow = {
-    code: "TEXT_OVERFLOW",
-    elementId: "paragraph",
-    message: "Content exceeds box",
-  };
-  c.setDesign([overflow]);
-  await c.recalc([overflow]);
-  assert(c.codes().join() === "TEXT_OVERFLOW", JSON.stringify(c.codes()));
-  c.setDesign([]);
-  await c.refresh();
-  assert(c.codes().length === 0, JSON.stringify(c.codes()));
+  for (
+    const code of [
+      "TEXT_OVERFLOW",
+      "TEXT_MEASUREMENT_UNAVAILABLE",
+      "NATIVE_CONTENT_OVERFLOW",
+      "NATIVE_CONTENT_UNMEASURED",
+    ]
+  ) {
+    const overflow = { code, elementId: "content", message: "Inspect bounds" };
+    c.setDesign([overflow]);
+    await c.recalc([overflow]);
+    assert(c.codes().join() === code, JSON.stringify(c.codes()));
+    c.setDesign([]);
+    await c.refresh();
+    assert(c.codes().length === 0, JSON.stringify(c.codes()));
+  }
   c.setDesign([{
     code: "TEXT_MEASUREMENT_UNAVAILABLE",
     elementId: "paragraph",

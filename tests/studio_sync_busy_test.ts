@@ -94,6 +94,7 @@ async function client() {
     "document",
     "fetch",
     "globalThis",
+    "attachLayoutEditor",
     "createBentoBridge",
     "attachRegistryEditor",
     "attachGraphRelations",
@@ -156,6 +157,7 @@ async function client() {
       ));
     },
     { qbentoToken: "local", addEventListener() {} },
+    () => ({ open() {} }),
     (...args: Parameters<typeof createBentoBridge>) => {
       const bridge = createBentoBridge(args[0], { ...args[1], pollMs: 0 });
       bridges.push(bridge);
