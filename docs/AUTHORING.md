@@ -323,10 +323,17 @@ summary(modelo)
 ```
 ````
 
-Native content edits are saved as pending changes, reviewed and synchronized only
-to that fence's body. The language class is retained on regeneration; changing
-the native language selection currently remains pending and refuses reverse
-conversion. A runnable Quarto chunk such as `{r}` is distinct: its echoed code
+Native content and language-selector edits are saved as pending changes and
+reviewed separately. Content patches only the fence body; a language change
+patches only its literal opener token or language class, preserving the fence,
+body, IDs, other attributes and line endings. Both may be reviewed together, or
+one may remain pending. Language selection uses the exact built-in Bento IDs
+(for example `r`, `py`, `sql` and `js`); aliases and executable syntax are not
+inferred. Removing `grammarName` removes the declared language; an empty string
+has an explicit reviewed normalization to absence. The pinned native renderer
+uses its JavaScript fallback when no language is declared. Weak displayed fences
+acquire stable IDs through the same inspectable reviewed plan. A runnable Quarto
+chunk such as `{r}` is distinct: its echoed code
 has computed provenance and cannot be synchronized as displayed authored code.
 Source-owned compatible typography/geometry uses the same attribute-review flow
 as text objects. The identified `.bento-code` wrapper around one displayed, non-executable fence is supported; see the component subset below.

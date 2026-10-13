@@ -1,3 +1,11 @@
+import {
+  applyCodeLanguages,
+  checkedCodeLanguage,
+  type CodeLanguagePreview,
+  type CodeLanguageRequest,
+  codeLanguageSyntax,
+  previewCodeLanguages,
+} from "../source/code-language.ts";
 import { IMAGE_CODEC_VERSION } from "../source/image.ts";
 import {
   literalTableBlock,
@@ -230,6 +238,7 @@ export interface SyncPlan {
   changes: SyncItem[];
   patch: PatchPreview;
   attributes?: AttributePreview;
+  languages?: CodeLanguagePreview;
   notes?: NotesPreview;
   graphs?: GraphEndpointPreview;
   structure?: StructurePreview;
@@ -1070,6 +1079,7 @@ async function buildPlan(
   const attributeRequests: AttributeRequest[] = [];
   const notesRequests: NotesRequest[] = [];
   const graphRequests: GraphEndpointRequest[] = [];
+  const languageRequests: CodeLanguageRequest[] = [];
   const textRequests: {
     blockId: string;
     expected: string;
@@ -1322,6 +1332,59 @@ async function buildPlan(
           html: "",
         });
         addNormalization(change, { present: true, value: normalized });
+        continue;
+      }
+      if (canonical(change.path) === canonical(["grammarName"])) {
+        if (
+          change.origin !== "authored" ||
+          state.provenance[targetKey(change.target)]?.origin !== "authored"
+        ) {
+          fail(
+            "COMPUTED_SYNC_FORBIDDEN",
+            "Executable code language stays computed; pending edits are retained.",
+          );
+        }
+        const { block } = chooseBlock(text, state, change, ["code"]);
+        const baseline = state.generatedBaseline.slides.find((slide) =>
+          slide.id === change.target.slideId
+        )?.elements.find((element) => element.id === change.target.elementId);
+        const language = !change.after.present || change.after.value === ""
+          ? null
+          : checkedCodeLanguage(change.after.value);
+        const original = (await readSourceInline(scanSource(text))).get(
+          block.id,
+        )?.code;
+        if (
+          baseline?.type !== "code" || !original ||
+          original.content !== baseline.content ||
+          original.grammarName !== (baseline.grammarName ?? null) ||
+          codeLanguageSyntax(block.raw).grammar !== original.grammarName
+        ) {
+          fail(
+            "SOURCE_CONFLICT",
+            "Original displayed language differs from its executed baseline; recalculate before review.",
+          );
+        }
+        languageRequests.push({
+          blockId: block.id,
+          expected: original.grammarName,
+          language,
+        });
+        changes.push({
+          changeId: change.id,
+          target: change.target,
+          blockId: block.id,
+          kind: "code-language",
+          before: original.grammarName ?? "",
+          after: language ?? "",
+          html: "",
+        });
+        addNormalization(
+          change,
+          language === null
+            ? { present: false }
+            : { present: true, value: language },
+        );
         continue;
       }
       const displayedCode = canonical(change.path) === canonical(["content"]);
@@ -1722,10 +1785,31 @@ async function buildPlan(
     ? previewAttributePatches(scanSource(notesResult), attributeRequests)
     : undefined;
   const attributeResult = attributes?.result ?? notesResult;
-  const structure = operations.length
-    ? previewStructure(scanSource(attributeResult), operations)
+  const languages = languageRequests.length
+    ? previewCodeLanguages(
+      scanSource(attributeResult),
+      languageRequests.map((request) => ({
+        ...request,
+        blockId: acquiredIds.get(request.blockId) ?? request.blockId,
+      })),
+    )
     : undefined;
-  const structureResult = structure?.result ?? attributeResult;
+  const languageResult = languages?.result ?? attributeResult;
+  if (languages) {
+    const proofs = await readSourceInline(scanSource(languageResult));
+    for (const request of languages.requests) {
+      if (proofs.get(request.blockId)?.code?.grammarName !== request.language) {
+        fail(
+          "UNSUPPORTED_CODE_LANGUAGE",
+          "Edited language does not match the original-source Pandoc proof.",
+        );
+      }
+    }
+  }
+  const structure = operations.length
+    ? previewStructure(scanSource(languageResult), operations)
+    : undefined;
+  const structureResult = structure?.result ?? languageResult;
   const graphs = graphRequests.length
     ? previewGraphEndpoints(scanSource(structureResult), graphRequests)
     : undefined;
@@ -1960,6 +2044,7 @@ async function buildPlan(
     changes,
     patch,
     ...(attributes ? { attributes } : {}),
+    ...(languages ? { languages } : {}),
     ...(notes ? { notes } : {}),
     ...(graphs ? { graphs } : {}),
     ...(structure ? { structure } : {}),
@@ -2100,9 +2185,12 @@ export async function applySync(
     const attributeResult = verified.attributes
       ? applyAttributePatches(notesResult, verified.attributes)
       : notesResult;
-    const structureResult = verified.structure
-      ? applyStructure(attributeResult, verified.structure)
+    const languageResult = verified.languages
+      ? applyCodeLanguages(attributeResult, verified.languages)
       : attributeResult;
+    const structureResult = verified.structure
+      ? applyStructure(languageResult, verified.structure)
+      : languageResult;
     const graphResult = verified.graphs
       ? applyGraphEndpoints(structureResult, verified.graphs)
       : structureResult;

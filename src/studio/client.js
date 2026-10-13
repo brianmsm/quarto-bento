@@ -228,6 +228,9 @@ function showPatches(plan) {
       replacement: change.after,
     }, "4. Atributo visual");
   }
+  for (const patch of plan.languages?.patches ?? []) {
+    showPatch(patch, "Lenguaje del código");
+  }
   if (plan.structure) {
     for (const step of plan.structure.steps) {
       for (const edit of step.edits) {
@@ -269,7 +272,7 @@ function showPatches(plan) {
     section.append(title, message);
     $("patches").append(section);
   }
-  if (plan.structure || plan.identities || plan.graphs) {
+  if (plan.structure || plan.identities || plan.graphs || plan.languages) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
