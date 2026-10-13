@@ -67,6 +67,10 @@ export async function installQuartoProject(
     await copyTree(resolve(root, "_extensions", "qbento"), stage);
     await copyTree(resolve(root, "src"), resolve(stage, "runtime", "src"));
     await copyTree(
+      resolve(root, "LICENSE"),
+      resolve(stage, "runtime", "LICENSE"),
+    );
+    await copyTree(
       resolve(root, "vendor"),
       resolve(stage, "runtime", "vendor"),
     );

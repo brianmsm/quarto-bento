@@ -64,13 +64,39 @@ Deno.test("standalone and isolated Presenter carry exact supplied notices outsid
   );
   const shell = await loadBentoShell();
   const notices = readNotices(shell);
-  assert(notices.schemaVersion === 1 && notices.files.length === 6);
+  assert(notices.schemaVersion === 1 && notices.files.length === 7);
   for (const file of notices.files) {
     const supplied = await Deno.readTextFile(
-      new URL(`../vendor/bento/${file.path}`, import.meta.url),
+      new URL(
+        file.component === "Quarto-Bento"
+          ? "../LICENSE"
+          : `../vendor/bento/${file.path}`,
+        import.meta.url,
+      ),
     );
     assert(file.text === supplied, `full text differs: ${file.path}`);
+    const digest = [
+      ...new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(supplied),
+        ),
+      ),
+    ]
+      .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    assert(file.sha256 === digest, `digest differs: ${file.path}`);
   }
+  const ownLicense = notices.files.find((file) =>
+    file.path === "Quarto-Bento/LICENSE"
+  );
+  assert(ownLicense?.component === "Quarto-Bento");
+  assert(
+    ownLicense.text.includes("Copyright (c) 2026 Brian Norman Peña Calero"),
+  );
+  assert(
+    notices.files.find((file) => file.path === "LICENSE")?.component ===
+      undefined,
+  );
   const production = JSON.parse(
     notices.files.find((file) => file.path === "runtime-licenses.json")!.text,
   );

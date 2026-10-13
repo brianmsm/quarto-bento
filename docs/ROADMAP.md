@@ -122,7 +122,7 @@ integrated evidence, a passing 572-test suite and a 113-file portable artifact.
 The final audit found no new concrete blocker in the documented ordinary Linux
 workflows. Preserve those workflows; retain diagnostics for the unexplained
 intermittent widget SVG comparison and the documented codec limits. Distribution
-review, public release scope/licensing and deferred other-platform qualification
+review, public release scope and deferred other-platform qualification
 remain separate gates. The original startup sequence—pin upstream, run
 S0, then separately prove S1/S2/S4—is complete for the documented bounded
 scope and is no longer a next-session instruction.
@@ -134,8 +134,9 @@ serialization and includes an exact production-archive supplement. The clean
 [four-package source audit](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
 what remains unresolved after checking exact registry-linked source commits.
 Do not repeat that lookup or substitute current upstream files as if they proved
-the historical packages' provenance. Project license/titleholder and the public
-release boundary still need owner decisions; other-platform execution remains
+the historical packages' provenance. The owner selected MIT for the project's
+own code, with Brian Norman Peña Calero as holder, on 2026-10-13. The public
+release boundary still needs an owner decision; other-platform execution remains
 deferred by the owner. These gates do not change the full product target.
 
 Useful references:

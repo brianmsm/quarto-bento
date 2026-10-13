@@ -2,8 +2,14 @@
 export const SHELL_NOTICES_ID = "qbento-third-party-notices";
 export interface ShellNotices {
   schemaVersion: 1;
-  scope: "pinned-bento-fonts-and-production-archive-notices";
-  files: { path: string; sha256: string; text: string }[];
+  scope:
+    "project-license-and-pinned-bento-fonts-and-production-archive-notices";
+  files: {
+    path: string;
+    component?: "Quarto-Bento";
+    sha256: string;
+    text: string;
+  }[];
 }
 
 async function sha256(text: string): Promise<string> {
@@ -18,8 +24,8 @@ async function sha256(text: string): Promise<string> {
 /** Keep the vendored shell unchanged; add notices before its pristine capture.
  * The inert data block is outside BentoDoc, never a runtime-owned transient.
  * The pinned kernel therefore retains it through native serialization/save.
- * This preserves supplied texts; it does not decide the project's license or
- * certify complete third-party coverage.
+ * The project's MIT license is labeled separately from pinned upstream texts.
+ * This carriage does not certify complete third-party coverage.
  */
 export async function loadBentoShell(): Promise<string> {
   const vendor = new URL("../../vendor/bento/", import.meta.url);
@@ -54,10 +60,21 @@ export async function loadBentoShell(): Promise<string> {
       pin.fontLicenseArtifacts?.instrumentSans?.sha256,
     ),
   ]);
+  // This resource has the same relative path in the checkout, portable runtime
+  // and installed extension. Read lazily so importing the loader performs no I/O.
+  const projectLicense = await Deno.readTextFile(
+    new URL("../../LICENSE", import.meta.url),
+  );
   const notices: ShellNotices = {
     schemaVersion: 1,
-    scope: "pinned-bento-fonts-and-production-archive-notices",
-    files,
+    scope:
+      "project-license-and-pinned-bento-fonts-and-production-archive-notices",
+    files: [...files, {
+      path: "Quarto-Bento/LICENSE",
+      component: "Quarto-Bento",
+      sha256: await sha256(projectLicense),
+      text: projectLicense,
+    }],
   };
   // Escaping '<' also makes future supplied text containing script-close tokens
   // safe. JSON decoding recovers the full original text, including newlines.

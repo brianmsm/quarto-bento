@@ -37,10 +37,13 @@ independent of this portable directory after successful initialization.
 
 The root `manifest.json` records the source revision and each payload's path,
 size, hash and executable flag. It is an integrity inventory, not a signature.
-The runtime includes Bento's pinned license/notices, font license texts and
-dependency provenance under `runtime/vendor/bento/`. These do not assign a
-license to Quarto-Bento's own code. Its project licensing and public release
-scope remain unresolved.
+Quarto-Bento's own code and documentation use the MIT License, copyright (c)
+2026 Brian Norman Peña Calero. The full terms are in the root `LICENSE` and
+`runtime/LICENSE`; initialization also copies them into the installed extension's
+`runtime/LICENSE`. Generated HTML retains the full project license with a separate
+`Quarto-Bento` label. Bento's pinned licenses/notices, font texts and dependency
+provenance remain under `runtime/vendor/bento/` with their own terms. The complete
+third-party review and public release scope remain open.
 
 The full source checkout contains development, acceptance and CI documentation.
 Those source-only files and verification artifacts are not part of this

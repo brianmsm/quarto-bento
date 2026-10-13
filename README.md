@@ -7,6 +7,10 @@ workflow is [demonstrated end to end](docs/evidence/FIRST-SLICE.md); the full
 product target is **not yet complete**. See
 [implementation ledger](docs/IMPLEMENTATION_STATUS.md).
 
+Quarto-Bento's own code and documentation are licensed under the [MIT License](LICENSE),
+copyright (c) 2026 Brian Norman Peña Calero. Bundled Bento, dependencies and fonts
+retain their respective licenses and notices; see [distribution details](docs/PACKAGING.md).
+
 Quarto-Bento aims to combine **computationally reproducible Quarto
 presentations** with **Bento's fast visual slide editor**, without losing visual
 edits when results are regenerated.

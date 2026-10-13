@@ -79,8 +79,9 @@ The portable artifact has a checked file inventory, pinned Bento shell and
 working local launchers. The inventory now records source revision metadata,
 pinned upstream manifests and complete official OFL texts for the two embedded
 fonts; exact font release versions remain unknown. This is distinct from a complete dependency/security review
-or a legal conclusion about license coverage. The project license must not be
-chosen by an implementing agent.
+or a legal conclusion about license coverage. The owner selected MIT for the
+project's own code, with Brian Norman Peña Calero as holder, on 2026-10-13;
+this decision does not replace the separate third-party terms and review.
 
 Other-platform execution, hosted CI and public release are not prerequisites for
 the local authoring improvements above. A public v1 additionally requires its
@@ -189,6 +190,6 @@ ordinary-workflow blocker. See [the combined receipt](evidence/REDESIGN-INTEGRAT
 
 The earlier two gates are therefore historical findings, not current missing
 features. Codec limits, the unexplained prior SVG observation, distribution and
-dependency review, owner licensing/release decisions and deferred other-platform
+dependency review, the owner release-scope decision and deferred other-platform
 qualification remain explicit. This closes the local functional pass and does
 not declare public v1 acceptance.

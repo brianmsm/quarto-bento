@@ -102,7 +102,9 @@ the qbento Git revision/dirty state or explicit unknown provenance. Independent
 packaging checks passed before integration at `7ffab32`. Full official OFL text,
 immutable source references and asset hashes for the two embedded fonts are
 integrated at `d0cadb6`; three integrated packaging tests pass. Exact font release
-versions remain unknown, and the project's own license remains an owner decision.
+versions remain unknown. The owner subsequently selected MIT for the project's
+own code on 2026-10-13, with Brian Norman Peña Calero as holder; see the root
+[LICENSE](../LICENSE). Separate third-party terms and review remain applicable.
 
 The native standalone-text creation path is now integrated as well: Save and
 reopen retain the pending object; reviewed sync inserts a bounded identified

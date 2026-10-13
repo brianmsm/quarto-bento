@@ -38,6 +38,10 @@ async function sourceFixture(destination: string) {
   for (const tree of ["src", "vendor", "_extensions"]) {
     await copyTree(resolve(root, tree), resolve(destination, tree));
   }
+  await Deno.copyFile(
+    resolve(root, "LICENSE"),
+    resolve(destination, "LICENSE"),
+  );
   await Deno.mkdir(resolve(destination, "bin"), { recursive: true });
   await Deno.copyFile(
     resolve(root, "bin/qbento"),
@@ -79,6 +83,11 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
         await Deno.readTextFile(resolve(second, "manifest.json")),
     );
     assert(a.files.some((f) => f.path === "runtime/vendor/bento/LICENSE"));
+    const projectLicense = await Deno.readTextFile(resolve(root, "LICENSE"));
+    for (const path of ["LICENSE", "runtime/LICENSE"]) {
+      assert(a.files.some((file) => file.path === path));
+      assert(await Deno.readTextFile(resolve(first, path)) === projectLicense);
+    }
     assert(
       a.files.some((f) =>
         f.path === "runtime/vendor/bento/THIRD_PARTY_NOTICES.md"
@@ -504,6 +513,12 @@ Deno.test({
         (await Deno.stat(
           resolve(project, "_extensions/qbento/runtime/vendor/bento/LICENSE"),
         )).isFile,
+      );
+      assert(
+        await Deno.readTextFile(
+          resolve(project, "_extensions/qbento/runtime/LICENSE"),
+        ) ===
+          await Deno.readTextFile(resolve(root, "LICENSE")),
       );
       // The installed project is self-contained even after the portable runtime is removed.
       await Deno.remove(distribution, { recursive: true });

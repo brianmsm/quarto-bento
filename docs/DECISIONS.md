@@ -23,6 +23,7 @@
 | Widgets | Static compatible fallback for standalone Bento/PDF; supported widgets interactive in enhanced Presenter, isolated from pure-data BentoDoc; offline where dependencies can be bundled. |
 | Reproducibility | Source + input data + visual state + **user-provided compatible runtime/packages** reconstruct the presentation. `renv`/`uv`/Docker are user-controlled optional recommendations, **not managed by qbento**. |
 | Distribution | Editable standalone `.bento.html` is an independent copy; importing/reconciling later is separate functionality. |
+| Project license (owner decision, 2026-10-13) | Quarto-Bento's own code and documentation use the MIT License, copyright (c) 2026 Brian Norman Peña Calero. The [root LICENSE](../LICENSE) records the terms. Bundled third-party components retain their own terms and attributions; this decision does not settle their review or the public release boundary. |
 | Git/offline/platforms | Git-first sources, offline ordinary workflow, Linux/macOS/Windows target; Linux first for development. |
 | Languages | R is an important use case, but core independent of R (Quarto/Pandoc execution handles R/Python/Julia/etc.). |
 | Agents | Structured JSON core operations/CLI from the start; MCP/agent interfaces can be added on top. |

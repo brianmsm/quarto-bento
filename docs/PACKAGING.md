@@ -112,12 +112,13 @@ Remaining unknown font releases and the broader notice review are explicit in
 the inventory.
 
 Managed standalone HTML also carries an inert, readable JSON notice block in the
-document head with the full supplied Bento MIT text, upstream notices, font
-provenance note and both OFL texts. Studio and the isolated deck Presenter use
+document head with the full Quarto-Bento MIT text labeled separately from the
+supplied Bento MIT text, upstream notices, font provenance note and both OFL texts.
+Studio and the isolated deck Presenter use
 the same shell loader. Native Bento's pristine-shell serialization retains this
 block in saved copies; the texts remain outside BentoDoc and do not affect slide
 content. The vendored shell and its original NOTICE remain unchanged. This
-preserves already-supplied notices without assigning Quarto-Bento a license or
+preserves the project's declared license and supplied third-party notices without
 claiming a complete third-party audit.
 
 At the pinned revision, `slides/package.json` declares version `1.2.6`, but the
@@ -127,10 +128,15 @@ the builder checks each recorded version against its own source file and checks
 that the direct dependency roots match. The lockfile was not rewritten to hide
 the upstream metadata difference.
 
-The source checkout currently has no root LICENSE declaring terms for
-Quarto-Bento's own code. This artifact does not assign those terms and must not
-be presented as a publicly licensed release without resolving that project
-decision.
+The owner selected MIT for Quarto-Bento's own code and documentation on
+2026-10-13, with copyright (c) 2026 Brian Norman Peña Calero. The full text is in
+the [root LICENSE](../LICENSE), packaged at both `LICENSE` and `runtime/LICENSE`
+and copied to an initialized extension's `runtime/LICENSE`. The shared shell
+loader reads that runtime-relative resource lazily, records its SHA-256 and
+includes its complete text as `Quarto-Bento/LICENSE` with a separate component
+label. Bento's original license and pinned third-party files retain their terms.
+This settled owner decision does not close the third-party review or public
+release acceptance scope.
 
 ## Authored portability CI and local smoke
 
@@ -268,7 +274,7 @@ Archive membership does not prove that every listed component ships in the shell
 NOTICE files may also describe development components. Full package license
 texts remain absent from four archives: `@cfcs/core`, `croact`,
 `croact-css-styled`, and `keycon`. This is recorded explicitly and does not close
-the complete third-party or project-license review. The
+the complete third-party review. The project license is settled above. The
 [source-revision follow-up](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
 registry-linked commits, unavailable sources and version discrepancies; it does
 not replace the archive facts or resolve the missing package texts.

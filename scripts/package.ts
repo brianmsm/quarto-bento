@@ -58,6 +58,7 @@ interface BentoPin {
 }
 const root = fileURLToPath(new URL("../", import.meta.url));
 const fixedFiles = [
+  "LICENSE",
   "vendor/bento/shell.html",
   "vendor/bento/slides.schema.json",
   "vendor/bento/pin.json",
@@ -787,7 +788,12 @@ export async function buildDevelopmentPackage(options: {
     });
   }
   for (
-    const name of ["bin/qbento", "bin/qbento.cmd", "docs/PORTABLE_USAGE.md"]
+    const name of [
+      "LICENSE",
+      "bin/qbento",
+      "bin/qbento.cmd",
+      "docs/PORTABLE_USAGE.md",
+    ]
   ) {
     const bytes = await regularBytes(resolve(sourceRoot, name));
     payload.push({
