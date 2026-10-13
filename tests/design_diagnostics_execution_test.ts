@@ -56,6 +56,7 @@ Deno.test({
       eq(await Deno.readTextFile(source), text);
       const edited = structuredClone(second.state.emitted);
       edited.slides[0].elements.find((e) => e.html === "Texto.")!.x = 222;
+      edited.slides[0].elements.find((e) => e.html === "Texto.")!.w = 800;
       await saveProject(source, edited, second.state.revision);
       eq(await readProjectDiagnostics(source), []);
       const withDesign = await renderProject(source);
@@ -88,6 +89,7 @@ Deno.test({
       const first = await renderProject(source);
       const edited = structuredClone(first.state.emitted);
       edited.slides[0].elements.find((e) => e.html === "Texto.")!.x = 222;
+      edited.slides[0].elements.find((e) => e.html === "Texto.")!.w = 800;
       await saveProject(source, edited, first.state.revision);
       const expected = await readProjectDiagnostics(source);
       eq(expected.map((d) => [d.code, d.reference]), [[
@@ -231,11 +233,17 @@ Deno.test({
       const edited = structuredClone(first.state.emitted);
       const title = structuredClone(edited.slides[0].elements[0]);
       const body = structuredClone(edited.slides[0].elements[1]);
-      Object.assign(title, { id: "created-title", html: "Created", x: 200 });
+      Object.assign(title, {
+        id: "created-title",
+        html: "Created",
+        x: 200,
+        w: 800,
+      });
       Object.assign(body, {
         id: "created-body",
         html: "Created body.",
         x: 300,
+        w: 800,
       });
       edited.slides.push({
         ...edited.slides[0],
