@@ -54,9 +54,11 @@ most 64 characters. There may be at most 64 layouts and 32 themes. Columns are
 an integer from 1 to 6; gap and padding are finite pixels from 0 to 1000. The
 exact number of children must match the columns. `two-column` remains a built-in
 name and cannot be redefined. Supported placement covers measured text,
-displayed code, images and decorative shapes. Native tables/charts, embeds,
-media and raw SVG objects still refuse component composition until their
-internal metrics are adapted. Content exceeding a frame refuses instead of
+displayed code, images and decorative shapes. Plain native tables and bounded
+bar/line charts also compose using their verified internal metrics; see the
+[table](evidence/COMPOSED-TABLES.md) and [chart](evidence/COMPOSED-CHARTS.md)
+receipts. Embeds, media and raw SVG objects still refuse component composition
+until their internal metrics are adapted. Content exceeding a frame refuses instead of
 shrinking to unreadable text. This registry is separate from Bento's native
 reusable slide templates.
 

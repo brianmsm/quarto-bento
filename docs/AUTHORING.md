@@ -274,9 +274,12 @@ Attributes declared explicitly in QMD carry source ownership: when Bento changes
 
 ### Tables and native charts (implemented subset)
 
-One plain pipe table in an identified div projects to a native table. Literal
-cells retain their exact text; an identified wrapper around one labelled
-`knitr::kable(..., format="pipe")` producer retains computed provenance.
+An ordinary plain pipe table, or one inside an identified div, projects to a
+native table. Literal cells retain their exact text and original source proof;
+reviewed identity acquisition can bind an initially unwrapped table without
+changing source on Save/render. A `knitr::kable(..., format="pipe")` result
+retains computed provenance through its verified execution receipt, including
+supported unlabelled producers. See [ordinary table evidence](evidence/PLAIN-TABLES.md).
 Geometry and table-wide styles persist across data changes. Cell edits stay
 recoverable as pending changes; reverse cell-to-QMD synchronization is not yet
 implemented. Rich cells, captions, spans and unfaithful initial layout refuse.
