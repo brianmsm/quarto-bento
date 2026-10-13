@@ -1,4 +1,6 @@
 import { renderProject } from "../src/core/project.ts";
+import { executeQuarto } from "../src/render/quarto.ts";
+import { producerReceipt } from "../src/render/producer-capture.ts";
 import {
   projectAst,
   validateProjectionOrigins,
@@ -9,11 +11,11 @@ import type { Ast, Node } from "../src/render/types.ts";
 function ok(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
-async function refuses(fn: () => unknown) {
+async function refuses(fn: () => unknown, code = "UNMAPPED_CHART_SOURCE") {
   try {
     await fn();
   } catch (e) {
-    ok(String(e).includes("UNMAPPED_CHART_SOURCE"), String(e));
+    ok(String(e).includes(code), String(e));
     return;
   }
   throw new Error("accepted fabricated chart context");
@@ -39,6 +41,13 @@ async function ast(source: string): Promise<Ast> {
 function id(node: Node) {
   return node.t === "Div" ? (node.c as [Attr, Node[]])[0][0] : "";
 }
+const contextFilters = [
+  'function Pandoc(doc) local chart=nil; local rest=pandoc.List(); for _,b in ipairs(doc.blocks) do if b.t=="Div" and b.identifier=="chart" then chart=b else rest:insert(b) end end; for _,b in ipairs(rest) do if b.t=="Div" and b.identifier=="card" then b.content:insert(chart) end end; doc.blocks=rest; return doc end',
+  'function Pandoc(doc) local chart=nil; local rest=pandoc.List(); for _,b in ipairs(doc.blocks) do if b.t=="Div" and b.identifier=="chart" then chart=b else rest:insert(b) end end; rest:insert(chart); doc.blocks=rest; return doc end',
+  'function Div(el) if el.identifier=="chart" then return {} end end',
+];
+const computedData =
+  '```{r}\n#| label: producer\n#| echo: false\ncat("run\\n",file="counter.txt",append=TRUE)\nknitr::kable(data.frame(group=c("A","B"),N=c(-1,2)),format="pipe",col.names=c("","N"))\n```\n';
 Deno.test("chart original ancestry, attributes, slide and coverage cannot be fabricated by AST or projection edits", async () => {
   const source = scanSource(qmd), initial = await ast(qmd);
   const good = validateProjectionOrigins(
@@ -88,37 +97,138 @@ Deno.test("chart original ancestry, attributes, slide and coverage cannot be fab
     }
   }
 });
-Deno.test("authored and computed chart filter context mutations refuse atomically after a prior publication", async () => {
-  for (const computed of [false, true]) {
-    const dir = await Deno.makeTempDir({ prefix: "qbento-chart-context-" }),
-      file = `${dir}/deck.qmd`;
-    try {
-      const data = computed
-        ? '```{r}\n#| label: producer\n#| echo: false\nknitr::kable(data.frame(group=c("A","B"),N=c(-1,2)),format="pipe",col.names=c("","N"))\n```\n'
-        : table;
-      const source = "---\nfilters: [mutate.lua]\n---\n\n" +
-        qmd.replace(table, data);
-      await Deno.writeTextFile(file, source);
-      await Deno.writeTextFile(`${dir}/mutate.lua`, "-- original identity\n");
-      await renderProject(file);
-      const html = await Deno.readTextFile(`${dir}/deck.bento.html`),
-        state = await Deno.readTextFile(`${dir}/.qbento/state.json`);
-      for (
-        const filter of [
-          'function Pandoc(doc) local chart=nil; local rest=pandoc.List(); for _,b in ipairs(doc.blocks) do if b.t=="Div" and b.identifier=="chart" then chart=b else rest:insert(b) end end; for _,b in ipairs(rest) do if b.t=="Div" and b.identifier=="card" then b.content:insert(chart) end end; doc.blocks=rest; return doc end',
-          'function Pandoc(doc) local chart=nil; local rest=pandoc.List(); for _,b in ipairs(doc.blocks) do if b.t=="Div" and b.identifier=="chart" then chart=b else rest:insert(b) end end; rest:insert(chart); doc.blocks=rest; return doc end',
-          'function Div(el) if el.identifier=="chart" then return {} end end',
-        ]
-      ) {
-        await Deno.writeTextFile(`${dir}/mutate.lua`, filter);
-        await refuses(() => renderProject(file));
-        ok(await Deno.readTextFile(file) === source);
-        ok(await Deno.readTextFile(`${dir}/deck.bento.html`) === html);
-        ok(await Deno.readTextFile(`${dir}/.qbento/state.json`) === state);
-      }
-    } finally {
-      await Deno.remove(dir, { recursive: true });
+Deno.test("authored chart Lua context mutations execute and refuse atomically after a prior publication", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-chart-context-" }),
+    file = `${dir}/deck.qmd`,
+    source = "---\nfilters: [mutate.lua]\n---\n\n" + qmd;
+  try {
+    await Deno.writeTextFile(file, source);
+    await Deno.writeTextFile(`${dir}/mutate.lua`, "-- original identity\n");
+    const first = await renderProject(file);
+    ok(
+      first.state.provenance['["one","chart/chart"]'].origin === "authored",
+    );
+    const html = await Deno.readTextFile(`${dir}/deck.bento.html`),
+      state = await Deno.readTextFile(`${dir}/.qbento/state.json`);
+    for (const filter of contextFilters) {
+      await Deno.writeTextFile(
+        `${dir}/mutate.lua`,
+        filter +
+          '\nfunction Meta(meta) local f=io.open("filter-runs.txt","a"); f:write("run\\n"); f:close(); return meta end\n',
+      );
+      await refuses(() => renderProject(file));
+      ok(await Deno.readTextFile(file) === source);
+      ok(await Deno.readTextFile(`${dir}/deck.bento.html`) === html);
+      ok(await Deno.readTextFile(`${dir}/.qbento/state.json`) === state);
     }
+    ok(
+      await Deno.readTextFile(`${dir}/filter-runs.txt`) === "run\nrun\nrun\n",
+      "authored Lua context checks must run the actual filters",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+Deno.test("computed chart Lua context mutations refuse before execution and preserve the prior publication", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-chart-filter-" }),
+    file = `${dir}/deck.qmd`,
+    source = qmd.replace(table, computedData);
+  try {
+    await Deno.writeTextFile(file, source);
+    const first = await renderProject(file);
+    const origin = first.state.provenance['["one","chart/chart"]'];
+    ok(origin.origin === "computed" && origin.producer === "producer");
+    const html = await Deno.readTextFile(`${dir}/deck.bento.html`),
+      state = await Deno.readTextFile(`${dir}/.qbento/state.json`),
+      filteredSource = "---\nfilters: [mutate.lua]\n---\n\n" + source;
+    await Deno.writeTextFile(file, filteredSource);
+    for (const filter of contextFilters) {
+      await Deno.writeTextFile(`${dir}/mutate.lua`, filter);
+      await refuses(() => renderProject(file), "UNSUPPORTED_COMPUTED_FILTER");
+      ok(await Deno.readTextFile(file) === filteredSource);
+      ok(await Deno.readTextFile(`${dir}/deck.bento.html`) === html);
+      ok(await Deno.readTextFile(`${dir}/.qbento/state.json`) === state);
+      ok(await Deno.readTextFile(`${dir}/counter.txt`) === "run\n");
+    }
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+Deno.test("trusted computed chart AST retains producer proof while rejecting fabricated context in all three modes", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-chart-ast-" }),
+    file = `${dir}/deck.qmd`,
+    sourceText = qmd.replace(table, computedData),
+    source = scanSource(sourceText);
+  try {
+    await Deno.writeTextFile(file, sourceText);
+    for (const mode of ["nest", "move-slide", "drop"]) {
+      const executed = await executeQuarto(file, `${dir}/build-${mode}`);
+      const good = validateProjectionOrigins(
+        source,
+        await projectAst(executed, "computed-context", [], source),
+      );
+      ok(good.origins.one["chart/chart"].producer === "producer");
+      const ch = executed.blocks.find((node) => id(node) === "chart")!;
+      ok(ch, "original computed chart not found");
+      // Mutate this attached root in place: cloning the AST would discard its
+      // execution trust and test receipt rejection instead of chart context.
+      executed.blocks = executed.blocks.filter((node) => node !== ch);
+      if (mode === "nest") {
+        const card = executed.blocks.find((node) => id(node) === "card")!;
+        (card.c as [Attr, Node[]])[1].push(ch);
+      }
+      if (mode === "move-slide") executed.blocks.push(ch);
+      await refuses(async () =>
+        validateProjectionOrigins(
+          source,
+          await projectAst(executed, "computed-context", [], source),
+        )
+      );
+      ok(await Deno.readTextFile(file) === sourceText);
+    }
+    ok(await Deno.readTextFile(`${dir}/counter.txt`) === "run\nrun\nrun\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+Deno.test("computed chart cannot borrow another verified original producer boundary", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-chart-producer-" }),
+    file = `${dir}/deck.qmd`,
+    sourceText = qmd.replace(table, computedData) +
+      '\n```{r}\n#| label: other-producer\n#| echo: false\nknitr::kable(data.frame(group=c("A","B"),N=c(-8,9)),format="pipe",col.names=c("","N"))\n```\n',
+    source = scanSource(sourceText);
+  try {
+    await Deno.writeTextFile(file, sourceText);
+    const executed = await executeQuarto(file, `${dir}/build`);
+    const good = validateProjectionOrigins(
+      source,
+      await projectAst(executed, "producer-chart", [], source),
+    );
+    const element = good.document.slides[0].elements.find((e) =>
+      e.id === "chart/chart"
+    )!;
+    ok(JSON.stringify(element.option).includes('"data":[-1,2]'));
+    const other = executed.blocks.find((node) => {
+      if (node.t !== "Div") return false;
+      const [attr] = node.c as [Attr, Node[]];
+      const token = attr[2].find(([key]) => key === "qbento-producer-proof")
+        ?.[1];
+      return token &&
+        producerReceipt(executed, source.hash, token).id === "other-producer";
+    });
+    ok(other, "second verified execution boundary missing");
+    const ch = executed.blocks.find((node) => id(node) === "chart")!;
+    // Both boundaries were emitted by this invocation. Original source context
+    // alone cannot authorize using the second producer's data in this chart.
+    (ch.c as [Attr, Node[]])[1] = [other];
+    await refuses(
+      () => projectAst(executed, "producer-chart", [], source),
+      "INVALID_PRODUCER_RECEIPT",
+    );
+    ok(await Deno.readTextFile(file) === sourceText);
+    ok(await Deno.readTextFile(`${dir}/counter.txt`) === "run\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
   }
 });
 Deno.test("verified transparent chart wrapper retains component group and rejects fabricated ancestor attrs", async () => {

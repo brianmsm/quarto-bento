@@ -1,4 +1,4 @@
-import { producerReceipt } from "./producer-capture.ts";
+import { producerOutputChildren, producerReceipt } from "./producer-capture.ts";
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
 import { kpiSource, kpiSourceAttributes } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
@@ -873,7 +873,16 @@ export async function projectAst(
               "UNMAPPED_CHART_SOURCE: executed chart attributes or ancestry differ from original source",
             );
           }
-          const executed = executedChartTable(children);
+          const executed = executedChartTable(
+            binding.computed
+              ? producerOutputChildren(
+                ast,
+                children,
+                source.hash,
+                binding.block.id,
+              )
+              : children,
+          );
           if (
             binding.kind !== declaration.chartKind ||
             binding.computed !== executed.computed
