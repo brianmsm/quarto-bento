@@ -172,3 +172,27 @@ cases run in isolated Deno children because process environment changes otherwis
 cross parallel test-module boundaries. Type checking, lint and formatting passed
 for the changed TypeScript/JavaScript paths. These focused results still require
 merged-product validation and independent review of the final commit.
+
+### Inline computed output and effective filters (2026-10-13)
+
+The filter preflight also applies to source blocks with computed inline content,
+including a KPI value with no fenced execution chunk. Independent review showed
+that a user filter could change an inline result from `2` to `999` while the old
+chunk-only gate incorrectly retained computed provenance. Both CLI and ordinary
+Quarto now refuse that transformation before evaluating the inline expression,
+retaining the source, baseline state and published HTML byte-for-byte.
+Authored-only documents still support their existing filter workflow.
+
+The follow-up source/capture/filter/computed-code run passed **18 tests, 0
+failures, 0 ignored, 25s**. Its log is
+`/tmp/qbento-inline-producer-regression.log`:
+
+```sh
+DENO_JOBS=2 NO_COLOR=1 deno test --parallel \
+  --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 \
+  tests/producer_filters_test.ts tests/producer_capture_test.ts \
+  tests/computed_code_test.ts tests/computed_code_execution_test.ts
+```
+
+This closes the reproduced inline-filter bypass; it does not create a producer
+transport for unsupported engines or arbitrary computed transformations.

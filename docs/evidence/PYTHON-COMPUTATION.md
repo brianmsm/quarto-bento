@@ -84,7 +84,8 @@ both captures. Foreign `knit_child` output cannot borrow an original hidden chun
 
 ## Remaining transformation boundary
 
-Computed documents currently refuse user Pandoc/Lua filters before execution.
+Computed documents, including computed inline source blocks with no fenced chunk,
+currently refuse user Pandoc/Lua filters before execution.
 A filter can detach receipts or exchange them between outputs; a receipt copied
 to different output is not original producer proof. Effective QMD/project/profile/
 metadata configuration is inspected, and only the exact installed internal

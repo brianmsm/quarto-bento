@@ -1,76 +1,84 @@
+import { isolatedEnvironmentTest } from "./helpers/isolated.ts";
+import { installQuartoProject } from "../src/integration/install.ts";
 import { renderProject } from "../src/core/project.ts";
 import { assertCompatibleProducerFilters } from "../src/render/producer-capture.ts";
 function assert(v: unknown, m = "assertion failed"): asserts v {
   if (!v) throw new Error(m);
 }
-Deno.test("effective computed user filters from QMD, project, profiles and metadata refuse before execution and preserve the prior state", async () => {
-  const dir = await Deno.makeTempDir({ prefix: "qbento-filter-provenance-" }),
-    source = dir + "/deck.qmd",
-    originalProfile = Deno.env.get("QUARTO_PROFILE");
-  const body =
-    '## One {#one}\n\n```{r}\n#| label: actual\n#| echo: false\ncat("run\\n",file="counter.txt",append=TRUE)\nprint(555)\n```\n';
-  try {
-    await Deno.writeTextFile(source, body);
-    await renderProject(source);
-    const state = await Deno.readTextFile(dir + "/.qbento/state.json"),
-      output = await Deno.readTextFile(dir + "/deck.bento.html");
-    await Deno.writeTextFile(
-      dir + "/user.lua",
-      "function Div(d) return d end\n",
-    );
-    for (const variant of ["qmd", "project", "profile", "metadata"]) {
+isolatedEnvironmentTest(
+  "effective computed user filters from QMD, project, profiles and metadata refuse before execution and preserve the prior state",
+  import.meta.url,
+  async () => {
+    const dir = await Deno.makeTempDir({ prefix: "qbento-filter-provenance-" }),
+      source = dir + "/deck.qmd",
+      originalProfile = Deno.env.get("QUARTO_PROFILE");
+    const body =
+      '## One {#one}\n\n```{r}\n#| label: actual\n#| echo: false\ncat("run\\n",file="counter.txt",append=TRUE)\nprint(555)\n```\n';
+    try {
       await Deno.writeTextFile(source, body);
+      await renderProject(source);
+      const state = await Deno.readTextFile(dir + "/.qbento/state.json"),
+        output = await Deno.readTextFile(dir + "/deck.bento.html");
       await Deno.writeTextFile(
-        dir + "/_quarto.yml",
-        "project: {type: default}\n",
+        dir + "/user.lua",
+        "function Div(d) return d end\n",
       );
-      Deno.env.delete("QUARTO_PROFILE");
-      if (variant === "qmd") {
-        await Deno.writeTextFile(
-          source,
-          "---\nfilters: [user.lua]\n---\n" + body,
-        );
-      }
-      if (variant === "project") {
+      for (const variant of ["qmd", "project", "profile", "metadata"]) {
+        await Deno.writeTextFile(source, body);
         await Deno.writeTextFile(
           dir + "/_quarto.yml",
-          "project: {type: default}\nfilters: [user.lua]\n",
+          "project: {type: default}\n",
         );
+        Deno.env.delete("QUARTO_PROFILE");
+        if (variant === "qmd") {
+          await Deno.writeTextFile(
+            source,
+            "---\nfilters: [user.lua]\n---\n" + body,
+          );
+        }
+        if (variant === "project") {
+          await Deno.writeTextFile(
+            dir + "/_quarto.yml",
+            "project: {type: default}\nfilters: [user.lua]\n",
+          );
+        }
+        if (variant === "profile") {
+          await Deno.writeTextFile(
+            dir + "/_quarto-test.yml",
+            "filters: [user.lua]\n",
+          );
+          Deno.env.set("QUARTO_PROFILE", "test");
+        }
+        if (variant === "metadata") {
+          await Deno.writeTextFile(dir + "/extra.yml", "filters: [user.lua]\n");
+          await Deno.writeTextFile(
+            source,
+            "---\nmetadata-files: [extra.yml]\n---\n" + body,
+          );
+        }
+        try {
+          await renderProject(source);
+        } catch (e) {
+          assert(
+            String(e).includes("UNSUPPORTED_COMPUTED_FILTER"),
+            variant + ": " + e,
+          );
+          assert(await Deno.readTextFile(dir + "/counter.txt") === "run\n");
+          assert(
+            await Deno.readTextFile(dir + "/.qbento/state.json") === state,
+          );
+          assert(await Deno.readTextFile(dir + "/deck.bento.html") === output);
+          continue;
+        }
+        throw new Error("Computed user filter executed: " + variant);
       }
-      if (variant === "profile") {
-        await Deno.writeTextFile(
-          dir + "/_quarto-test.yml",
-          "filters: [user.lua]\n",
-        );
-        Deno.env.set("QUARTO_PROFILE", "test");
-      }
-      if (variant === "metadata") {
-        await Deno.writeTextFile(dir + "/extra.yml", "filters: [user.lua]\n");
-        await Deno.writeTextFile(
-          source,
-          "---\nmetadata-files: [extra.yml]\n---\n" + body,
-        );
-      }
-      try {
-        await renderProject(source);
-      } catch (e) {
-        assert(
-          String(e).includes("UNSUPPORTED_COMPUTED_FILTER"),
-          variant + ": " + e,
-        );
-        assert(await Deno.readTextFile(dir + "/counter.txt") === "run\n");
-        assert(await Deno.readTextFile(dir + "/.qbento/state.json") === state);
-        assert(await Deno.readTextFile(dir + "/deck.bento.html") === output);
-        continue;
-      }
-      throw new Error("Computed user filter executed: " + variant);
+    } finally {
+      if (originalProfile === undefined) Deno.env.delete("QUARTO_PROFILE");
+      else Deno.env.set("QUARTO_PROFILE", originalProfile);
+      await Deno.remove(dir, { recursive: true });
     }
-  } finally {
-    if (originalProfile === undefined) Deno.env.delete("QUARTO_PROFILE");
-    else Deno.env.set("QUARTO_PROFILE", originalProfile);
-    await Deno.remove(dir, { recursive: true });
-  }
-});
+  },
+);
 Deno.test("authored-only documents retain user filter support", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-authored-filter-" });
   try {
@@ -171,6 +179,62 @@ Deno.test("R startup flags that disable original producer capture refuse before 
   } finally {
     if (original === undefined) Deno.env.delete("QUARTO_KNITR_RSCRIPT_ARGS");
     else Deno.env.set("QUARTO_KNITR_RSCRIPT_ARGS", original);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("inline computed values refuse user filters before CLI or ordinary execution and retain the baseline", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-inline-filter-" });
+  const source = dir + "/deck.qmd";
+  const body =
+    '---\nengine: knitr\n---\n\n## Inline {#inline}\n\n:::: {#indicator .bento-kpi}\n\n::: {#label bento-role="label"}\nObserved\n:::\n\n::: {#value bento-role="value"}\n`r {cat("once\\n",file="counter.txt",append=TRUE);2}`\n:::\n\n::: {#detail bento-role="detail"}\nComputed inline\n:::\n\n::::\n';
+  try {
+    await Deno.writeTextFile(source, body);
+    await renderProject(source);
+    await installQuartoProject(source);
+    const state = await Deno.readTextFile(dir + "/.qbento/state.json");
+    const output = await Deno.readTextFile(dir + "/deck.bento.html");
+    await Deno.writeTextFile(
+      dir + "/replace.lua",
+      'function Str(s) if s.text == "2" then return pandoc.Str("999") end end\n',
+    );
+    const changed = body.replace(
+      "engine: knitr",
+      "engine: knitr\nfilters: [replace.lua]",
+    );
+    await Deno.writeTextFile(source, changed);
+    for (const route of ["cli", "ordinary"]) {
+      if (route === "cli") {
+        let refused = false;
+        try {
+          await renderProject(source);
+        } catch (error) {
+          refused = String(error).includes("UNSUPPORTED_COMPUTED_FILTER");
+        }
+        assert(refused, "CLI accepted transformed inline computation");
+      } else {
+        const result = await new Deno.Command("quarto", {
+          cwd: dir,
+          args: ["render", "deck.qmd", "--quiet"],
+          stdout: "piped",
+          stderr: "piped",
+        }).output();
+        assert(
+          !result.success &&
+            new TextDecoder().decode(result.stderr).includes(
+              "UNSUPPORTED_COMPUTED_FILTER",
+            ),
+        );
+      }
+      assert(
+        await Deno.readTextFile(dir + "/counter.txt") === "once\n",
+        `${route} executed inline source before refusal`,
+      );
+      assert(await Deno.readTextFile(dir + "/.qbento/state.json") === state);
+      assert(await Deno.readTextFile(dir + "/deck.bento.html") === output);
+      assert(await Deno.readTextFile(source) === changed);
+    }
+  } finally {
     await Deno.remove(dir, { recursive: true });
   }
 });

@@ -221,12 +221,11 @@ export async function assertCompatibleProducerFilters(
   source: string,
   targetFormat = "html",
 ) {
+  const document = scanSource(await Deno.readTextFile(source));
   if (
-    !scanSource(await Deno.readTextFile(source)).blocks.some((b) =>
-      b.kind === "chunk"
-    )
+    !document.blocks.some((b) => b.kind === "chunk" || b.origin === "computed")
   ) return;
-  assertProducerStartup();
+  if (document.blocks.some((b) => b.kind === "chunk")) assertProducerStartup();
   const inspected = await new Deno.Command("quarto", {
     cwd: dirname(source),
     args: ["inspect", source],
