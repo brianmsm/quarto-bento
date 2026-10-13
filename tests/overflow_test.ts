@@ -36,18 +36,54 @@ Deno.test("overflow follows supported native page height and exact vertical box 
     elements: [
       { id: "at-edge", type: "shape", y: 500, h: 40 },
       { id: "past-edge", type: "text", y: 500, h: 41 },
+      { id: "at-right-edge", type: "shape", x: 860, w: 100 },
+      { id: "past-right-edge", type: "text", x: 860, w: 101 },
     ],
   }];
   const smaller = refreshOverflowDiagnostics({
     size: { width: 960, height: 540 },
     slides,
   }, []);
-  assert(smaller.length === 1 && smaller[0].elementId === "past-edge");
+  assert(
+    smaller.length === 2 &&
+      smaller.map((d) => d.elementId).join() ===
+        "past-edge,past-right-edge",
+    JSON.stringify(smaller),
+  );
   const larger = refreshOverflowDiagnostics({
     size: { width: 1280, height: 900 },
     slides,
   }, smaller);
   assert(larger.length === 0);
+});
+
+Deno.test("overflow uses exact left and top box edges without rejecting zero-width lines", () => {
+  const slides: Slide[] = [{
+    id: "slide",
+    elements: [
+      { id: "at-left", type: "shape", x: 0, y: 10, w: 20, h: 20 },
+      { id: "past-left", type: "shape", x: -0.1, y: 10, w: 20, h: 20 },
+      { id: "at-top", type: "shape", x: 10, y: 0, w: 20, h: 20 },
+      { id: "past-top", type: "shape", x: 10, y: -0.1, w: 20, h: 20 },
+      {
+        id: "vertical-line",
+        type: "shape",
+        shape: "line",
+        x: 100,
+        y: 100,
+        w: 0,
+        h: 80,
+      },
+    ],
+  }];
+  const diagnostics = refreshOverflowDiagnostics({
+    size: { width: 1280, height: 720 },
+    slides,
+  }, []);
+  assert(
+    diagnostics.map((d) => d.elementId).join() === "past-left,past-top",
+    JSON.stringify(diagnostics),
+  );
 });
 
 Deno.test("default image frames retain 400px height when enough canvas space remains", async () => {

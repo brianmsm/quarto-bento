@@ -1,6 +1,6 @@
 import type { BentoDoc, Diagnostic } from "./types.ts";
 
-/** Vertical box overflow for the actual native page, without estimating ink. */
+/** Axis-aligned box overflow for the actual native page, without estimating ink. */
 export function refreshOverflowDiagnostics(
   document: Pick<BentoDoc, "size" | "slides">,
   diagnostics: readonly Diagnostic[],
@@ -10,9 +10,16 @@ export function refreshOverflowDiagnostics(
   );
   for (const slide of document.slides) {
     for (const element of slide.elements) {
+      const x = Number(element.x);
+      const y = Number(element.y);
+      const width = Number(element.w);
+      const height = Number(element.h);
       if (
-        Number(element.y) + Number(element.h) > document.size.height ||
-        Number(element.h) <= 0
+        x < 0 ||
+        x + width > document.size.width ||
+        y < 0 ||
+        y + height > document.size.height ||
+        height <= 0
       ) {
         result.push({
           code: "OVERFLOW",

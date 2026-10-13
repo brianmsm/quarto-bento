@@ -14,7 +14,7 @@ const original = "## Overflow {#slide}\n\n" +
   "\n";
 Deno.test({
   name:
-    "core overflow reflects retained authored geometry, decorative elements and native page height",
+    "core overflow reflects retained authored geometry, decorative elements and native page size",
   ignore: !canRun,
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "qbento-composed-overflow-" });
@@ -50,34 +50,57 @@ Deno.test({
         JSON.stringify(fitted.diagnostics),
       );
       const outside = structuredClone(fitted.state.emitted);
-      const body = outside.slides[0].elements[1];
-      body.y = 710;
-      body.h = 40;
-      outside.slides[0].elements.find((el) => el.id === "decoration")!.y = 710;
+      const elements = outside.slides[0].elements;
+      elements[1].x = -1;
+      elements[1].w = 100;
+      elements[2].x = 1279;
+      elements[2].w = 2;
+      elements[3].y = -1;
+      elements[3].h = 40;
+      elements[4].y = 710;
+      elements[4].h = 11;
+      // The decoration's bottom edge is exactly on the slide boundary.
+      outside.slides[0].elements.find((el) => el.id === "decoration")!.y =
+        (outside.size as { height: number }).height - 40;
       await saveProject(source, outside, fitted.state.revision);
       const overflowing = await renderProject(source);
       const diagnostics = overflowing.diagnostics.filter((d) =>
         d.code === "OVERFLOW"
       );
-      assert(diagnostics.length === 2, JSON.stringify(diagnostics));
+      const expectedOverflowIds = elements.slice(1, 5).map((el) => el.id)
+        .sort();
+      assert(diagnostics.length === 4, JSON.stringify(diagnostics));
       assert(
-        diagnostics.every((d) =>
-          d.slideId === "slide" &&
-          (d.elementId === body.id || d.elementId === "decoration")
-        ),
+        diagnostics.every((d) => d.slideId === "slide") &&
+          JSON.stringify(diagnostics.map((d) => d.elementId).sort()) ===
+            JSON.stringify(expectedOverflowIds),
+        JSON.stringify({ diagnostics, expectedOverflowIds }),
       );
-      const taller = structuredClone(overflowing.state.emitted);
-      (taller.size as { height: number }).height = 900;
-      await saveProject(source, taller, overflowing.state.revision);
+      const resized = structuredClone(overflowing.state.emitted);
+      (resized.size as { width: number; height: number }).width = 1400;
+      (resized.size as { width: number; height: number }).height = 900;
+      await saveProject(source, resized, overflowing.state.revision);
       const alternate = await renderProject(source);
-      assert(
-        !alternate.diagnostics.some((d) => d.code === "OVERFLOW"),
-        JSON.stringify(alternate.diagnostics),
+      const remaining = alternate.diagnostics.filter((d) =>
+        d.code === "OVERFLOW"
       );
       assert(
-        (await readProject(source)).emitted.slides[0].elements.find((el) =>
-          el.id === body.id
-        )!.y === 710,
+        JSON.stringify(remaining.map((d) => d.elementId).sort()) ===
+          JSON.stringify([elements[1].id, elements[3].id].sort()),
+        JSON.stringify(remaining),
+      );
+      const fittedEdges = structuredClone(alternate.state.emitted);
+      fittedEdges.slides[0].elements[1].x = 0;
+      fittedEdges.slides[0].elements[3].y = 0;
+      await saveProject(source, fittedEdges, alternate.state.revision);
+      const bounded = await renderProject(source);
+      assert(
+        !bounded.diagnostics.some((d) => d.code === "OVERFLOW"),
+        JSON.stringify(bounded.diagnostics),
+      );
+      assert(
+        (await readProject(source)).emitted.slides[0].elements[1].x === 0 &&
+          (await readProject(source)).emitted.slides[0].elements[3].y === 0,
       );
       assert(await Deno.readTextFile(source) === original);
     } finally {

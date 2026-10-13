@@ -1,7 +1,8 @@
 # Overflow diagnostics after visual composition
 
-Focused Linux evidence, 2026-10-11. This is a diagnostic correction; it does not
-change source authority, saved geometry, synchronization or persistence schemas.
+Focused Linux evidence (2026-10-11; bounds extended 2026-10-13). This is a
+diagnostic correction; it does not change source authority, saved geometry,
+synchronization or persistence schemas.
 
 ## Corrected behavior
 
@@ -19,35 +20,37 @@ the document published to native HTML. Ordinary `qbento-html` publication uses
 that same core path. Each warning contains both `slideId` and `elementId`, so
 identical element IDs on different slides remain unambiguous.
 
-The existing vertical box criterion remains: `y + h` exceeding the page height,
-or nonpositive height. The bound now uses the composed document's `size.height`,
-including native page-size overrides already supported by Save. The pinned
-upstream renderer sets its surface height from `doc.size.height`
-(`slides/src/render.ts`, line 1343 at pinned revision
-`3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`). This is not an estimate of rendered
-text, shadows, rotation, horizontal overflow or content clipping. Decorations
-retained in `bentoOnly` are checked because they are present in the composed
-document.
+The vertical rule still reports `y + h > size.height` and nonpositive heights.
+Final composed boxes now check all four page edges: `x < 0`,
+`x + w > size.width`, `y < 0`, and `y + h > size.height`, while retaining the
+nonpositive-height diagnostic. Exact edge contact is accepted. The comparison
+uses both dimensions from the composed document, including native page-size
+overrides supported by Save. A zero-width line wholly inside the page is not
+flagged just for having zero width; width is not otherwise validated here. This
+checks axis-aligned box coordinates only. It does not estimate rendered text,
+shadows, rotation, painted ink or content clipping. Decorations retained in
+`bentoOnly` are checked because they are present in the composed document.
 
 ## Focused verification
 
 ```bash
-deno test --allow-read --allow-write --allow-env --allow-run tests/overflow_test.ts tests/overflow_execution_test.ts tests/render_test.ts
-# 12 passed on Linux; /tmp/qbento-composed-overflow-final.log
+deno test --allow-read --allow-write --allow-env --allow-run --allow-net=127.0.0.1 tests/overflow_test.ts tests/overflow_execution_test.ts tests/render_test.ts
+# 15 passed on Linux; /tmp/qbento-overflow-four-bounds-final.log
 ```
 
-Two unit regressions check replacement of stale warnings without mutation or
-loss of other diagnostic categories, duplicated element IDs across slides,
-nonpositive height, exact boundary and a smaller native page frame. Two real
-installed-Quarto regressions check corrected retained authored geometry, a saved
-authored element outside the frame, a retained decorative element outside the
-frame, a taller native frame of 900 px, and ordinary Quarto publication
-reporting only the current composed overflow. Source bytes remain unchanged.
-Eight existing projection tests also pass.
+Unit regressions check replacement of stale warnings without mutation or loss of
+other diagnostic categories, duplicated element IDs across slides, nonpositive
+height, all four edges, exact boundary contact, a zero-width line, and different
+native page sizes. Real installed-Quarto regressions check corrected retained
+authored geometry, saved elements beyond each edge, a retained decorative
+element at the exact boundary, wider and taller native frames, and ordinary
+Quarto publication reporting only current composed overflow. Source bytes remain
+unchanged. Existing projection tests also pass.
 
-Type checking, lint, formatting and diff checks pass for the five changed code
-and test files. No full-suite, browser visual, hosted CI or native macOS/Windows
-claim is made here. The coordinating integration owns the final acceptance run.
+The focused test run, lint, formatting and diff checks pass for the changed
+source and test files. No full-suite, browser visual, hosted CI or native
+macOS/Windows claim is made here. The coordinating integration owns the final
+acceptance run.
 
 ## Multiple computed images in one slide
 
@@ -61,8 +64,8 @@ Default image frames now use a 100 px minimum when the remaining vertical space
 is exhausted, while retaining the existing explicit `contentFrame.h` and the
 natural 400 px height when that much space remains. The minimum permits Bento to
 load the deck and lets the final composed-geometry diagnostic report an image
-that still extends below the slide. It does not shrink content or clear
-overflow automatically.
+that still extends below the slide. It does not shrink content or clear overflow
+automatically.
 
 The real Quarto regression verifies two computed image elements have positive
 heights and that initial `OVERFLOW` targets match exactly the elements whose
@@ -71,8 +74,8 @@ saves all source-backed geometry inside the canvas, changes the CSV inputs and
 renders again. Both computed images retain their exact saved geometry and
 producer identities, the document `docId` stays stable, the SVG data changes,
 the source QMD remains byte-identical, and the overflow warning clears. A final
-save that leaves one code object at `y=700` retains one warning for that
-object only.
+save that leaves one code object at `y=700` retains one warning for that object
+only.
 
 Focused Linux verification:
 
@@ -86,6 +89,6 @@ deno fmt src/render/project.ts tests/overflow_test.ts tests/overflow_execution_t
 ```
 
 The AST regression separately checks the natural 400 px image frame when
-sufficient space is available. These checks validate source projection,
-geometry persistence and diagnostics; they are not a visual inspection of the
-native Bento canvas and do not claim full-suite or other-platform acceptance.
+sufficient space is available. These checks validate source projection, geometry
+persistence and diagnostics; they are not a visual inspection of the native
+Bento canvas and do not claim full-suite or other-platform acceptance.
