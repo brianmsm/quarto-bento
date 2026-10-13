@@ -16,6 +16,7 @@ export interface PackageManifest {
     version: string;
     shellSha256: string;
     runtimeDependencyInventorySha256: string;
+    runtimeLicenseInventorySha256: string;
   };
   files: PackageFile[];
 }
@@ -51,6 +52,7 @@ interface BentoPin {
   shellSha256: string;
   upstreamArtifacts: Record<string, VendoredUpstreamArtifact>;
   runtimeDependencyInventory: { vendoredPath: string; sha256: string };
+  runtimeLicenseInventory: { vendoredPath: string; sha256: string };
   fontNotices: { vendoredPath: string; sha256: string };
   fontLicenseArtifacts: Record<string, FontLicenseArtifact>;
 }
@@ -65,6 +67,7 @@ const fixedFiles = [
   "vendor/bento/font-licenses/fraunces-OFL.txt",
   "vendor/bento/font-licenses/instrument-sans-OFL.txt",
   "vendor/bento/runtime-dependencies.json",
+  "vendor/bento/runtime-licenses.json",
   "vendor/bento/provenance/slides.package.json",
   "vendor/bento/provenance/slides.package-lock.json",
   "_extensions/qbento/_extension.yml",
@@ -547,6 +550,129 @@ async function verifyBentoInventory(
       "runtime component inventory does not match pinned package roots and lockfile",
     );
   }
+  if (pin.runtimeLicenseInventory?.vendoredPath !== "runtime-licenses.json") {
+    mismatch("pin.json has no pinned production archive license inventory");
+  }
+  const licenseBytes = await pinnedBytes(
+    payload,
+    "runtime/vendor/bento/runtime-licenses.json",
+    pin.runtimeLicenseInventory.sha256,
+  );
+  let licenses: unknown;
+  try {
+    licenses = JSON.parse(decoder.decode(licenseBytes));
+  } catch {
+    mismatch("production archive license inventory is invalid JSON");
+  }
+  if (
+    !isRecord(licenses) || licenses.schemaVersion !== 1 ||
+    licenses.bentoRevision !== pin.revision ||
+    licenses.packageLockSha256 !== pin.upstreamArtifacts.packageLock.sha256 ||
+    licenses.selectionMethod !== "npm-lockfile-v3-dev-not-true" ||
+    typeof licenses.scope !== "string" ||
+    !licenses.scope.includes("Archive membership does not establish") ||
+    !Array.isArray(licenses.packages) ||
+    licenses.packages.length !== expectedPackages.length ||
+    !Array.isArray(licenses.missingFullLicenseTexts)
+  ) {
+    mismatch("production archive license scope or provenance is invalid");
+  }
+  const missing: string[] = [];
+  for (const [index, expected] of expectedPackages.entries()) {
+    const row = licenses.packages[index];
+    const locked = packages[expected.packageLockPath.slice("packages/".length)];
+    if (!isRecord(row) || !isRecord(locked)) {
+      mismatch("production archive license package is invalid");
+    }
+    for (
+      const field of [
+        "name",
+        "version",
+        "licenseDeclared",
+        "packageLockPath",
+      ] as const
+    ) {
+      if (row[field] !== expected[field]) {
+        mismatch(`license package identity differs: ${expected.name}`);
+      }
+    }
+    if (
+      row.resolved !== locked.resolved || row.integrity !== locked.integrity ||
+      typeof row.archiveSha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(row.archiveSha256) ||
+      !Number.isSafeInteger(row.archiveBytes) ||
+      (row.archiveBytes as number) <= 0 ||
+      !Array.isArray(row.texts) || row.texts.length === 0
+    ) {
+      mismatch(`license archive provenance differs: ${expected.name}`);
+    }
+    let hasStandalone = false;
+    let hasReadme = false;
+    const textHashes = new Set<string>();
+    for (const text of row.texts) {
+      if (
+        !isRecord(text) || typeof text.text !== "string" ||
+        typeof text.sha256 !== "string" || textHashes.has(text.sha256) ||
+        text.bytes !== new TextEncoder().encode(text.text).length ||
+        await hash(new TextEncoder().encode(text.text)) !== text.sha256 ||
+        !Array.isArray(text.sources) || text.sources.length === 0
+      ) {
+        mismatch(`license text digest differs: ${expected.name}`);
+      }
+      textHashes.add(text.sha256);
+      for (const source of text.sources) {
+        if (
+          !isRecord(source) || typeof source.archivePath !== "string" ||
+          !source.archivePath.startsWith("package/") ||
+          source.archivePath.split("/").some((part: string) =>
+            part === ".." || part === ""
+          ) ||
+          typeof source.memberSha256 !== "string" ||
+          !/^[0-9a-f]{64}$/.test(source.memberSha256) ||
+          !Number.isSafeInteger(source.memberBytes) ||
+          !Number.isSafeInteger(source.startByte) ||
+          !Number.isSafeInteger(source.endByte) ||
+          (source.startByte as number) < 0 ||
+          (source.endByte as number) > (source.memberBytes as number) ||
+          (source.endByte as number) - (source.startByte as number) !==
+            text.bytes ||
+          ![
+            "archive-license-or-notice",
+            "readme-license-fence",
+            "distribution-copyright-license-comment",
+          ].includes(String(source.kind))
+        ) {
+          mismatch(`license member provenance differs: ${expected.name}`);
+        }
+        if (source.kind === "archive-license-or-notice") {
+          if (
+            source.startByte !== 0 || source.endByte !== source.memberBytes ||
+            source.memberSha256 !== text.sha256
+          ) {
+            mismatch(`whole license member differs: ${expected.name}`);
+          }
+          hasStandalone ||= ["package/LICENSE", "package/LICENCE"].includes(
+            source.archivePath,
+          );
+        }
+        hasReadme ||= source.kind === "readme-license-fence";
+      }
+    }
+    const status = hasStandalone
+      ? "standalone-license"
+      : hasReadme
+      ? "readme-license"
+      : "missing-full-license-text-in-archive";
+    if (row.fullPackageLicenseStatus !== status) {
+      mismatch(`license text coverage differs: ${expected.name}`);
+    }
+    if (!hasStandalone && !hasReadme) missing.push(expected.name);
+  }
+  if (
+    JSON.stringify(licenses.missingFullLicenseTexts) !== JSON.stringify(missing)
+  ) {
+    mismatch("missing package license texts must remain explicit");
+  }
   return {
     pin,
     runtimeDependencyInventorySha256: pin.runtimeDependencyInventory.sha256,
@@ -688,6 +814,7 @@ export async function buildDevelopmentPackage(options: {
       version: pin.version,
       shellSha256: pin.shellSha256,
       runtimeDependencyInventorySha256,
+      runtimeLicenseInventorySha256: pin.runtimeLicenseInventory.sha256,
     },
     files: await Promise.all(payload.map(async (f) => ({
       path: f.path,

@@ -2,7 +2,7 @@
 export const SHELL_NOTICES_ID = "qbento-third-party-notices";
 export interface ShellNotices {
   schemaVersion: 1;
-  scope: "pinned-bento-and-two-embedded-fonts";
+  scope: "pinned-bento-fonts-and-production-archive-notices";
   files: { path: string; sha256: string; text: string }[];
 }
 
@@ -44,6 +44,7 @@ export async function loadBentoShell(): Promise<string> {
       pin.upstreamArtifacts?.thirdPartyNotices?.sha256,
     ),
     readPinned("FONT_NOTICES.md", pin.fontNotices?.sha256),
+    readPinned("runtime-licenses.json", pin.runtimeLicenseInventory?.sha256),
     readPinned(
       "font-licenses/fraunces-OFL.txt",
       pin.fontLicenseArtifacts?.fraunces?.sha256,
@@ -55,7 +56,7 @@ export async function loadBentoShell(): Promise<string> {
   ]);
   const notices: ShellNotices = {
     schemaVersion: 1,
-    scope: "pinned-bento-and-two-embedded-fonts",
+    scope: "pinned-bento-fonts-and-production-archive-notices",
     files,
   };
   // Escaping '<' also makes future supplied text containing script-close tokens

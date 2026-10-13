@@ -64,13 +64,42 @@ Deno.test("standalone and isolated Presenter carry exact supplied notices outsid
   );
   const shell = await loadBentoShell();
   const notices = readNotices(shell);
-  assert(notices.schemaVersion === 1 && notices.files.length === 5);
+  assert(notices.schemaVersion === 1 && notices.files.length === 6);
   for (const file of notices.files) {
     const supplied = await Deno.readTextFile(
       new URL(`../vendor/bento/${file.path}`, import.meta.url),
     );
     assert(file.text === supplied, `full text differs: ${file.path}`);
   }
+  const production = JSON.parse(
+    notices.files.find((file) => file.path === "runtime-licenses.json")!.text,
+  );
+  assert(production.packages.length === 25);
+  assert(
+    JSON.stringify(production.missingFullLicenseTexts) ===
+      JSON.stringify(["@cfcs/core", "croact", "croact-css-styled", "keycon"]),
+  );
+  const keycode = production.packages.find((row: { name: string }) =>
+    row.name === "keycode"
+  );
+  assert(
+    keycode.texts.some((file: { text: string }) =>
+      file.text.includes("Copyright (c) 2014 Tim Oxley")
+    ),
+  );
+  const agent = production.packages.find((row: { name: string }) =>
+    row.name === "@egjs/agent"
+  );
+  assert(
+    agent.texts.some((file: { text: string }) =>
+      file.text.includes("NAVER Corp.")
+    ),
+  );
+  assert(
+    agent.texts.some((file: { sources: { archivePath: string }[] }) =>
+      file.sources.some((source) => source.archivePath === "package/NOTICE")
+    ),
+  );
   const doc = fixture();
   const standalone = spliceDocument(
     shell,

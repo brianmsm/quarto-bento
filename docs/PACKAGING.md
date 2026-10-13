@@ -257,6 +257,23 @@ sibling README and receipt contain commands, input inventories and hashes.
 
 ## Current notice-preserving Linux artifact
 
+The runtime also carries `vendor/bento/runtime-licenses.json`, a hash-pinned
+supplement extracted offline from the exact 25 production-scoped npm archives
+in Bento's pinned lockfile. Every archive is checked against its SHA-512
+integrity before reading members. The supplement retains exact license/notice
+files (including two nested reveal.js font license files), README license fences
+and distribution copyright/license comments, with source byte ranges and hashes.
+It travels inside the inert notice block retained by native Bento save.
+Archive membership does not prove that every listed component ships in the shell;
+NOTICE files may also describe development components. Full package license
+texts remain absent from four archives: `@cfcs/core`, `croact`,
+`croact-css-styled`, and `keycon`. This is recorded explicitly and does not close
+the complete third-party or project-license review. To reproduce the extraction
+without installing or downloading packages, run
+`python3 scripts/extract-runtime-licenses.py --check --cache /path/to/npm-cache`;
+the default operation is read-only, and `--write` explicitly replaces the
+supplement. This script is checkout verification tooling, not a runtime command.
+
 The clean `7f68207` portable contains 114 verified payload files and includes the
 shared notice-preserving shell loader. Its root `PACKAGING.md` is a standalone
 usage guide, without links to missing checkout files. The artifact is at

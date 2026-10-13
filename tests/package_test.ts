@@ -115,6 +115,12 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
       ),
     );
     assert(a.bento.runtimeDependencyInventorySha256.length === 64);
+    assert(a.bento.runtimeLicenseInventorySha256.length === 64);
+    assert(
+      a.files.some((f) =>
+        f.path === "runtime/vendor/bento/runtime-licenses.json"
+      ),
+    );
     const dependencyInventory = JSON.parse(
       await Deno.readTextFile(
         resolve(first, "runtime/vendor/bento/runtime-dependencies.json"),
@@ -206,6 +212,7 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
       "vendor/bento/provenance/slides.package.json",
       "vendor/bento/provenance/slides.package-lock.json",
       "vendor/bento/runtime-dependencies.json",
+      "vendor/bento/runtime-licenses.json",
     ];
     for (const [index, relativePath] of tamperedFiles.entries()) {
       const target = resolve(sourceRoot, relativePath);
@@ -258,6 +265,58 @@ Deno.test("portable payload is deterministic, complete and refuses existing dest
           }),
         "UNSAFE_PACKAGE_INPUT",
       );
+    }
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("portable license inventory refuses repinned false identities, altered text and hidden gaps", async () => {
+  const directory = await Deno.makeTempDir({
+    prefix: "qbento-license-package-",
+  });
+  try {
+    const sourceRoot = resolve(directory, "source");
+    await sourceFixture(sourceRoot);
+    const inventoryPath = resolve(
+      sourceRoot,
+      "vendor/bento/runtime-licenses.json",
+    );
+    const pinPath = resolve(sourceRoot, "vendor/bento/pin.json");
+    const original = await Deno.readTextFile(inventoryPath);
+    const originalPin = await Deno.readTextFile(pinPath);
+    for (
+      const scenario of [
+        "identity",
+        "text",
+        "gap",
+        "integrity",
+        "range",
+        "count",
+      ]
+    ) {
+      const licenses = JSON.parse(original);
+      if (scenario === "identity") licenses.packages[0].name = "forged-package";
+      if (scenario === "count") licenses.packages.pop();
+      if (scenario === "text") licenses.packages[0].texts[0].text += "changed";
+      if (scenario === "gap") licenses.missingFullLicenseTexts = [];
+      if (scenario === "integrity") {
+        licenses.packages[0].integrity = "sha512-forged";
+      }
+      if (scenario === "range") {
+        licenses.packages[0].texts[0].sources[0].startByte = -1;
+      }
+      const changed = new TextEncoder().encode(JSON.stringify(licenses));
+      const pin = JSON.parse(originalPin);
+      pin.runtimeLicenseInventory.sha256 = await digest(changed);
+      await Deno.writeFile(inventoryPath, changed);
+      await Deno.writeTextFile(pinPath, JSON.stringify(pin));
+      const destination = resolve(directory, scenario);
+      await rejects(
+        () => buildDevelopmentPackage({ sourceRoot, destination }),
+        "BENTO_PIN_MISMATCH",
+      );
+      await rejects(() => Deno.stat(destination), "NotFound");
     }
   } finally {
     await Deno.remove(directory, { recursive: true });
