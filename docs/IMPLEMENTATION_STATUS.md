@@ -23,6 +23,12 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+The [post-MIT completion audit](COMPLETION_AUDIT.md) maps all nine product
+capabilities and six canonical steps to current code and scoped evidence.
+It independently verifies the receipt/artifact hashes, corrects historical
+ledger drift and preserves the unmet platform/public-release requirements.
+It does not declare the full objective complete.
+
 The owner-selected MIT license is integrated at `74e552b`, with copyright 2026
 Brian Norman Peña Calero. The 117-file portable, installed extension and native
 HTML copies preserve the complete project terms separately from third-party
@@ -160,11 +166,12 @@ The first combined run at `453a984` completed **514 passed, 4 passed steps and
 7 failed tests in 15m1s**, with the optional pinned math, Studio/Relations and
 Python checks enabled. Six failures reflected outdated expectations after the
 receipt/overflow changes; their focused corrections passed. One exposed a real
-producer-adapter mismatch with Quarto's sanitized intermediate filenames and is
-being corrected. Log and failure receipt:
+producer-adapter mismatch with Quarto's sanitized intermediate filenames, later
+corrected at `ca8eb3a`. Log and failure receipt:
 `output/verification/full-suite-453a984.log` and `.json`.
-This is a failed intermediate run, not the final acceptance receipt. The newer
-ordinary-QMD changes require a subsequent combined run and portable rebuild.
+This is a failed intermediate run, not the final acceptance receipt. The
+subsequent passing combined run and portable rebuild at `85da037` are recorded
+in [ordinary integrated acceptance](evidence/ORDINARY-INTEGRATED-LINUX.md).
 
 ## Delivered local scope and remaining limits
 
@@ -172,8 +179,8 @@ The full-product audit at `89fc134` identified additional ordinary authoring
 work. Notes creation, existing Markdown lists and simple table composition have
 since advanced through the evidence above. List creation/conversion/deletion
 and KPI/chart composition and common execution provenance are now integrated.
-Combined regression validation and the newly audited ordinary-QMD mapping
-gaps remain active work. See
+The reproduced ordinary-QMD mapping gaps and combined regression gate were
+closed by the later ordinary and redesign receipts linked above. See
 the [requirement matrix](PRODUCT_ACCEPTANCE_AUDIT.md). The historical integrated
 receipt below remains evidence only for its tested revision and scope.
 

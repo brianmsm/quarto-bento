@@ -129,7 +129,8 @@ scope and is no longer a next-session instruction.
 
 Distribution follow-up preserves full supplied notices through native HTML
 serialization and includes an exact production-archive supplement. The clean
-`3a19e7f` portable has 115 verified files; see
+`74e552b` portable has 117 verified files, including the owner-selected MIT
+license in its root, runtime and generated HTML; see
 [distribution evidence](evidence/DISTRIBUTION-NOTICES.md). The
 [four-package source audit](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md) records
 what remains unresolved after checking exact registry-linked source commits.
