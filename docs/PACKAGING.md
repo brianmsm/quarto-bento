@@ -243,7 +243,7 @@ See [its receipt](evidence/ORDINARY-INTEGRATED-LINUX.md). The usable directory
 is `output/verification/portable-85da037/distribution/`; the sibling README
 documents local launch commands. Older artifact receipts remain historical.
 
-## Current combined Linux artifact
+## Combined redesign Linux artifact
 
 The clean `f06def7` development artifact contains **113 verified payload
 files**; every payload byte also matches the later test-only revision `b5b6bbe`.
@@ -254,3 +254,12 @@ emitted documents, docIds, typography and zero pending changes. See
 [the combined redesign receipt](evidence/REDESIGN-INTEGRATED-LINUX.md). The
 usable directory is `output/verification/portable-f06def7/distribution/`; its
 sibling README and receipt contain commands, input inventories and hashes.
+
+## Current notice-preserving Linux artifact
+
+The clean `7f68207` portable contains 114 verified payload files and includes the
+shared notice-preserving shell loader. Its root `PACKAGING.md` is a standalone
+usage guide, without links to missing checkout files. The artifact is at
+`output/verification/portable-7f68207/distribution/`. Native serialization,
+focused regressions and portable smoke are recorded in
+[the distribution notice receipt](evidence/DISTRIBUTION-NOTICES.md).

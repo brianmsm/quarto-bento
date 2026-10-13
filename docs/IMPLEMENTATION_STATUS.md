@@ -23,6 +23,13 @@ end. Full product acceptance and public v1 release remain pending. See
 
 ## Acceptance ledger
 
+Distribution follow-up at `7f68207` preserves full supplied notices in standalone
+HTML, Studio and Presenter, including native serialization and fresh reopening.
+The updated portable has 114 verified files and a self-contained usage guide.
+Two native-notice tests, 36 affected regressions and the portable smoke passed;
+this does not replace or relabel the earlier full-suite run. See
+[distribution notice evidence](evidence/DISTRIBUTION-NOTICES.md).
+
 The subsequent redesign follow-up integrates reviewed displayed-code language
 changes at `a1beef6` and native content-bounds warnings at `92be7d0`, after
 independent reviews of both author commits. Their combined focused Linux run
