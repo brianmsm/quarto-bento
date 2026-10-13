@@ -99,3 +99,29 @@ native IDs and x positions, execution counters and CSV-driven recomputation.
 Projection-boundary negatives refuse unauthenticated/serialized receipts and
 a later legacy wrapper attempting to borrow a completed receipt. This is a
 separate extension to the independently approved 21/21 plain-table baseline.
+
+## Integrated native Studio follow-up
+
+Ordinary tables are integrated at `73dea2d`, and unlabelled computed producers
+at `a1492d4`. Independent reviews passed **21/21** and **16/16**, including an
+exact source/state-only rebuild and separate provenance for identical cells.
+
+The coordinator subsequently exercised Studio with the reviewed `cd0bb8b`
+runtime in headless Chromium. One slide contained ordinary prose, a bare literal
+table and an unlabelled R chunk producing the same cells. Editing the prose and
+saving left QMD unchanged; review explicitly showed the table identity wrapper
+and retained producer marker. Apply preserved the original table and chunk
+bytes. Recalculate retained both native identities and their distinct authored/
+computed provenance. Moving the computed table to x=120 in the native inspector,
+then saving and recalculating, retained that position with zero pending changes.
+Three total renders produced exactly three execution-counter writes; Save,
+review and Apply added none. The final screenshot was inspected: both complete
+tables, headers, cells and prose are readable and remain within the slide.
+
+The integrated `a1492d4` runtime then rebuilt the exact final emitted document
+from QMD plus `project.json` and `state.json`, with no prior HTML and only one
+execution in the relocated project. Local source/state/receipts are under
+`output/verification/plain-tables-native/`; screenshots are
+`output/playwright/plain-tables-review.png` and
+`output/playwright/plain-tables-final.png`. This adds native inspector/prose-sync
+acceptance, not table-cell reverse-edit support or other-platform validation.

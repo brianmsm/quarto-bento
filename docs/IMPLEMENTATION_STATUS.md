@@ -53,8 +53,9 @@ combined validation remains in progress; these additions do not inherit the
 older full-suite result. Ordinary unwrapped math/code and pipe-table mapping are integrated at `f3f4127`
 and `73dea2d`, respectively, after independent reviews (30 and 21 tests) and
 native Studio math/code-neighbor acceptance. See [plain QMD](evidence/PLAIN-QMD.md)
-and [plain tables](evidence/PLAIN-TABLES.md). Local-image mapping and unlabelled
-computed-table follow-up remain in progress.
+and [plain tables](evidence/PLAIN-TABLES.md). Unlabelled computed tables are integrated at `a1492d4` after 16 independent
+tests and native Studio position/prose-sync acceptance with exact reconstruction.
+Local-image mapping and the intermediate filename correction remain in progress.
 
 Portable packages additionally pin schema, license/notice and upstream npm
 manifest/lock bytes, verify a 25-entry production dependency inventory and record

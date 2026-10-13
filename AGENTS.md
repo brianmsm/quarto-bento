@@ -21,8 +21,9 @@ notes creation, existing Markdown lists and simple composed tables. Their newer
 receipts are in the implementation ledger. List creation/conversion/deletion
 and KPI composition are now also integrated; their newer receipts distinguish
 native Studio actions from core-save/native-renderer checks. Chart composition and common execution provenance are also integrated. Continue
-combined acceptance, local-image mapping, unlabelled computed-table support and
-the Quarto intermediate-filename correction. Ordinary math/code and pipe-table
+combined acceptance, local-image mapping and the rmarkdown intermediate-filename
+correction. Unlabelled computed tables now have reviewed execution receipts and
+native Studio acceptance. Ordinary math/code and pipe-table
 mapping are now integrated with independent reviews and native math/code evidence. Safe refusals
 preserve work but do not close those gates.
 The owner currently limits execution tests to local Linux; native macOS/Windows
