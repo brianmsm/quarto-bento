@@ -6,8 +6,7 @@ Studio, reviewed QMD synchronization and an offline standalone Bento HTML
 output.
 
 This npm CLI package is named `@brianmsm/quarto-bento` and currently targets
-**Linux only**. Version `0.1.0` is a prepared development package, not a stable
-v1 release. The package has not been published to the npm registry.
+**Linux only**. Version `0.1.0` is a development release, not a stable v1.
 
 ## Requirements
 
@@ -22,26 +21,37 @@ dependencies during installation or execution. It does not install or manage
 Node, Deno, Quarto, Chromium or computation environments. Only run QMD and
 executable code you trust.
 
-## Install from a prepared local tarball
+## Install from npm
 
-When you have built the `.tgz` from a Quarto-Bento source checkout, install it
-into an npm prefix available to your user:
+With Node, Deno and Quarto already installed, install the pinned CLI version:
 
 ```sh
-npm install --global \
-  --offline --ignore-scripts --no-audit --no-fund \
-  --prefix "$HOME/.local/share/qbento" \
-  /path/to/brianmsm-quarto-bento-0.1.0.tgz
-export PATH="$HOME/.local/share/qbento/bin:$PATH"
-
+npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
 qbento --version
 qbento doctor
 ```
 
-The
-[package preparation guide](https://github.com/brianmsm/quarto-bento/blob/main/docs/NPM.md)
-explains how to create and verify a local tarball. This tarball installation
-works without npm registry publication.
+If your npm global prefix is not writable, use a user-owned prefix instead:
+
+```sh
+npm install --global --ignore-scripts --prefix "$HOME/.local" \
+  @brianmsm/quarto-bento@0.1.0
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## Install with mise
+
+Mise can manage Node, Deno and the npm CLI together. Quarto remains a separate
+user-installed dependency:
+
+```sh
+mise use -g node@26.10.0 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+qbento doctor
+```
+
+The package has no npm install hooks or JavaScript package dependencies. The
+[installation guide](https://github.com/brianmsm/quarto-bento/blob/main/docs/NPM.md)
+also covers local tarball installation, requirements and supported scope.
 
 ## Basic use
 

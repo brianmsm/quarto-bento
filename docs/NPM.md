@@ -1,11 +1,11 @@
 # npm CLI package
 
-Quarto-Bento is prepared as a scoped npm CLI package named
-`@brianmsm/quarto-bento`, with package version `0.1.0`. Its current package
-target is **Linux only**. This is a development package for the validated Linux
-implementation; it does not declare a stable v1 release. The package has been
-prepared for local staging and review. It has **not** been published to the npm
-registry.
+Quarto-Bento uses a scoped npm CLI package named `@brianmsm/quarto-bento`, with
+package version `0.1.0`. Its current package target is **Linux only**. This is a
+development package for the validated Linux implementation; it does not declare
+a stable v1 release. The owner authorized registry publication on 2026-10-16.
+Publication and public installation verification are recorded separately from
+local package tests.
 
 ## What npm installs
 
@@ -104,25 +104,45 @@ python3 scripts/mise-npm-check.py /tmp/brianmsm-quarto-bento-0.1.0.tgz
 That local registry fixture proves backend installation and execution, not
 availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 
-## Future registry installation
+## npm and mise installation
 
-The npm scope and package metadata are prepared for public access, but registry
-publication is a separate step. It requires authenticated publisher access and
-completion of the remaining provenance and license review. Until an owner
-publishes and verifies the package, registry-based commands will fail because
-the package is not available there.
-
-After a verified registry publication, mise can install a pinned version using
-its npm backend. This is a **future command**, not a currently working install:
+With the external requirements available, install the pinned registry version:
 
 ```sh
-mise use -g node@26 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
+qbento --version
+qbento doctor
+```
+
+If your npm prefix needs elevated permissions, choose a user-owned prefix:
+
+```sh
+npm install --global --ignore-scripts --prefix "$HOME/.local" \
+  @brianmsm/quarto-bento@0.1.0
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Mise can install the npm package and manage its Node/Deno runtimes:
+
+```sh
+mise use -g node@26.10.0 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+qbento doctor
 ```
 
 See the
 [mise npm backend documentation](https://mise.jdx.dev/dev-tools/backends/npm).
-The Node and Deno runtimes still need to be available in mise's environment.
-Quarto and computation dependencies remain separate requirements.
+Quarto and computation dependencies remain separate requirements. No package
+install hooks manage them. Check `qbento doctor` before rendering a document.
+
+## Maintainer publication
+
+The source-root package remains private; publish only the reviewed staged
+archive. Authenticate with `npm login --auth-type=web`, verify `npm whoami`,
+check that the scope belongs to that publisher, and publish the exact reviewed
+version with explicit public access. Do not put credentials into source or logs.
+After publication, compare registry integrity with the local tarball and verify
+an actual installation using a fresh prefix/cache. Do not overwrite or assume
+that a published name/version can be replaced.
 
 ## Scope
 

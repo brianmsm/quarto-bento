@@ -16,7 +16,36 @@ use, inspection and contributions; a versioned v1 release has not been declared.
 Windows and macOS qualification are future work outside the completed Linux
 objective.
 
-## Quick start
+## Install the Linux CLI
+
+Quarto-Bento's npm CLI is `@brianmsm/quarto-bento`. Install Node.js 22 or later,
+Deno and Quarto first; the tested baseline is Node 26.10.0, Deno 2.9.6 and
+Quarto 1.10.19. The package includes application source/assets, but does not
+install these runtimes or your document's computation packages.
+
+```sh
+npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
+qbento --version
+qbento doctor
+qbento edit /absolute/path/to/my-presentation/deck.qmd
+```
+
+For an npm prefix writable by your user, use
+`npm install --global --ignore-scripts --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.0`
+and ensure `$HOME/.local/bin` is on `PATH`.
+
+Alternatively, manage the CLI and its Node/Deno runtimes through mise:
+
+```sh
+mise use -g node@26.10.0 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+qbento doctor
+```
+
+Quarto remains a separate installed requirement. See the
+[installation guide](docs/NPM.md) for details. This is a Linux development CLI;
+macOS/Windows and a stable v1 are outside this release scope.
+
+## Run from a source checkout
 
 Install Deno and Quarto yourself. The tested Linux baseline is **Deno 2.9.6**
 and **Quarto 1.10.19**. A document with computation also needs its language and
@@ -33,15 +62,16 @@ deno task qbento doctor
 Create a separate directory for each presentation. For a minimal authored deck,
 create `deck.qmd` there:
 
-```markdown
+```qmd
 ---
 title: My presentation
 ---
 
 ## Results {#results}
 
-::: {#finding} This text can be edited in Bento and synchronized to QMD after
-review. :::
+::: {#finding}
+This text can be edited in Bento and synchronized to QMD after review.
+:::
 ```
 
 From the source checkout, run:
@@ -119,12 +149,10 @@ qbento init presentation.qmd
 [JSON agent API](docs/AGENT-API.md) uses the same checked document/state core.
 Build a portable development directory with
 `deno task package /absolute/path/to/new-directory`; see
-[packaging and license provenance](docs/PACKAGING.md). A Linux npm CLI package
-is prepared locally as version `0.1.0`, but it has **not** been published to the
-npm registry. Its [installation guide](docs/NPM.md) explains how to stage a
-tarball and install it into a local npm prefix for review. Registry installation
-through mise remains future work until the package is published. This package
-preparation is not a stable v1 release or a cross-platform claim.
+[packaging and license provenance](docs/PACKAGING.md). The Linux npm CLI wraps
+this same distribution; its [installation guide](docs/NPM.md) covers npm, mise
+and local tarballs. It is a development release rather than a stable v1 or a
+cross-platform claim.
 
 ## Documentation and development
 
@@ -138,7 +166,7 @@ preparation is not a stable v1 release or a cross-platform claim.
   and [evidence index](docs/evidence/README.md): measured results and future
   work.
 - [npm CLI package](docs/NPM.md): Linux package contents, local tarball
-  preparation and future registry installation.
+  preparation, npm installation and mise usage.
 - [Contributing](CONTRIBUTING.md), [security](SECURITY.md) and
   [publication scope](docs/PUBLICATION.md): development and public repository
   policy.
