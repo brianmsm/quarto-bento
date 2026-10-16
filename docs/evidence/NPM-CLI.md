@@ -1,4 +1,78 @@
-# Prepared npm CLI and Linux installation evidence
+# npm CLI publication and Linux installation evidence
+
+## Public registry publication: 2026-10-16
+
+The owner superseded preparation-only authorization and authorized public npm
+publication. The publisher was authenticated as `brianmsm`. The exact staged
+archive was accepted by `npm publish --access public --ignore-scripts` after
+browser authorization, with exit status 0. npm initially returned HTTP 202 and
+reported processing; public requests briefly returned 404 and then exposed only
+its `0.0.0-stage` placeholder. The actual `0.1.0` version subsequently became
+available. No second version or duplicate publication was submitted.
+
+Published package:
+[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento),
+with `latest` pointing to `0.1.0`. This is a Linux development CLI, not stable
+v1.
+
+| Artifact property          | Verified value                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| Clean staging source       | `05e70bbefebad5f540083bba25444dda0caef0d8`, dirty `false`                                         |
+| Archive bytes              | 893813                                                                                            |
+| Archive entries            | 122 regular files; no links                                                                       |
+| Installed runtime payloads | 117, all sizes and SHA256 values matched                                                          |
+| SHA256                     | `4fcd9d3c578735f43265861405108c7f37545353eb59d103fa30a04a01299bcb`                                |
+| npm shasum                 | `cc42f2d4713662670874945abc8fd7ad6f0f134c`                                                        |
+| npm integrity              | `sha512-jHGxooe/7kCZ1Fecx/MnRt7OfaED/ZISwI4SE1mCyMVOY1CWByXSvNcFk7gOmlF2qiHRapIhKTFHNSzgNGxsRg==` |
+
+Anonymous HTTPS requests to registry.npmjs.org verified exact-version metadata,
+the `latest` tag, complete tarball bytes, shasum/integrity and the registry root
+README against the archive. Authentication was not used for those reads or for
+either installation test.
+
+Both public-registry installations passed `qbento --version` (`qbento 0.1.0`),
+`qbento doctor`, all 117 payload hashes and a real render of the literal README
+QMD example. Each output was a 986962-byte `.bento.html`, with no diagnostics,
+zero pending edits and unchanged QMD bytes. The tests used an unrelated caller
+directory with spaces, empty separate user/global npmrc files, fresh temporary
+prefix/cache and isolated mise config/data/cache/state. Deno used a fresh cache
+and `QUARTO_RUN_NO_NETWORK=true` during the ordinary render. Existing runtimes
+were used; the smoke did not install Node, Deno or Quarto or test computation.
+
+The tested host had Node 26.10.0, npm 11.19.1, Deno 2.9.6, Quarto 1.10.19 and
+mise 2026.10.11. Unlike the earlier loopback test with mise 2026.10.7, current
+mise initially refused this newly registered package under its reputation
+policy. After anonymous artifact/publisher verification, the successful test
+used the package-specific option `allow_low_downloads=true`. It did not disable
+checks globally, allow lifecycle scripts or change the user's configuration.
+
+Installation commands used by the isolated smoke, with temporary prefix/config
+paths supplied through flags and environment:
+
+```sh
+npm install --global --prefix /temporary/prefix --ignore-scripts \
+  --no-audit --no-fund @brianmsm/quarto-bento@0.1.0
+mise install 'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
+mise exec 'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0' \
+  -- qbento doctor
+```
+
+The immutable archive contains `distribution/PACKAGING.md` from clean staging
+commit `05e70bb`; its final paragraph predates publication and says npm/mise
+installation is pending. The archived root README also predates the approval
+required by current mise for new packages. Use
+[the current npm guide](../NPM.md) for installation. The archive and its
+recorded hashes remain unchanged; future package versions can refresh those
+bundled documentation snapshots.
+
+Eleven focal packaging tests passed again before publication. An independent
+review checked inventory, notices and publication scope. The existing four
+historical license-source gaps remain documented, and no GitHub binary release,
+hosted CI success or Windows/macOS qualification is claimed. The local detailed
+receipt is `output/npm/release-0.1.0/public-check.json`; this tracked summary
+records the relevant results without depending on that ignored local file.
+
+## Historical local preparation: 2026-10-13
 
 Date: 2026-10-13. Package: `@brianmsm/quarto-bento@0.1.0`. The owner requested
 npm CLI preparation and explicitly deferred registry publication. This receipt

@@ -4,8 +4,11 @@ Quarto-Bento uses a scoped npm CLI package named `@brianmsm/quarto-bento`, with
 package version `0.1.0`. Its current package target is **Linux only**. This is a
 development package for the validated Linux implementation; it does not declare
 a stable v1 release. The owner authorized registry publication on 2026-10-16.
-Publication and public installation verification are recorded separately from
-local package tests.
+Version `0.1.0` is publicly available on
+[npm](https://www.npmjs.com/package/@brianmsm/quarto-bento). Anonymous registry
+integrity and README checks, public npm/mise installation, 117 payload hashes
+and rendering passed on 2026-10-16. See [the receipt](evidence/NPM-CLI.md);
+these checks are separate from the earlier local package tests.
 
 ## What npm installs
 
@@ -125,9 +128,16 @@ export PATH="$HOME/.local/bin:$PATH"
 Mise can install the npm package and manage its Node/Deno runtimes:
 
 ```sh
-mise use -g node@26.10.0 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+mise use -g node@26.10.0 deno@2.9.6 \
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
 qbento doctor
 ```
+
+Recent mise versions require explicit approval for new or low-download packages.
+`allow_low_downloads=true` approves only this package after checking its name
+and publisher; it does not enable build scripts or change global security
+settings. See
+[mise npm reputation checks](https://mise.jdx.dev/dev-tools/backends/npm#low-download-and-new-packages).
 
 See the
 [mise npm backend documentation](https://mise.jdx.dev/dev-tools/backends/npm).
@@ -143,6 +153,23 @@ version with explicit public access. Do not put credentials into source or logs.
 After publication, compare registry integrity with the local tarball and verify
 an actual installation using a fresh prefix/cache. Do not overwrite or assume
 that a published name/version can be replaced.
+
+A successful publish may return HTTP 202 while npm processes the package. During
+this interval, downloads can return 404. Wait for public metadata and tarball
+availability before recording install success; do not republish the same
+version. See the
+[npm publish-time scanning announcement](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/).
+
+## Documentation snapshot in version 0.1.0
+
+The immutable `0.1.0` archive includes `distribution/PACKAGING.md` from the
+staging snapshot. Its final paragraph predates registry publication and says
+npm/mise publication is pending. The archived root README also predates the
+new-package approval required by mise 2026.10.11. Those historical instructions
+do not describe current registry availability or current mise requirements; use
+this guide for installation. A future package version can refresh the bundled
+portable guide. The original archive and its 117 payload hashes remain
+unchanged.
 
 ## Scope
 

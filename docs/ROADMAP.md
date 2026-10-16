@@ -140,11 +140,12 @@ supported scope and must not be repeated as unimplemented work.
 
 - Freeze an explicit feature/platform boundary before declaring a public v1.
   Public source publication is authorized; it does not make that decision.
-- The Linux-only npm CLI tarball is prepared and locally validated, including
-  offline npm relocation/rebuild and an isolated real mise npm backend check.
-  Registry publication remains explicitly deferred by the owner. See
-  [NPM.md](NPM.md) and [the receipt](evidence/NPM-CLI.md); finish the documented
-  publisher/provenance follow-up before claiming registry availability.
+- The Linux-only npm CLI `@brianmsm/quarto-bento@0.1.0` is published. Public npm
+  and mise installation/rendering, archive integrity and 117 installed payload
+  hashes passed on 2026-10-16. Earlier offline relocation/rebuild and loopback
+  mise checks remain separately documented. See [NPM.md](NPM.md) and
+  [the receipt](evidence/NPM-CLI.md). Continue provenance follow-up and use a new
+  package version for future changes; this development release does not freeze v1.
 - Preserve the complete supplied project/third-party notices and exact
   production-archive supplement. The owner-selected MIT License uses Brian
   Norman Peña Calero as holder. Four historical full-license-source cases remain

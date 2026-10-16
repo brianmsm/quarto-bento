@@ -1,8 +1,9 @@
 # Portable development directory
 
-For the separately staged Linux npm CLI wrapper and local tarball installation,
-see [NPM.md](NPM.md). Its installation and isolated mise checks are recorded in
-[the npm receipt](evidence/NPM-CLI.md). Registry publication is deferred.
+For the separately staged Linux npm CLI wrapper, public npm/mise installation
+and local tarballs, see [NPM.md](NPM.md). Development version `0.1.0` is
+published; anonymous registry integrity and installation checks are recorded in
+[the npm receipt](evidence/NPM-CLI.md), separately from local preparation tests.
 
 This package is a local development artifact, not a v1 release or a native
 installer. It contains the current TypeScript runtime, Lua filters, offline

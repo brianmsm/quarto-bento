@@ -12,8 +12,8 @@ and [architecture](docs/ARCHITECTURE.md). Coding agents must also read
 Use installed Deno 2.9.6 and Quarto 1.10.19 for the tested baseline. Computation
 tests need their installed R/Python packages; browser tests need Chromium.
 Quarto-Bento does not install or lock these environments. The source checkout
-does not require `npm install` to use its committed runtime. The separate
-Linux npm CLI package is staged from the reviewed portable distribution; Bento's
+does not require `npm install` to use its committed runtime. The separate Linux
+npm CLI package is staged from the reviewed portable distribution; Bento's
 upstream package files are pinned provenance, not instructions to build or
 install its dependencies.
 
@@ -35,13 +35,18 @@ npm pack --ignore-scripts --pack-destination /tmp /tmp/qbento-npm-0.1.0
 
 The staging script validates the package metadata and builds the self-contained
 runtime payload. It does not publish to npm. See [NPM.md](docs/NPM.md) for the
-local install workflow and publication status. Do not publish a registry
-package until its provenance and licensing review is complete.
+local and registry installation workflows and publication status. The owner
+authorized development version `0.1.0`; the documented historical license-source
+gaps remain open. Future publication must preserve that disclosure and the exact
+bundled notices. Authenticate as the authorized publisher, verify the staged
+archive, publish that archive explicitly and verify its registry integrity and
+anonymous installation before recording success.
 
-Run `deno task npm-check` for the real offline tarball installation and relocated
-state-only rebuild smoke. Run `python3 scripts/mise-npm-check.py <tarball>` for
-the isolated real mise backend check. These helpers use temporary prefixes and
-configuration; neither publishes a package or changes the user's global setup.
+Run `deno task npm-check` for the real offline tarball installation and
+relocated state-only rebuild smoke. Run
+`python3 scripts/mise-npm-check.py <tarball>` for the isolated real mise backend
+check. These helpers use temporary prefixes and configuration; neither publishes
+a package or changes the user's global setup.
 
 Run the tests relevant to the changed behavior. `deno task test` includes real
 Quarto/computation tests and expects the necessary local dependencies; optional

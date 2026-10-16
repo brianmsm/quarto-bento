@@ -31,18 +31,22 @@ It does not run automatically on publication, and no hosted result is inferred
 from its configuration. It does not install R, test all computation engines or
 reproduce the complete native-browser acceptance suite.
 
-## npm CLI package preparation
+## npm development CLI publication
 
-The Linux npm CLI package is prepared locally under the name
-`@brianmsm/quarto-bento`, version `0.1.0`. This preparation adds a constrained
-package staging script, a Node launcher for application source run by external Deno and
-consumer-facing installation documentation. It does not mean that a tarball
-was published to npm: **the registry package is not published**. No installation
-from the public npmjs.org registry can be claimed until publication and
-unauthenticated package availability have both been verified. The package is
-Linux-only and remains a development build, not a stable v1 release. See the
-[npm package guide](NPM.md) for local tarball preparation and the exact future
-mise command.
+On 2026-10-16 the owner authorized and completed publication of
+[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento).
+The exact archive was staged from clean commit
+`05e70bbefebad5f540083bba25444dda0caef0d8`. Anonymous registry metadata, tarball
+bytes and package README matched the staged artifact. Real public npm and mise
+installs passed version, doctor, rendering and all 117 runtime payload hash
+checks using temporary configuration and prefixes. See
+[the publication receipt](evidence/NPM-CLI.md) and [installation guide](NPM.md).
+
+The package includes a Node launcher, bundled application source/assets and
+notices; external Deno executes the application and Quarto remains separately
+installed. It has no lifecycle hooks or npm dependencies. It targets Linux and
+is a development release, not stable v1. No GitHub binary release or hosted CI
+result is implied by this npm publication.
 
 ## Licenses and unresolved provenance
 
@@ -102,7 +106,7 @@ reviewed local bytes exactly (SHA-256
 vulnerability reporting is enabled, issues are enabled and the wiki is disabled.
 No hosted workflow run was present after the initial push. This receipt is a
 later documentation update; the initial snapshot remains available in Git
-history. That initial publication snapshot contained source only. The later
-local npm package preparation does not alter this historical receipt and has
-not been published to npm; there is still no GitHub release or binary
-attachment.
+history. That initial publication snapshot contained source only. The later npm
+package preparation and 2026-10-16 registry publication do not alter this
+historical source-only receipt. No GitHub release or binary attachment has been
+created.

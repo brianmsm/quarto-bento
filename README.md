@@ -37,9 +37,16 @@ and ensure `$HOME/.local/bin` is on `PATH`.
 Alternatively, manage the CLI and its Node/Deno runtimes through mise:
 
 ```sh
-mise use -g node@26.10.0 deno@2.9.6 npm:@brianmsm/quarto-bento@0.1.0
+mise use -g node@26.10.0 deno@2.9.6 \
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
 qbento doctor
 ```
+
+Recent mise versions require explicit approval for new or low-download packages.
+`allow_low_downloads=true` approves only this package after checking its name
+and publisher; it does not enable build scripts or change global security
+settings. See
+[mise npm reputation checks](https://mise.jdx.dev/dev-tools/backends/npm#low-download-and-new-packages).
 
 Quarto remains a separate installed requirement. See the
 [installation guide](docs/NPM.md) for details. This is a Linux development CLI;
