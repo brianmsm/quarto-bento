@@ -112,7 +112,7 @@ availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 With the external requirements available, install the pinned registry version:
 
 ```sh
-npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.0
 qbento --version
 qbento doctor
 ```
@@ -120,7 +120,7 @@ qbento doctor
 If your npm prefix needs elevated permissions, choose a user-owned prefix:
 
 ```sh
-npm install --global --ignore-scripts --prefix "$HOME/.local" \
+npm install -g --prefix "$HOME/.local" \
   @brianmsm/quarto-bento@0.1.0
 export PATH="$HOME/.local/bin:$PATH"
 ```

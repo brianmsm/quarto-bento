@@ -24,15 +24,15 @@ Quarto 1.10.19. The package includes application source/assets, but does not
 install these runtimes or your document's computation packages.
 
 ```sh
-npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.0
 qbento --version
 qbento doctor
 qbento edit /absolute/path/to/my-presentation/deck.qmd
 ```
 
 For an npm prefix writable by your user, use
-`npm install --global --ignore-scripts --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.0`
-and ensure `$HOME/.local/bin` is on `PATH`.
+`npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.0` and ensure
+`$HOME/.local/bin` is on `PATH`.
 
 Alternatively, manage the CLI and its Node/Deno runtimes through mise:
 

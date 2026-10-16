@@ -26,7 +26,7 @@ executable code you trust.
 With Node, Deno and Quarto already installed, install the pinned CLI version:
 
 ```sh
-npm install --global --ignore-scripts @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.0
 qbento --version
 qbento doctor
 ```
@@ -34,7 +34,7 @@ qbento doctor
 If your npm global prefix is not writable, use a user-owned prefix instead:
 
 ```sh
-npm install --global --ignore-scripts --prefix "$HOME/.local" \
+npm install -g --prefix "$HOME/.local" \
   @brianmsm/quarto-bento@0.1.0
 export PATH="$HOME/.local/bin:$PATH"
 ```
