@@ -1,6 +1,11 @@
 # npm CLI publication and Linux installation evidence
 
-## Public registry publication: 2026-10-16
+The latest published correction is `0.1.1` (2026-10-17). Its exact archive,
+anonymous registry/npm/mise checks and owner-requested global mise update are
+recorded in [the current correction receipt](SYNC-SELECTION-0.1.1.md). The
+following sections preserve the initial `0.1.0` evidence.
+
+## Historical first public registry publication: 2026-10-16
 
 The owner superseded preparation-only authorization and authorized public npm
 publication. The publisher was authenticated as `brianmsm`. The exact staged
@@ -11,9 +16,9 @@ its `0.0.0-stage` placeholder. The actual `0.1.0` version subsequently became
 available. No second version or duplicate publication was submitted.
 
 Published package:
-[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento),
-with `latest` pointing to `0.1.0`. This is a Linux development CLI, not stable
-v1.
+[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.0),
+with `latest` pointing to `0.1.0` at that date. This is a Linux development CLI,
+not stable v1.
 
 | Artifact property          | Verified value                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------- |

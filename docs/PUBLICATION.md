@@ -33,8 +33,17 @@ reproduce the complete native-browser acceptance suite.
 
 ## npm development CLI publication
 
-On 2026-10-16 the owner authorized and completed publication of
-[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento).
+The current correction release, `@brianmsm/quarto-bento@0.1.1`, was published
+on 2026-10-17 from the exact validated archive. Anonymous registry metadata,
+README, archive bytes and isolated npm/mise installations passed. Public-package selected sync
+preserved excluded work and design through render. The owner-requested mise
+update selected `0.1.1` globally and verified all 117 runtime hashes, doctor and
+rendering without changing unrelated mise configuration. See
+[the current receipt](evidence/SYNC-SELECTION-0.1.1.md).
+
+For the initial release, on 2026-10-16 the owner authorized and completed
+publication of
+[`@brianmsm/quarto-bento@0.1.0`](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.0).
 The exact archive was staged from clean commit
 `05e70bbefebad5f540083bba25444dda0caef0d8`. Anonymous registry metadata, tarball
 bytes and package README matched the staged artifact. Real public npm and mise

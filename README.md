@@ -16,11 +16,11 @@ use, inspection and contributions; a versioned v1 release has not been declared.
 Windows and macOS qualification are future work outside the completed Linux
 objective.
 
-A compatible `0.1.1` correction is prepared and locally validated; see the
-[changelog](CHANGELOG.md) and
-[correction evidence](docs/evidence/SYNC-SELECTION-0.1.1.md). The publicly
-verified npm version remains `0.1.0` until a separate publication receipt confirms
-the new archive.
+The compatible `0.1.1` correction is published on
+[npm](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.1). It adds reviewed
+selection in CLI/Studio, consistent QMD association checks and clearer post-sync
+state guidance. See the [changelog](CHANGELOG.md) and
+[correction and publication evidence](docs/evidence/SYNC-SELECTION-0.1.1.md).
 
 ## Install the Linux CLI
 
@@ -30,21 +30,21 @@ Quarto 1.10.19. The package includes application source/assets, but does not
 install these runtimes or your document's computation packages.
 
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.1
 qbento --version
 qbento doctor
 qbento edit /absolute/path/to/my-presentation/deck.qmd
 ```
 
 For an npm prefix writable by your user, use
-`npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.0` and ensure
+`npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.1` and ensure
 `$HOME/.local/bin` is on `PATH`.
 
 Alternatively, manage the CLI and its Node/Deno runtimes through mise:
 
 ```sh
 mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
 qbento doctor
 ```
 

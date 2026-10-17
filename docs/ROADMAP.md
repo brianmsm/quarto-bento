@@ -136,26 +136,31 @@ older suite/artifact counts describe those earlier revisions. The initial
 startup sequence—pin upstream, prove S0, then S1/S2/S4—is complete for the
 supported scope and must not be repeated as unimplemented work.
 
-## Compatible correction prepared and validated
+## Compatible correction published and validated
 
 The `0.1.1` implementation exposes selected source-sync batches and consistent
 read-only source binding, and clarifies the post-Apply approval lifecycle.
 See [the changelog](../CHANGELOG.md) and [correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
 The completed broad run and targeted fixture/source-comparison reruns cover
 602 distinct cases; the receipt preserves the initial fixture failures. This
-preserves prior Linux acceptance and the bounded codecs. Registry publication
-remains a separate action.
+preserves prior Linux acceptance and the bounded codecs. The owner-authorized
+`0.1.1` npm publication and global mise update passed on 2026-10-17; public
+archive verification and installed-runtime checks are recorded separately from
+the earlier local tests.
 
 ## Future acceptance and distribution work
 
 - Freeze an explicit feature/platform boundary before declaring a public v1.
   Public source publication is authorized; it does not make that decision.
-- The Linux-only npm CLI `@brianmsm/quarto-bento@0.1.0` is published. Public npm
-  and mise installation/rendering, archive integrity and 117 installed payload
-  hashes passed on 2026-10-16. Earlier offline relocation/rebuild and loopback
-  mise checks remain separately documented. See [NPM.md](NPM.md) and
-  [the receipt](evidence/NPM-CLI.md). Continue provenance follow-up and use a new
-  package version for future changes; this development release does not freeze v1.
+- The Linux-only npm CLI `@brianmsm/quarto-bento@0.1.1` is published. Anonymous
+  registry/npm/mise installation, exact archive integrity and the owner-requested
+  global mise update passed on 2026-10-17, including all 117 installed payload
+  hashes and real rendering. The initial `0.1.0` and earlier local/loopback
+  checks remain historical. See [NPM.md](NPM.md), the
+  [current correction receipt](evidence/SYNC-SELECTION-0.1.1.md) and the
+  [initial publication receipt](evidence/NPM-CLI.md). Continue provenance
+  follow-up and use a new package version for future changes; this development
+  release does not freeze v1.
 - Preserve the complete supplied project/third-party notices and exact
   production-archive supplement. The owner-selected MIT License uses Brian
   Norman Peña Calero as holder. Four historical full-license-source cases remain

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 — prepared, not yet published
+## 0.1.1 — 2026-10-17
 
 Compatible corrections within the Linux `0.1.x` development series. JSON API
 version 1 and saved-state schema version 1 remain unchanged.
@@ -19,13 +19,13 @@ version 1 and saved-state schema version 1 remain unchanged.
   invalidate stale selection previews and retain exact-plan verification.
 - Explain that successful sync updates QMD while retaining pending edits until
   render verifies them. Studio now states this explicitly after Apply.
-- Refresh package installation documentation and prepare the `0.1.1` archive
+- Refresh package installation documentation and publish the `0.1.1` archive
   using the existing hook-free launcher and pinned upstream assets.
 
 See [the correction receipt](docs/evidence/SYNC-SELECTION-0.1.1.md) for
-validation and [version policy](docs/NPM.md#development-version-policy). Source
-preparation is separate from registry publication and does not declare stable v1
-or other platform support.
+validation and [version policy](docs/NPM.md#development-version-policy). The
+exact validated archive is published on npm. This Linux development release does
+not declare stable v1 or other platform support.
 
 ## 0.1.0 — 2026-10-16
 

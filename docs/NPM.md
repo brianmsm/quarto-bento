@@ -1,19 +1,20 @@
 # npm CLI package
 
-Quarto-Bento uses a scoped npm CLI package named `@brianmsm/quarto-bento`, with
-source package version `0.1.1` (prepared correction release). Its current
-package target is **Linux only**. This is a development package for the
-validated Linux implementation; it does not declare a stable v1 release. The
-owner authorized registry publication on 2026-10-16. The last publicly verified
-release, `0.1.0`, is available on
-[npm](https://www.npmjs.com/package/@brianmsm/quarto-bento). Anonymous registry
-integrity and README checks, public npm/mise installation, 117 payload hashes
-and rendering passed on 2026-10-16. See [the receipt](evidence/NPM-CLI.md);
-these checks are separate from the earlier local package tests.
+Quarto-Bento uses the scoped npm CLI package
+[@brianmsm/quarto-bento](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.1).
+Version **`0.1.1` is published**, with `latest` pointing to it. The package
+targets **Linux only** and does not declare a stable v1 release. The owner
+authorized this correction publication and global mise update on 2026-10-17.
+Anonymous registry metadata, README and exact archive integrity passed, followed
+by a fresh npm installation and selected-sync/render checks. The owner-requested
+global mise update also passed version, doctor, render and all 117 runtime
+payload hashes. See [the correction/publication receipt](evidence/SYNC-SELECTION-0.1.1.md).
+The initial `0.1.0` publication is preserved separately in
+[its historical receipt](evidence/NPM-CLI.md).
 
 ## Development version policy
 
-The current compatible correction release is prepared as `0.1.1`. During the
+The current compatible correction release is published as `0.1.1`. During the
 `0.1.x` development series, patches may complete documented workflows without
 changing existing command spellings, saved-state schema or the JSON API version.
 This patch exposes selected sync, fixes source-binding checks and clarifies
@@ -22,10 +23,11 @@ is not presented as a bug fix with no public-interface addition. Larger workflow
 additions or incompatible contracts should receive a separately reviewed minor
 release. No `0.x` version declares stable v1.
 
-`0.1.0` remains the publicly verified registry version until a separate
-publication receipt confirms `0.1.1`. Source changes and a prepared tarball do
-not make a registry release available. Local `0.1.1` runtime and installed
-package checks are recorded in [the correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
+The published `0.1.1` archive is the exact clean artifact prepared before
+publication; anonymous registry downloads match its SHA256, npm shasum and
+SHA512 integrity. The immutable `0.1.0` archive remains unchanged. Runtime,
+local-package and public-installation evidence are distinguished in
+[the correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
 
 ## What npm installs
 
@@ -96,8 +98,8 @@ dependencies.
 
 Eleven focal launcher/staging/portable tests passed on Linux. The real npm smoke
 packed exactly 122 files, verified all 117 installed runtime payloads, relocated
-the npm prefix, and exercised version/doctor/render/validate/get/patch. It
-reconstructed QMD plus saved state without previous HTML or the staging
+the npm prefix, and exercised
+version/doctor/render/validate/get/patch/selected-sync. It reconstructed QMD plus saved state without previous HTML or the staging
 directory, preserving identity, visual overrides and an authored pending edit.
 Source type checks, lint and targeted formatting passed. The tested npm launcher
 environment used Node 26.10.0 and npm 11.19.1; Node >=22 is the declared
@@ -113,7 +115,7 @@ deno run --no-config --no-remote --no-npm --allow-read --allow-write \
 The smoke creates and removes only its own temporary prefix, npm config and
 caches. The separate mise check runs its real npm backend against a minimal
 temporary IPv4 loopback registry serving the prepared tarball. It passed with
-mise 2026.10.7's default installer, `qbento --version`, `qbento doctor` and all
+mise 2026.10.11's default installer, `qbento --version`, `qbento doctor` and all
 117 installed payload hashes. It uses isolated mise config/data/cache/state
 directories and does not change the user's global setup or publish a package:
 
@@ -129,7 +131,7 @@ availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 With the external requirements available, install the pinned registry version:
 
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.1
 qbento --version
 qbento doctor
 ```
@@ -138,7 +140,7 @@ If your npm prefix needs elevated permissions, choose a user-owned prefix:
 
 ```sh
 npm install -g --prefix "$HOME/.local" \
-  @brianmsm/quarto-bento@0.1.0
+  @brianmsm/quarto-bento@0.1.1
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
@@ -146,7 +148,7 @@ Mise can install the npm package and manage its Node/Deno runtimes:
 
 ```sh
 mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
 qbento doctor
 ```
 
@@ -184,9 +186,9 @@ staging snapshot. Its final paragraph predates registry publication and says
 npm/mise publication is pending. The archived root README also predates the
 new-package approval required by mise 2026.10.11. Those historical instructions
 do not describe current registry availability or current mise requirements; use
-this guide for installation. A future package version can refresh the bundled
-portable guide. The original archive and its 117 payload hashes remain
-unchanged.
+this guide for installation. Version `0.1.1` refreshes the bundled portable
+guide and standalone README. The original archive and its 117 payload hashes
+remain unchanged.
 
 ## Scope
 

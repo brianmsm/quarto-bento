@@ -1,9 +1,10 @@
-# Prepared Linux 0.1.1 correction evidence
+# Linux 0.1.1 correction and publication evidence
 
 Date: 2026-10-17. This receipt covers corrections prepared after the app/plugin
 contrast review at source `a1b8025`. The skill/plugin repository is outside the
-change scope. Package `0.1.0` remains the last publicly verified release until
-separate publication confirms `0.1.1`.
+change scope. Package `0.1.1` was subsequently published and verified on
+2026-10-17. The publication and owner-requested global update are recorded
+separately below from the earlier local preparation results.
 
 ## Corrected behavior
 
@@ -177,3 +178,65 @@ Their SHA256 values preserve the exact recorded runs:
 | `upstream-math.log`              | `39ba842282862058706f3c3790ec1a5cf8615d0deb22e38a584beb79c11e5157` |
 | `final-ui.log`                   | `4129fd6171596e911b3ac53862c48a413ed6e9d43dbafe6044336613e641ad5b` |
 | `npm-installed-smoke-final.json` | `337e9d55b785a3e0dd3150507a99d80868a6e8e5623782eceb622896bf45bdd4` |
+
+## Public npm release and global mise update: 2026-10-17
+
+The owner authorized publishing `0.1.1` and updating the installed mise tool.
+After web login and the separate publish authorization, npm accepted the exact
+archive above with public access and the `latest` tag. The command completed
+successfully while npm processed the version; public version requests initially
+returned 404. No duplicate publication was submitted.
+
+Anonymous registry checks subsequently verified exact-version metadata,
+`latest: 0.1.1`, the standalone README, complete archive bytes, npm shasum and
+SHA512 integrity. The historical `0.1.0` shasum remains unchanged. The public
+archive SHA256 is
+`c83995600a1f33e1fdb4e13ba7811f3da9b4147e6901792ea130a0f941010e85`.
+
+A fresh anonymous npm installation used empty separate user/global npmrc files,
+an isolated prefix/cache and a normal install without `--ignore-scripts`.
+Version and doctor passed and all 117 installed payload hashes matched the
+archive. A real render preserved QMD. A two-edit JSON patch, selected sync,
+reviewed Apply and subsequent render synchronized one edit while retaining the
+excluded edit, document identity and saved x-position 137. The QMD source was
+unchanged by each render. This temporary smoke changed no user configuration.
+
+A separate anonymous mise installation used fresh config/data/cache/state and
+npm configuration against the public registry. Its default npm backend passed
+version, doctor, all 117 installed hashes and a real render with unchanged QMD
+and zero pending edits. It changed no user configuration.
+
+The owner-requested global update used the validated local tarball through a
+temporary loopback registry while public verification was pending. The registry
+override existed only in the installation subprocess and was not persisted. That
+same archive subsequently matched the public version byte for byte. The selected
+global command was:
+
+```sh
+mise use -g 'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
+```
+
+The existing mise shim now resolves `qbento 0.1.1`. One immediate lookup in the
+update process saw the old selection; fresh-process checks confirmed the new
+version without modifying shim code or links. The tool's previous selection was
+`0.1.0`; parsed configuration comparison confirmed that unrelated tools and
+settings were unchanged. All 117 installed hashes and the manifest matched the
+published archive. Doctor and a real render passed with zero pending changes,
+unchanged source and no diagnostics. A sibling QMD correctly refused
+`PROJECT_SOURCE_MISMATCH`. The private configuration backup was removed after
+verification. Existing Node, Deno, Quarto and computation environments were not
+installed or changed.
+
+These are public registry and owner-installation results, separate from the
+earlier loopback test and isolated local tarball checks. They do not declare
+stable v1, hosted CI success or Windows/macOS qualification. The four historical
+license-source gaps and other documented acceptance limits remain unchanged.
+
+Detailed local receipts are `output/npm/release-0.1.1/public-check.json`,
+`public-mise-check.json` and `mise-global-update.json`. Their SHA256 values are:
+
+| Receipt                   | SHA256                                                             |
+| ------------------------- | ------------------------------------------------------------------ |
+| `public-check.json`       | `2965e6b86f2ba8712d995dff2be454fdb7eb21e3ed54182b5cccf04bf0135b63` |
+| `public-mise-check.json`  | `eaa221833f11d4095cccf14ce3351d7dc594af3e76639d2f51451883f84bde58` |
+| `mise-global-update.json` | `2ff60950d0baa2932e3f9a92684366203664728d636b3d853888e079a5740e14` |
