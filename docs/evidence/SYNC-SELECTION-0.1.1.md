@@ -36,21 +36,144 @@ Chromium verified selected Apply followed by render, retaining two excluded
 pending changes, document identity and exact saved design. These checks do not
 establish arbitrary visual quality or desktop/other-platform acceptance.
 
-The installed npm smoke passed on the frozen implementation: 122 tarball files,
-all 117 runtime payload hashes, offline temporary installation, prefix
+The final installed npm smoke passed at clean source `281d90b`: 122 tarball
+files, all 117 runtime payload hashes, offline temporary installation, prefix
 relocation and state-only reconstruction. It also exercised selected sync,
 receipt/pending semantics, final render and sibling-source refusals for
 status/diff/get/edit. There was one pending edit before sync and zero after
 verified render; content, geometry and docId were retained. It changed no user
 installation/configuration.
 
-Type checks, lint (211 files), formatting (213 source/script/test files) and
-whitespace checks passed. A legacy component-deletion test was extended to
-reject incomplete destructive selection and then explicitly review all affected
-pending edits; its original remaining-state assertions are preserved and its
-real Quarto rerun passed.
+Type checks, lint (211 files), formatting (212 source/script/test/launcher
+files) and whitespace checks passed. A legacy component-deletion test was
+extended to reject incomplete destructive selection and then explicitly review
+all affected pending edits; its original remaining-state assertions are
+preserved and its real Quarto rerun passed.
 
-Final broad-suite and clean-artifact results will be appended when complete. The
-first broad pass was deliberately stopped after the implementation froze; its
-earlier legacy fixture failure is not relabeled as a passing run. No registry
-publication is inferred from source or local package checks.
+The completed broad-suite outcome, corrected fixture rerun and clean archive are
+recorded below. The first exploratory broad pass was deliberately stopped after
+the implementation froze; its earlier legacy fixture failure is not relabeled as
+a passing run. No registry publication is inferred from source or local package
+checks.
+
+## Final prepared archive
+
+The archive was staged from clean commit
+`281d90bcfbbf003c4b7547fe7522c0f22cd7d151` (`dirty: false`), including the final
+readable Studio selection labels. It contains 122 regular files and all 117
+runtime payload sizes/hashes match its manifest. Pinned upstream bytes, notices
+and existing license-source disclosures remain unchanged.
+
+| Property      | Value                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| Filename      | `brianmsm-quarto-bento-0.1.1.tgz`                                                                 |
+| Archive bytes | 896928                                                                                            |
+| SHA256        | `c83995600a1f33e1fdb4e13ba7811f3da9b4147e6901792ea130a0f941010e85`                                |
+| npm shasum    | `aaa2fe14a9d5f80fc98204dd4d75b0ec71120961`                                                        |
+| npm integrity | `sha512-x5q3/BgnMdrivVRc+b8eF28ruwIooaTOitPPqjb0J9aDgaoSZVdgtoK1biJZv9BGjw0TfcMpZOdjd0ip8kpUPw==` |
+
+Mise 2026.10.11 installed this exact archive through its default npm backend
+against a temporary IPv4 loopback registry. Version (`qbento 0.1.1`), doctor and
+all 117 installed hashes passed. Only fixture metadata and the tarball were
+requested; user configuration was unchanged. This is local artifact evidence,
+not availability on npmjs.org. The ignored detailed receipt is
+`output/npm/release-0.1.1/mise-local.json`; stage/pack metadata and the archive
+are in that same local directory.
+
+Final Studio checks passed **eight tests, zero failures (18s)** after the label
+refinement, including a real Chromium interaction. A second captured run passed
+and was visually inspected at a 1280 x 900 viewport: the review dialog measured
+928 pixels wide with no horizontal overflow. Selected and excluded changes,
+separate deletion consent, reviewed patches and the post-Apply message were
+checked. The image and log are local ignored artifacts at
+`output/verification/0.1.1/selection-dialog.png` and `visual-review.log`. This
+checks the bounded review dialog, not the design quality of arbitrary decks.
+
+## Supplemental pinned-source comparison
+
+The broad invocation did not set `QBENTO_BENTO_SOURCE`, so its optional native
+math-source comparison remains recorded as ignored. A local checkout was then
+found at `output/verification/bento-upstream`; its HEAD matches the pinned Bento
+revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b`, and its tracked worktree is
+clean. Running the exact omitted test separately passed **one test, zero
+failures (48ms)**. Its eight other tests were filtered, not rerun or relabeled.
+The receipt is `output/verification/0.1.1/upstream-math.log`.
+
+```sh
+QBENTO_BENTO_SOURCE="$PWD/output/verification/bento-upstream" \
+  NO_COLOR=1 deno test --allow-read --allow-env --allow-run \
+  --filter 'pinned Bento renderer verifies math rejection and text fidelity regressions' \
+  tests/math_test.ts
+```
+
+## Relocation fixture correction
+
+The broad run exposed a legacy registry relocation fixture that copied
+`state.json` but omitted the source association in `project.json`. The new
+fail-closed loader correctly refused `PROJECT_BINDING_MISSING` before
+rebuilding. The fixture now copies the original metadata too, as required by
+[the reconstruction guide](../USAGE.md#change-data-and-rebuild). Two equivalent
+weak-math/code relocation fixtures were updated proactively. No runtime guard or
+content/design/identity assertion was weakened.
+
+The complete affected files were rerun after this correction at `0c4f757`:
+**eight tests passed, zero failures (2m42s)**. The detailed receipt is
+`output/verification/0.1.1/relocation-fixtures-final.log`. The earlier failed
+reproduction is retained separately as `registry-failure-repro.log`. The
+runtime/package inputs still match clean artifact source `281d90b` exactly; this
+fixture correction changes tests only.
+
+## Completed broad-suite outcome
+
+The broad Linux run completed with **598 passed (4 steps), 3 failed, 1 ignored
+(33m23s)**. All three failures were the registry/weak-math/displayed-code
+relocation fixtures described above: their source graph had been compiled before
+the missing `project.json` copies were corrected. The entire affected test files
+subsequently passed **8/8**. The ignored pinned-source math test subsequently
+passed **1/1** with the verified local checkout. No other broad suite failure
+was reported, including the strict widget SVG comparison. This does not
+establish a cause or a fix for the previously documented intermittent SVG
+mismatch.
+
+Across the broad run and these targeted reruns, all **602 distinct test cases**
+received a passing result. This is combined coverage, **not a claim of a new
+single full-suite run with zero failures**. The production runtime did not
+change during the fixture correction; final Studio label checks, installation,
+relocation and reconstruction checks also passed separately. Historical 578-test
+acceptance remains tied to its earlier revision.
+
+The broad invocation was:
+
+```sh
+DENO_JOBS=2 NO_COLOR=1 \
+QBENTO_STUDIO_BROWSER_TEST=1 QBENTO_RELATIONS_BROWSER=1 \
+QBENTO_LAYOUT_BROWSER=1 QBENTO_PYTHON_EXECUTION_TEST=1 \
+QBENTO_TEST_PYTHON=/usr/bin/python3 \
+QBENTO_WIDGET_EVIDENCE="$PWD/output/verification/0.1.1/widget-svg" \
+  deno test --parallel --allow-read --allow-write --allow-env --allow-run \
+  --allow-net=127.0.0.1 tests
+```
+
+The affected files were rerun with the same permissions:
+
+```sh
+NO_COLOR=1 deno test --allow-read --allow-write --allow-env --allow-run \
+  --allow-net=127.0.0.1 tests/registry_execution_test.ts \
+  tests/weak_math_identity_test.ts
+```
+
+Deno 2.9.6, Quarto 1.10.19, R 4.6.1 and Chromium 152.0.7977.82 were present. The
+genuine Python execution lane was enabled with `/usr/bin/python3`. All browser
+results here are Linux headless evidence; they do not qualify a foreground
+desktop session, Windows/macOS or arbitrary visual quality.
+
+Detailed logs are local ignored artifacts under `output/verification/0.1.1/`.
+Their SHA256 values preserve the exact recorded runs:
+
+| Receipt                          | SHA256                                                             |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `full-suite.log`                 | `3176259bc599a114732dc45b1fe87fba5d71ebe8eefc953e29c37e3a7c517052` |
+| `relocation-fixtures-final.log`  | `3b410f791e09a3f19f3cdaf7f7ae9db58c248ff23e45cfa6bd7e39c7118d10ca` |
+| `upstream-math.log`              | `39ba842282862058706f3c3790ec1a5cf8615d0deb22e38a584beb79c11e5157` |
+| `final-ui.log`                   | `4129fd6171596e911b3ac53862c48a413ed6e9d43dbafe6044336613e641ad5b` |
+| `npm-installed-smoke-final.json` | `337e9d55b785a3e0dd3150507a99d80868a6e8e5623782eceb622896bf45bdd4` |

@@ -1,6 +1,6 @@
 # Implementation ledger
 
-Updated 2026-10-16. The owner has closed the Linux-local implementation and
+Updated 2026-10-17. The owner has closed the Linux-local implementation and
 validation objective at runtime `2ee7974` and authorized publication of the
 source repository on GitHub. The complete local suite passed **578 tests and
 4 steps, zero failures**; the **117-file portable smoke** rebuilt from QMD and
@@ -16,10 +16,15 @@ revision and scope.
 
 ## Prepared correction release
 
-The working `0.1.1` correction fixes read-only QMD association checks, exposes
+The prepared `0.1.1` correction fixes read-only QMD association checks, exposes
 selected sync in CLI/Studio and clarifies pending state after Apply. The earlier
 578-test application receipt remains historical. Validation of these changes
 is recorded separately in [the correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
+The broad run passed 598 tests and four steps, with three legacy relocation
+fixture failures and one optional source comparison omitted. The corrected
+fixture files passed all eight tests; the omitted comparison passed separately.
+This provides combined passing coverage of 602 distinct cases, rather than a
+new single clean full-suite receipt.
 The last publicly verified npm version is `0.1.0`; preparing source/package
 metadata does not publish `0.1.1`.
 

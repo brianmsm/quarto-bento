@@ -24,7 +24,8 @@ release. No `0.x` version declares stable v1.
 
 `0.1.0` remains the publicly verified registry version until a separate
 publication receipt confirms `0.1.1`. Source changes and a prepared tarball do
-not make a registry release available.
+not make a registry release available. Local `0.1.1` runtime and installed
+package checks are recorded in [the correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
 
 ## What npm installs
 

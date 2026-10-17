@@ -16,9 +16,11 @@ use, inspection and contributions; a versioned v1 release has not been declared.
 Windows and macOS qualification are future work outside the completed Linux
 objective.
 
-A compatible `0.1.1` correction is being prepared in this checkout; see the
-[changelog](CHANGELOG.md). The publicly verified npm version remains `0.1.0`
-until a separate publication receipt confirms the new archive.
+A compatible `0.1.1` correction is prepared and locally validated; see the
+[changelog](CHANGELOG.md) and
+[correction evidence](docs/evidence/SYNC-SELECTION-0.1.1.md). The publicly
+verified npm version remains `0.1.0` until a separate publication receipt confirms
+the new archive.
 
 ## Install the Linux CLI
 

@@ -9,10 +9,9 @@ version 1 and saved-state schema version 1 remain unchanged.
   startup and saved-state diagnostics. Reading another document in the same
   directory refuses without creating state, locks or files.
 - Expose reviewed selective synchronization through
-  `qbento sync deck.qmd
-  --select selection.json` and Studio selection
-  controls, bound to document identity and revision. Keep deletion confirmation
-  separate from selection.
+  `qbento sync deck.qmd --select selection.json` and Studio selection controls,
+  bound to document identity and revision. Keep deletion confirmation separate
+  from selection.
 - Preserve excluded pending work and reject selections that would retire
   excluded changes through a destructive parent operation. Component creation
   remains an atomic semantic group.
