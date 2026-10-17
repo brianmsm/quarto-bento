@@ -20,7 +20,7 @@ import {
   renderProject,
   saveProject,
 } from "../core/project.ts";
-import { applySync, previewSync } from "../core/sync.ts";
+import { applySync, previewSelectedSync, previewSync } from "../core/sync.ts";
 import { applyReconcile, previewReconcile } from "../core/reconcile.ts";
 import {
   applySlideAction,
@@ -80,6 +80,8 @@ export async function readStudioBody(
 }
 
 export async function startStudio(source: string, port = 0) {
+  // Refuse a mismatched QMD before exposing any editor or state endpoint.
+  await readProject(source);
   const token = crypto.randomUUID() + crypto.randomUUID();
   const shell = await loadBentoShell();
   const bridge = await Deno.readTextFile(
@@ -315,11 +317,37 @@ export async function startStudio(source: string, port = 0) {
           }
           const text = await readStudioBody(req);
           if (text === null) return respond('{"error":"Plan too large"}', 413);
-          const { confirmedDeleteIds } = JSON.parse(text);
+          const payload = JSON.parse(text);
+          if (
+            !payload || typeof payload !== "object" || Array.isArray(payload)
+          ) {
+            throw new StateError(
+              "INVALID_SELECTION",
+              "Expected a sync preview object.",
+            );
+          }
+          const selected = [
+            "version",
+            "docId",
+            "expectedRevision",
+            "selectedChangeIds",
+          ]
+            .some((key) => Object.hasOwn(payload, key));
+          if (
+            !selected &&
+            Object.keys(payload).some((key) => key !== "confirmedDeleteIds")
+          ) {
+            throw new StateError(
+              "INVALID_SELECTION",
+              "Unknown sync preview field.",
+            );
+          }
           return respond(JSON.stringify(
-            await previewSync(source, undefined, {
-              confirmedDeleteIds,
-            }),
+            selected
+              ? await previewSelectedSync(source, payload)
+              : await previewSync(source, undefined, {
+                confirmedDeleteIds: payload.confirmedDeleteIds,
+              }),
           ));
         }
         if (

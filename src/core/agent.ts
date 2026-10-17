@@ -1,6 +1,5 @@
 /** Bounded pure-data agent operations over the same saved project as Studio. */
 import { normalizeNotesText, notesIdentity } from "../source/notes.ts";
-import { basename, join } from "node:path";
 import { projectPaths, readProject, saveProject } from "./project.ts";
 import { applySlideAction } from "./slide-actions.ts";
 import { assertJson } from "../state/json.ts";
@@ -253,26 +252,8 @@ function validatePatch(value: unknown): asserts value is AgentPatch {
   }
 }
 
-/** Refuse reading another QMD's deck from a shared directory. */
+/** Validate agent data after the shared read-only source binding check. */
 async function readBoundProject(source: string) {
-  const paths = projectPaths(source);
-  let binding;
-  try {
-    binding = JSON.parse(
-      await Deno.readTextFile(join(paths.stateDir, "project.json")),
-    );
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      fail("NO_BASELINE", "Render this QMD before using the agent API.");
-    }
-    throw error;
-  }
-  if (binding?.version !== 1 || binding.source !== basename(paths.source)) {
-    fail(
-      "PROJECT_SOURCE_MISMATCH",
-      ".qbento belongs to a different QMD source.",
-    );
-  }
   const state = await readProject(source);
   assertProjectDocument(state.emitted);
   return state;

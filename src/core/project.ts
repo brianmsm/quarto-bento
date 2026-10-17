@@ -89,6 +89,88 @@ async function exists(path: string) {
     throw e;
   }
 }
+/** Check persisted source identity without creating state, locks or recovery files. */
+async function readProjectBinding(
+  paths: ReturnType<typeof projectPaths>,
+): Promise<boolean> {
+  let stateInfo;
+  try {
+    stateInfo = await Deno.lstat(paths.stateDir);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return false;
+    throw error;
+  }
+  if (stateInfo.isSymlink || !stateInfo.isDirectory) {
+    throw new StateError(
+      "UNSAFE_STATE_PATH",
+      ".qbento must be a real directory.",
+    );
+  }
+  const identity = resolve(paths.stateDir, "project.json");
+  let info;
+  try {
+    info = await Deno.lstat(identity);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      // Missing identity is not a new project when durable or recoverable state
+      // remains. In particular, `edit` must never adopt it for another QMD.
+      for (
+        const file of [
+          "state.json",
+          "state.previous.json",
+          "render-transaction.json",
+          "sync-transaction.json",
+          "sync-approved.json",
+        ]
+      ) {
+        if (await exists(resolve(paths.stateDir, file))) {
+          throw new StateError(
+            "PROJECT_BINDING_MISSING",
+            "Saved project state has no source binding. Restore .qbento/project.json from the matching project backup before continuing.",
+          );
+        }
+      }
+      return false;
+    }
+    throw error;
+  }
+  if (info.isSymlink || !info.isFile) {
+    throw new StateError(
+      "UNSAFE_STATE_PATH",
+      ".qbento/project.json must be a regular file.",
+    );
+  }
+  let binding;
+  try {
+    binding = JSON.parse(await Deno.readTextFile(identity));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new StateError(
+      "PROJECT_SOURCE_MISMATCH",
+      "Cannot verify .qbento source identity: project.json is invalid JSON.",
+    );
+  }
+  if (binding?.version !== 1 || binding.source !== basename(paths.source)) {
+    throw new StateError(
+      "PROJECT_SOURCE_MISMATCH",
+      ".qbento belongs to a different QMD source.",
+    );
+  }
+  return true;
+}
+
+/** Require a verified binding before exposing an existing saved project. */
+export async function assertProjectBinding(source: string) {
+  const paths = projectPaths(source);
+  if (!await readProjectBinding(paths)) {
+    throw new StateError(
+      "NO_BASELINE",
+      "Render this QMD before reading its project.",
+    );
+  }
+  return paths;
+}
+
 export async function withProject<T>(
   source: string,
   action: (
@@ -97,6 +179,9 @@ export async function withProject<T>(
   ) => Promise<T>,
 ): Promise<T> {
   const paths = projectPaths(source);
+  // Fail closed before creating even a lock when identity was lost. Recheck
+  // under the operation lock below to retain protection against concurrent edits.
+  await readProjectBinding(paths);
   await Deno.mkdir(paths.stateDir, { recursive: true });
   const stateInfo = await Deno.lstat(paths.stateDir);
   if (stateInfo.isSymlink || !stateInfo.isDirectory) {
@@ -122,23 +207,17 @@ export async function withProject<T>(
         started: new Date().toISOString(),
       }),
     );
-    const identity = resolve(paths.stateDir, "project.json");
-    if (await exists(identity)) {
-      const meta = JSON.parse(await Deno.readTextFile(identity));
-      if (meta.version !== 1 || meta.source !== basename(paths.source)) {
-        throw new Error(
-          "PROJECT_SOURCE_MISMATCH: .qbento belongs to a different source",
-        );
-      }
-    } else {await Deno.writeTextFile(
-        identity,
+    if (!await readProjectBinding(paths)) {
+      await Deno.writeTextFile(
+        resolve(paths.stateDir, "project.json"),
         JSON.stringify(
           { version: 1, source: basename(paths.source) },
           null,
           2,
         ) + "\n",
         { createNew: true },
-      );}
+      );
+    }
     if (await exists(resolve(paths.stateDir, "render-transaction.json"))) {
       throw new Error(
         "RECOVERY_REQUIRED: inspect the interrupted render transaction before continuing",
@@ -715,8 +794,14 @@ export async function saveProject(
   });
 }
 export async function readProject(source: string): Promise<ProjectState> {
-  const state = await new StateStore(projectPaths(source).stateDir).load();
-  if (!state) throw new Error("NO_BASELINE: render this project first");
+  const paths = await assertProjectBinding(source);
+  const state = await new StateStore(paths.stateDir).load();
+  if (!state) {
+    throw new StateError(
+      "NO_BASELINE",
+      "Render this QMD before reading its project.",
+    );
+  }
   return state;
 }
 
@@ -725,7 +810,14 @@ export async function readProjectDiagnostics(
   source: string,
 ): Promise<Diagnostic[]> {
   const paths = projectPaths(source);
+  const bound = await readProjectBinding(paths);
   const state = await new StateStore(paths.stateDir).load();
+  if (state && !bound) {
+    throw new StateError(
+      "NO_BASELINE",
+      "Restore the source binding before reading saved diagnostics.",
+    );
+  }
   const registry = await loadDesignRegistry(paths.directory);
   const mapping = scanSource(await Deno.readTextFile(paths.source));
   const designDiagnostics = missingDesignDiagnostics(mapping, state, registry);

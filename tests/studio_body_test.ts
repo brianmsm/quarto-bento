@@ -1,3 +1,5 @@
+import { renderProjectFromAst } from "../src/core/project.ts";
+import { hashSource } from "../src/source/mod.ts";
 import {
   MAX_STUDIO_BODY_BYTES,
   readStudioBody,
@@ -87,8 +89,23 @@ Deno.test({
     "Studio returns existing 413 JSON for streamed excess on all body routes",
   ignore: !canServe,
   fn: async () => {
-    const studio = await startStudio("/nonexistent-qbento-body-test.qmd");
+    const directory = await Deno.makeTempDir({ prefix: "qbento-body-test-" });
+    let studio: Awaited<ReturnType<typeof startStudio>> | undefined;
     try {
+      const source = directory + "/deck.qmd", text = "## Slide {#slide}\n";
+      await Deno.writeTextFile(source, text);
+      await renderProjectFromAst(source, {
+        ast: {
+          meta: {},
+          blocks: [{
+            t: "Header",
+            c: [2, ["slide", [], []], [{ t: "Str", c: "Slide" }]],
+          }],
+        },
+        sourceHash: hashSource(text),
+        assetDirectories: [directory],
+      });
+      studio = await startStudio(source);
       const page = await (await fetch(studio.url)).text();
       const token = JSON.parse(page.match(/qbentoToken\s*=\s*("[^"]+")/)![1]);
       for (
@@ -118,7 +135,8 @@ Deno.test({
         assert(response.headers.get("Cache-Control") === "no-store");
       }
     } finally {
-      await studio.shutdown();
+      await studio?.shutdown();
+      await Deno.remove(directory, { recursive: true });
     }
   },
 });

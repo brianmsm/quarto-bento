@@ -76,6 +76,10 @@ async function fixture(
   edited.slides[0].elements[0].html = options.html ?? "Edited β 😀.";
   const store = new StateStore(stateDir),
     state = await store.save(captureEdits(initial, edited));
+  await Deno.writeTextFile(
+    `${stateDir}/project.json`,
+    JSON.stringify({ version: 1, source: "deck.qmd" }),
+  );
   return { directory, source, stateDir, store, state, text };
 }
 Deno.test("preview is read-only, exact sync has durable source/state recovery and leaves pending until render", async () => {

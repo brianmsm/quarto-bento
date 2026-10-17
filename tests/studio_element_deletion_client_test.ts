@@ -84,6 +84,7 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
   const requests: { path: string; body: unknown }[] = [];
   const plan = {
     stateRevision: 1,
+    selectedChangeIds: ["element-deletion", "slide-deletion"],
     patch: { patches: [] },
     changes: [],
     structure: {
@@ -172,6 +173,10 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
   boxes[1].checked = true;
   await boxes[1].onchange!();
   eq(requests.filter((r) => r.path === "sync/preview").at(-1)!.body, {
+    version: 1,
+    docId: "doc",
+    expectedRevision: 1,
+    selectedChangeIds: ["element-deletion", "slide-deletion"],
     confirmedDeleteIds: ["element-deletion", "slide-deletion"],
   });
   ok(!node("apply").disabled);

@@ -205,7 +205,10 @@ Deno.test("invalid registry refuses before CLI and ordinary Quarto execute; chan
       await readProject(source);
       throw new Error("changed registry published baseline");
     } catch (error) {
-      assert(String(error).includes("NO_BASELINE"), String(error));
+      assert(
+        (error as { code?: string }).code === "NO_BASELINE",
+        String(error),
+      );
     }
     await refuses(
       () => assertDesignRegistryUnchanged(dir, null),

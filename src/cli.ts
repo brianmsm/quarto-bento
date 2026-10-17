@@ -1,6 +1,11 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1
 import { captureProject, readProject, renderProject } from "./core/project.ts";
-import { applySync, previewSync } from "./core/sync.ts";
+import {
+  applySync,
+  previewSelectedSync,
+  previewSync,
+  readSyncSelectionFile,
+} from "./core/sync.ts";
 import { recoverProject } from "./core/recovery.ts";
 import { extractDocument } from "./render/html.ts";
 import { startStudio } from "./studio/server.ts";
@@ -20,7 +25,7 @@ capture [edited.html]   Explicitly capture native local HTML edits
 status | diff          Inspect durable pending changes
 get                    Read the saved deck, revision, provenance and pending edits
 patch <payload.json>   Apply bounded structured edits to saved state; never writes QMD
-sync [--apply plan.json] Preview source changes or apply an inspected plan
+sync [--select selection.json | --apply plan.json] Preview all/selected source changes or apply an inspected plan
 reconcile [--apply resolution.json] Execute conflict preview, or apply {plan,choices} to saved state
 recover [inspect|finish|rollback] Inspect or explicitly recover an interrupted operation
 init [--extension-only] Install the offline Quarto integration without replacing existing configuration
@@ -86,16 +91,23 @@ if (import.meta.main) {
       }
       case "sync": {
         if (!source) throw new Error("QMD path required");
-        if (extra === "--apply") {
-          if (!Deno.args[3]) {
-            throw new Error("Inspected JSON plan path required");
-          }
+        if (extra === "--apply" && Deno.args[3] && Deno.args.length === 4) {
           result = await applySync(
             source,
             JSON.parse(await Deno.readTextFile(Deno.args[3])),
           );
-        } else if (extra === undefined) result = await previewSync(source);
-        else throw new Error("Use sync source.qmd [--apply plan.json]");
+        } else if (
+          extra === "--select" && Deno.args[3] && Deno.args.length === 4
+        ) {
+          result = await previewSelectedSync(
+            source,
+            await readSyncSelectionFile(Deno.args[3]),
+          );
+        } else if (extra === undefined && Deno.args.length === 2) {
+          result = await previewSync(source);
+        } else {throw new Error(
+            "Use sync source.qmd [--select selection.json | --apply plan.json]",
+          );}
         break;
       }
       case "recover": {
@@ -165,7 +177,8 @@ if (import.meta.main) {
         } catch (error) {
           if (
             !(error instanceof Error) ||
-            !error.message.startsWith("NO_BASELINE:")
+            ((error as { code?: string }).code !== "NO_BASELINE" &&
+              !error.message.startsWith("NO_BASELINE:"))
           ) throw error;
           await renderProject(source);
         }

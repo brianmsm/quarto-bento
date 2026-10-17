@@ -59,7 +59,7 @@ import {
 /** Approved bounded text synchronization with a durable, recoverable QMD transaction. */
 import { verifiedSourceSlide } from "./source-scope.ts";
 import { basename, dirname, resolve } from "node:path";
-import { projectPaths, withProject } from "./project.ts";
+import { assertProjectBinding, projectPaths, withProject } from "./project.ts";
 import {
   canonical,
   clone,
@@ -216,6 +216,14 @@ export interface SyncApprovalEnvelope {
   approval: SyncApproval;
 }
 export interface SyncOptions {
+  confirmedDeleteIds?: string[];
+}
+/** A reviewed selection is bound to one saved document revision. */
+export interface SyncSelection {
+  version: 1;
+  docId: string;
+  expectedRevision: number;
+  selectedChangeIds: string[];
   confirmedDeleteIds?: string[];
 }
 export interface SyncItem {
@@ -968,6 +976,28 @@ async function buildPlan(
     }
     return p;
   });
+  // Fresh execution retires all pending content beneath an approved deletion.
+  // A selective plan must never label that content as excluded and then lose it.
+  const selectedIds = new Set(ids);
+  for (const deletion of selected) {
+    if (!["delete-slide", "delete-element"].includes(deletion.kind)) continue;
+    const required = state.pending.filter((pending) =>
+      !selectedIds.has(pending.id) &&
+      pending.target.slideId === deletion.target.slideId &&
+      (deletion.kind === "delete-slide" ||
+        pending.target.elementId === deletion.target.elementId)
+    );
+    if (required.length) {
+      fail(
+        "PARTIAL_DELETE_SELECTION",
+        `Deleting this ${
+          deletion.kind === "delete-slide" ? "slide" : "element"
+        } would retire unselected pending edits. Select those edits together with the deletion, or restore/review them before deleting. Required additional change IDs: ${
+          JSON.stringify(required.map((pending) => pending.id))
+        }`,
+      );
+    }
+  }
   if (
     selected.some((change) =>
       change.kind === "delete-element" &&
@@ -2069,6 +2099,7 @@ async function readableSnapshot(source: string) {
   const paths = projectPaths(source);
   await safeDirectory(paths.stateDir);
   await regular(paths.source);
+  await assertProjectBinding(source);
   for (
     const name of [
       "operation.lock",
@@ -2081,17 +2112,6 @@ async function readableSnapshot(source: string) {
       fail(
         "RECOVERY_OR_BUSY",
         `Project has ${name}; finish or recover that operation first.`,
-      );
-    }
-  }
-  const identity = resolve(paths.stateDir, "project.json");
-  if (await present(identity)) {
-    await regular(identity);
-    const value = JSON.parse(await Deno.readTextFile(identity));
-    if (value.version !== 1 || value.source !== basename(paths.source)) {
-      fail(
-        "PROJECT_SOURCE_MISMATCH",
-        "This .qbento state belongs to another source.",
       );
     }
   }
@@ -2120,6 +2140,120 @@ export async function previewSync(
 ): Promise<SyncPlan> {
   const { paths, state, text } = await readableSnapshot(source);
   return buildPlan(paths.source, text, state, selectedChangeIds, options);
+}
+const MAX_SYNC_SELECTION_BYTES = 1024 * 1024;
+function validateSyncSelection(value: unknown): asserts value is SyncSelection {
+  if (
+    typeof value !== "object" || value === null || Array.isArray(value) ||
+    ![Object.prototype, null].includes(Object.getPrototypeOf(value))
+  ) fail("INVALID_SELECTION", "Expected a sync selection object.");
+  const request = value as Record<string, unknown>;
+  const allowed = [
+    "version",
+    "docId",
+    "expectedRevision",
+    "selectedChangeIds",
+    "confirmedDeleteIds",
+  ];
+  const identity = (id: unknown): id is string =>
+    typeof id === "string" && id.length > 0 && id.length <= 4096 &&
+    id.trim() === id &&
+    Array.from(id).every((character) => {
+      const code = character.charCodeAt(0);
+      return code >= 32 && code !== 127;
+    });
+  const ids = (list: unknown): list is string[] =>
+    Array.isArray(list) && list.length <= 10000 && list.every(identity) &&
+    new Set(list).size === list.length;
+  if (
+    Object.keys(request).some((key) => !allowed.includes(key)) ||
+    request.version !== 1 || !identity(request.docId) ||
+    !Number.isSafeInteger(request.expectedRevision) ||
+    (request.expectedRevision as number) < 0 ||
+    !ids(request.selectedChangeIds) ||
+    (request.confirmedDeleteIds !== undefined &&
+      !ids(request.confirmedDeleteIds))
+  ) {
+    fail(
+      "INVALID_SELECTION",
+      "Expected version 1, docId, a nonnegative expectedRevision and unique selectedChangeIds; only confirmedDeleteIds is optional.",
+    );
+  }
+  if (
+    new TextEncoder().encode(JSON.stringify(request)).length >
+      MAX_SYNC_SELECTION_BYTES
+  ) {
+    fail("SYNC_INPUT_TOO_LARGE", "Selection exceeds the 1 MiB limit.");
+  }
+}
+/** Read-only public preview; selection never bypasses normal source/plan checks. */
+export async function previewSelectedSync(
+  source: string,
+  request: unknown,
+): Promise<SyncPlan> {
+  validateSyncSelection(request);
+  const { paths, state, text } = await readableSnapshot(source);
+  if (state.docId !== request.docId) {
+    fail(
+      "UNRELATED_DOCUMENT",
+      "Get the current document before selecting changes.",
+    );
+  }
+  if (state.revision !== request.expectedRevision) {
+    fail("STALE_REVISION", "Get the current deck before selecting changes.");
+  }
+  return buildPlan(paths.source, text, state, request.selectedChangeIds, {
+    confirmedDeleteIds: request.confirmedDeleteIds,
+  });
+}
+/** Bounded UTF-8 JSON input; refuses links and nonregular files before opening. */
+export async function readSyncSelectionFile(path: string): Promise<unknown> {
+  const info = await Deno.lstat(path);
+  if (!info.isFile || info.isSymlink) {
+    fail(
+      "SYNC_INPUT_FILE",
+      "Selection input must be a regular JSON file, not a symlink.",
+    );
+  }
+  const file = await Deno.open(path, { read: true });
+  try {
+    const opened = await file.stat();
+    if (!opened.isFile) {
+      fail("SYNC_INPUT_FILE", "Selection input must be a regular JSON file.");
+    }
+    if (opened.size > MAX_SYNC_SELECTION_BYTES) {
+      fail("SYNC_INPUT_TOO_LARGE", "Selection exceeds the 1 MiB limit.");
+    }
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const chunk = new Uint8Array(16 * 1024), read = await file.read(chunk);
+      if (read === null) break;
+      size += read;
+      if (size > MAX_SYNC_SELECTION_BYTES) {
+        fail("SYNC_INPUT_TOO_LARGE", "Selection exceeds the 1 MiB limit.");
+      }
+      chunks.push(chunk.subarray(0, read));
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    try {
+      return JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(bytes),
+      );
+    } catch {
+      fail(
+        "SYNC_INVALID_JSON",
+        "Selection input must contain valid UTF-8 JSON.",
+      );
+    }
+  } finally {
+    file.close();
+  }
 }
 /** Explicit approved action; leaves pending semantic edits until a future render confirms them. */
 export async function applySync(

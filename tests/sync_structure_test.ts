@@ -80,6 +80,11 @@ async function simple() {
     },
   });
   const store = new StateStore(directory + "/.qbento");
+  await Deno.mkdir(directory + "/.qbento", { recursive: true });
+  await Deno.writeTextFile(
+    directory + "/.qbento/project.json",
+    JSON.stringify({ version: 1, source: "deck.qmd" }),
+  );
   return { directory, source, text, doc, state, store };
 }
 Deno.test("combined text/create/order plan rescans source, preserves native IDs, and publishes explicit approval only on apply", async () => {

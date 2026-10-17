@@ -141,6 +141,7 @@ async function client() {
       if (path === "sync/preview") {
         return Promise.resolve(response({
           stateRevision: revision,
+          selectedChangeIds: body.selectedChangeIds,
           patch: {
             patches: [{
               blockId: "body",

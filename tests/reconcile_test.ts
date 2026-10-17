@@ -73,6 +73,10 @@ async function fixture(computed = false) {
   const projected = await projector(source, {} as never),
     store = new StateStore(dir + "/.qbento");
   let state = await store.save(createState(doc, projected.provenance));
+  await Deno.writeTextFile(
+    dir + "/.qbento/project.json",
+    JSON.stringify({ version: 1, source: "deck.qmd" }),
+  );
   async function edit(text: string) {
     const edited = structuredClone(state.emitted);
     edited.slides[0].elements[0].html = text;

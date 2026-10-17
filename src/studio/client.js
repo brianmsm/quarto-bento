@@ -8,6 +8,7 @@ let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
 let diagnosticGeneration = 0, projectDiagnostics = [], renderDiagnostics = [];
 let renderDiagnosticSnapshot;
 let connectedApi, connectedSnapshot;
+let syncReviewSnapshot, syncPlanSelection;
 async function api(path, body) {
   const response = await fetch("/api/" + path, {
     method: body === undefined ? "GET" : "POST",
@@ -293,7 +294,10 @@ function showPatches(plan) {
     section.append(title, message);
     $("patches").append(section);
   }
-  if (plan.structure || plan.identities || plan.graphs || plan.languages) {
+  if (
+    plan.structure || plan.identities || plan.graphs || plan.languages ||
+    plan.attributes || plan.notes || plan.annotations?.patches.length
+  ) {
     const section = document.createElement("section"),
       title = document.createElement("h3"),
       result = document.createElement("pre");
@@ -303,35 +307,83 @@ function showPatches(plan) {
     $("patches").append(section);
   }
 }
+function currentSyncSelection() {
+  return [...$("sync-selection").querySelectorAll("input")]
+    .filter((box) => box.checked).map((box) => box.dataset.change);
+}
+function sameSyncSelection(left, right) {
+  return left.length === right.length && left.every((id) => right.includes(id));
+}
+function requiredSyncDeleteBoxes(selected) {
+  return [...$("delete-confirmations").querySelectorAll("input")].filter(
+    (box) => {
+      const required = !syncReviewSnapshot ||
+        selected.includes(box.dataset.change);
+      box.disabled = !required;
+      return required;
+    },
+  );
+}
 async function prepareSyncPreview() {
   if (busy) return;
   const generation = ++previewGeneration;
   syncPlan = undefined;
   $("apply").disabled = true;
   $("patches").replaceChildren();
-  const boxes = [...$("delete-confirmations").querySelectorAll("input")];
+  const selected = currentSyncSelection();
+  if (syncReviewSnapshot) {
+    const excluded = syncReviewSnapshot.pending.filter((change) =>
+      !selected.includes(change.id)
+    );
+    $("sync-selection-summary").textContent =
+      `${selected.length} seleccionados; ${excluded.length} excluidos y conservados pendientes.` +
+      (excluded.length
+        ? ` Excluidos: ${excluded.map((change) => change.id).join(", ")}.`
+        : "");
+  }
+  const boxes = requiredSyncDeleteBoxes(selected);
   if (boxes.some((box) => !box.checked)) {
     $("sync-note").textContent =
-      "Confirma cada eliminación para preparar la propuesta. Puedes restaurar elementos desde Comparar con QMD y diapositivas desde Diapositivas.";
+      "Confirma cada eliminación seleccionada para preparar la propuesta o exclúyela. Puedes restaurar elementos desde Comparar con QMD y diapositivas desde Diapositivas.";
     return;
   }
   $("sync-note").textContent = "Preparando los cambios propuestos…";
   try {
     const plan = await api("sync/preview", {
-      confirmedDeleteIds: boxes.map((box) => box.dataset.change),
+      ...(syncReviewSnapshot
+        ? {
+          version: 1,
+          docId: syncReviewSnapshot.docId,
+          expectedRevision: syncReviewSnapshot.revision,
+          selectedChangeIds: selected,
+        }
+        : {}),
+      confirmedDeleteIds: boxes.filter((box) => box.checked)
+        .map((box) => box.dataset.change),
     });
     if (generation !== previewGeneration) return;
-    if (plan.stateRevision !== state.revision) {
+    if (
+      plan.stateRevision !== state.revision ||
+      (syncReviewSnapshot && syncReviewSnapshot.docId !== state.docId)
+    ) {
       throw new Error(
         "El proyecto cambió mientras se preparaba la revisión. Recarga antes de sincronizar.",
       );
     }
+    if (
+      syncReviewSnapshot && !sameSyncSelection(plan.selectedChangeIds, selected)
+    ) {
+      throw new Error(
+        "La propuesta no coincide con la selección revisada. Prepara una revisión nueva.",
+      );
+    }
     syncPlan = plan;
+    syncPlanSelection = selected;
     showPatches(syncPlan);
     const hasChanges = syncPlan.patch.patches.length ||
       syncPlan.identities?.patches.length ||
       syncPlan.attributes?.patches.length || syncPlan.notes?.patches.length ||
-      syncPlan.graphs?.patches.length ||
+      syncPlan.languages?.patches.length || syncPlan.graphs?.patches.length ||
       syncPlan.annotations?.patches.length ||
       syncPlan.structure;
     $("sync-note").textContent = hasChanges
@@ -356,9 +408,29 @@ $("review").onclick = async () => {
         "Otra pestaña ha cambiado el proyecto. Conserva tus cambios y recarga antes de sincronizar.",
       );
     }
+    previewGeneration++;
     syncPlan = undefined;
+    syncReviewSnapshot = { ...saved, docId: state.docId };
     $("apply").disabled = true;
     $("patches").replaceChildren();
+    $("sync-selection").replaceChildren();
+    for (const change of saved.pending) {
+      const label = document.createElement("label"),
+        checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.dataset.change = change.id;
+      checkbox.onchange = prepareSyncPreview;
+      label.append(
+        checkbox,
+        document.createTextNode(
+          ` ${change.target.slideId || "Presentación"}${
+            change.target.elementId ? " · " + change.target.elementId : ""
+          } · ${change.path.join(".") || change.kind} · ${change.id}`,
+        ),
+      );
+      $("sync-selection").append(label);
+    }
     $("delete-confirmations").replaceChildren();
     for (
       const change of saved.pending.filter((item) =>
@@ -389,25 +461,37 @@ $("review").onclick = async () => {
 };
 $("apply").onclick = async () => {
   if (!syncPlan || busy) return;
+  const selected = currentSyncSelection();
+  if (requiredSyncDeleteBoxes(selected).some((box) => !box.checked)) return;
   if (
-    [...$("delete-confirmations").querySelectorAll("input")].some((box) =>
-      !box.checked
+    syncReviewSnapshot && (
+      syncReviewSnapshot.docId !== state.docId ||
+      syncReviewSnapshot.revision !== state.revision ||
+      !sameSyncSelection(selected, syncPlanSelection) ||
+      !sameSyncSelection(selected, syncPlan.selectedChangeIds)
     )
-  ) return;
+  ) {
+    syncPlan = undefined;
+    $("apply").disabled = true;
+    $("sync-note").textContent =
+      "La selección cambió. Prepara una revisión nueva antes de aplicar.";
+    return;
+  }
   setBusy(true);
   $("busy").textContent = "Aplicando los cambios revisados al QMD…";
   $("sync-note").textContent = $("busy").textContent;
   $("apply").disabled = true;
   $("close").disabled = true;
   $("delete-confirmations").inert = true;
+  $("sync-selection").inert = true;
   previewGeneration++;
   try {
     const receipt = await api("sync/apply", syncPlan);
     state.revision = receipt.revision;
     syncPlan = undefined;
     $("sync-note").textContent = receipt.annotations?.diagnostics.length
-      ? "Cambios semánticos aplicados al QMD; las anotaciones opcionales se han omitido por los diagnósticos revisados. Recalcula para actualizar la presentación."
-      : "Cambios aplicados al QMD. Recalcula para actualizar la presentación.";
+      ? "Cambios semánticos aplicados al QMD; las anotaciones opcionales se han omitido por los diagnósticos revisados. Los cambios aplicados seguirán pendientes hasta Recalcular y verificar el resultado."
+      : "Cambios aplicados al QMD. Seguirán pendientes hasta Recalcular y verificar el resultado. Los cambios excluidos se conservan.";
     status("QMD sincronizado; listo para recalcular");
   } catch (error) {
     $("sync-note").textContent = error.message;
@@ -415,6 +499,7 @@ $("apply").onclick = async () => {
     setBusy(false);
     $("close").disabled = false;
     $("delete-confirmations").inert = false;
+    $("sync-selection").inert = false;
     $("apply").disabled = !syncPlan;
   }
 };
@@ -427,6 +512,7 @@ $("review-dialog").addEventListener("cancel", (event) => {
 $("review-dialog").addEventListener("close", () => {
   previewGeneration++;
   syncPlan = undefined;
+  syncReviewSnapshot = undefined;
 });
 function reloadEditor() {
   $("editor").contentWindow.__qbentoManagedReload = true;

@@ -429,7 +429,17 @@ Deno.test("containing slide deletion retains pending component and restores it; 
     const deletion = state.pending.find((pending) =>
       pending.kind === "delete-slide"
     )!;
-    const plan = await previewSync(f.source, [deletion.id], {
+    await refuses(
+      () =>
+        previewSync(f.source, [deletion.id], {
+          confirmedDeleteIds: [deletion.id],
+        }),
+      "PARTIAL_DELETE_SELECTION",
+    );
+    const affected = state.pending.filter((pending) =>
+      pending.target.slideId === "b"
+    ).map((pending) => pending.id);
+    const plan = await previewSync(f.source, affected, {
       confirmedDeleteIds: [deletion.id],
     });
     eq(plan.componentRetirements?.map((item) => item.id), [second.id]);
