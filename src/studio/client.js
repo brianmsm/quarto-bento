@@ -307,6 +307,26 @@ function showPatches(plan) {
     $("patches").append(section);
   }
 }
+function syncChangeLabel(change) {
+  const kinds = {
+    "delete-element": "Eliminar elemento",
+    "delete-slide": "Eliminar diapositiva",
+    "create-element": "Crear elemento",
+    "create-slide": "Crear diapositiva",
+    "slide-order": "Orden de diapositivas",
+  };
+  const fields = {
+    html: "Texto",
+    notes: "Notas",
+    content: "Contenido",
+    grammarName: "Lenguaje del código",
+  };
+  const property = change.path.join(".");
+  const action = kinds[change.kind] || fields[property] || property || "Cambio";
+  return `${change.target.slideId || "Presentación"}${
+    change.target.elementId ? " · " + change.target.elementId : ""
+  } · ${action}`;
+}
 function currentSyncSelection() {
   return [...$("sync-selection").querySelectorAll("input")]
     .filter((box) => box.checked).map((box) => box.dataset.change);
@@ -338,7 +358,7 @@ async function prepareSyncPreview() {
     $("sync-selection-summary").textContent =
       `${selected.length} seleccionados; ${excluded.length} excluidos y conservados pendientes.` +
       (excluded.length
-        ? ` Excluidos: ${excluded.map((change) => change.id).join(", ")}.`
+        ? ` Excluidos: ${excluded.map(syncChangeLabel).join("; ")}.`
         : "");
   }
   const boxes = requiredSyncDeleteBoxes(selected);
@@ -423,11 +443,7 @@ $("review").onclick = async () => {
       checkbox.onchange = prepareSyncPreview;
       label.append(
         checkbox,
-        document.createTextNode(
-          ` ${change.target.slideId || "Presentación"}${
-            change.target.elementId ? " · " + change.target.elementId : ""
-          } · ${change.path.join(".") || change.kind} · ${change.id}`,
-        ),
+        document.createTextNode(` ${syncChangeLabel(change)}`),
       );
       $("sync-selection").append(label);
     }
