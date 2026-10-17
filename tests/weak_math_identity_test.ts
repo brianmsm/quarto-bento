@@ -116,6 +116,10 @@ Deno.test({
       await Deno.mkdir(fresh + "/.qbento", { recursive: true });
       await Deno.copyFile(source, fresh + "/deck.qmd");
       await Deno.copyFile(
+        dir + "/.qbento/project.json",
+        fresh + "/.qbento/project.json",
+      );
+      await Deno.copyFile(
         dir + "/.qbento/state.json",
         fresh + "/.qbento/state.json",
       );
@@ -184,6 +188,10 @@ Deno.test({
       const fresh = dir + "/rebuilt";
       await Deno.mkdir(fresh + "/.qbento", { recursive: true });
       await Deno.copyFile(source, fresh + "/deck.qmd");
+      await Deno.copyFile(
+        dir + "/.qbento/project.json",
+        fresh + "/.qbento/project.json",
+      );
       await Deno.copyFile(
         dir + "/.qbento/state.json",
         fresh + "/.qbento/state.json",

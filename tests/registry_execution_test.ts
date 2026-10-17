@@ -145,6 +145,10 @@ Deno.test("real Quarto named registry rebuild retains sparse native theme/motion
       `${moved}/.qbento/design.json`,
     );
     await Deno.copyFile(
+      `${dir}/.qbento/project.json`,
+      `${moved}/.qbento/project.json`,
+    );
+    await Deno.copyFile(
       `${dir}/.qbento/state.json`,
       `${moved}/.qbento/state.json`,
     );
