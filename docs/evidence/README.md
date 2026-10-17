@@ -10,6 +10,10 @@ See [publication scope](../PUBLICATION.md) for the current baseline.
 
 ## Current combined results
 
+- [Prepared 0.1.1 corrections](SYNC-SELECTION-0.1.1.md): bound source reads,
+  reviewed selective sync and post-Apply pending semantics; validation is
+  distinct from publication.
+
 - [npm CLI preparation and public installation](NPM-CLI.md): public registry
   integrity and npm/mise installation/rendering, explicit tarball inventory,
   prefix relocation/state rebuilding, and an isolated real mise backend check.

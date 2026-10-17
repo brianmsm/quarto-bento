@@ -1,14 +1,30 @@
 # npm CLI package
 
 Quarto-Bento uses a scoped npm CLI package named `@brianmsm/quarto-bento`, with
-package version `0.1.0`. Its current package target is **Linux only**. This is a
-development package for the validated Linux implementation; it does not declare
-a stable v1 release. The owner authorized registry publication on 2026-10-16.
-Version `0.1.0` is publicly available on
+source package version `0.1.1` (prepared correction release). Its current
+package target is **Linux only**. This is a development package for the
+validated Linux implementation; it does not declare a stable v1 release. The
+owner authorized registry publication on 2026-10-16. The last publicly verified
+release, `0.1.0`, is available on
 [npm](https://www.npmjs.com/package/@brianmsm/quarto-bento). Anonymous registry
 integrity and README checks, public npm/mise installation, 117 payload hashes
 and rendering passed on 2026-10-16. See [the receipt](evidence/NPM-CLI.md);
 these checks are separate from the earlier local package tests.
+
+## Development version policy
+
+The current compatible correction release is prepared as `0.1.1`. During the
+`0.1.x` development series, patches may complete documented workflows without
+changing existing command spellings, saved-state schema or the JSON API version.
+This patch exposes selected sync, fixes source-binding checks and clarifies
+post-sync pending state. The new selection option is an additive capability; it
+is not presented as a bug fix with no public-interface addition. Larger workflow
+additions or incompatible contracts should receive a separately reviewed minor
+release. No `0.x` version declares stable v1.
+
+`0.1.0` remains the publicly verified registry version until a separate
+publication receipt confirms `0.1.1`. Source changes and a prepared tarball do
+not make a registry release available.
 
 ## What npm installs
 
@@ -42,7 +58,7 @@ publish anything.
 
 ```sh
 deno run --no-config --allow-read --allow-write --allow-run=git \
-  scripts/npm-package.ts /tmp/qbento-npm-0.1.0
+  scripts/npm-package.ts /tmp/qbento-npm-0.1.1
 ```
 
 Create a tarball from the staged package. `--ignore-scripts` makes the pack step
@@ -54,7 +70,7 @@ explicitly assembled staging directory. Always pack the staged directory.
 ```sh
 npm pack --ignore-scripts \
   --pack-destination /tmp \
-  /tmp/qbento-npm-0.1.0
+  /tmp/qbento-npm-0.1.1
 ```
 
 The generated tarball is suitable for a local installation test. For example,
@@ -64,7 +80,7 @@ install it to an isolated user prefix rather than the machine-wide npm prefix:
 npm install --global \
   --offline --ignore-scripts --no-audit --no-fund \
   --prefix "$HOME/.local/share/qbento-npm-test" \
-  /tmp/brianmsm-quarto-bento-0.1.0.tgz
+  /tmp/brianmsm-quarto-bento-0.1.1.tgz
 
 PATH="$HOME/.local/share/qbento-npm-test/bin:$PATH" qbento --version
 PATH="$HOME/.local/share/qbento-npm-test/bin:$PATH" qbento doctor
@@ -101,7 +117,7 @@ mise 2026.10.7's default installer, `qbento --version`, `qbento doctor` and all
 directories and does not change the user's global setup or publish a package:
 
 ```sh
-python3 scripts/mise-npm-check.py /tmp/brianmsm-quarto-bento-0.1.0.tgz
+python3 scripts/mise-npm-check.py /tmp/brianmsm-quarto-bento-0.1.1.tgz
 ```
 
 That local registry fixture proves backend installation and execution, not

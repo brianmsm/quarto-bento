@@ -81,6 +81,23 @@ This does not claim foreground desktop or other-platform acceptance.
 | Restore slide | Recover previously hidden/deleted-pending state. |
 | Delete source-backed slide/element | Offer hide/restore/delete-from-QMD; **only confirmed safe delete** removes the source span and associated design. |
 
+## Selecting a source-sync batch
+
+CLI and Studio selection are available in the `0.1.1` implementation. The core
+builds and verifies an exact plan for the chosen change IDs and reports excluded
+IDs. Deletion confirmation is separate from selecting a change. Coupled
+component members remain atomic; supporting identity/annotation patches are
+still shown in the complete proposal. See
+[the selected-sync contract](AGENT-API.md#select-only-the-changes-you-intend-to-synchronize).
+
+Apply does not advance the execution baseline or clear semantic pending entries.
+Read `appliedChangeIds`, `pendingRetained` and `renderNeeded` in its receipt and
+follow
+[the post-sync lifecycle](AGENT-API.md#state-after-a-successful-synchronization).
+An approval marker may legitimately block another Apply/reconcile until the new
+source is rendered and verified. Preserving that marker retains the safety
+boundary between source writing and computation.
+
 ## Computed vs literal content
 
 A displayed number sourced from `fitMeasures(model)` cannot be rewritten back to the analytical code by changing the rendered `0.962` to `0.980`. Studio supports **restore**, **edit producing source**, or **detach** (explicitly breaking that computed link). Detached content must be clearly labeled to avoid presenting it as freshly recomputed.

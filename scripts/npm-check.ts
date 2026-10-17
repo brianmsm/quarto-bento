@@ -164,7 +164,7 @@ export async function npmCheck() {
       command(launcher, args, cwd, env);
     const version = await cli(["--version"]);
     assert(
-      version.success && version.stdout.trim() === "qbento 0.1.0",
+      version.success && version.stdout.trim() === `qbento ${metadata.version}`,
       "version failed",
     );
     const doctor = json<{ deno: string; quarto: string; os: string }>(
@@ -243,6 +243,62 @@ export async function npmCheck() {
       "state-only reconstruction lost identity, pending content or visual design",
     );
     assert(await Deno.readTextFile(source) === original, "rebuild changed QMD");
+    const sibling = "other.qmd";
+    await Deno.writeTextFile(
+      join(rebuilt, sibling),
+      "## Other\n\nDifferent source.\n",
+    );
+    for (const operation of ["status", "diff", "get", "edit"]) {
+      const refused = await cli([operation, sibling], rebuilt);
+      assert(
+        refused.code === 1 &&
+          refused.stderr.includes("PROJECT_SOURCE_MISMATCH"),
+        `${operation} adopted a sibling source`,
+      );
+    }
+    const selectionName = "selected sync.json";
+    await Deno.writeTextFile(
+      join(rebuilt, selectionName),
+      JSON.stringify({
+        version: 1,
+        docId: restored.docId,
+        expectedRevision: restored.revision,
+        selectedChangeIds: [restored.pending[0].id],
+      }),
+    );
+    const plan = json<{ selectedChangeIds: string[] }>(
+      await cli(["sync", sourceName, "--select", selectionName], rebuilt),
+      "installed selective sync preview",
+    );
+    assert(
+      plan.selectedChangeIds[0] === restored.pending[0].id,
+      "wrong selection",
+    );
+    await Deno.writeTextFile(join(rebuilt, "plan.json"), JSON.stringify(plan));
+    const receipt = json<{ pendingRetained: boolean; renderNeeded: boolean }>(
+      await cli(["sync", sourceName, "--apply", "plan.json"], rebuilt),
+      "installed selective sync apply",
+    );
+    assert(
+      receipt.pendingRetained && receipt.renderNeeded,
+      "sync receipt differs",
+    );
+    assert(
+      (json<Snapshot>(await cli(["get", sourceName], rebuilt), "post-sync get"))
+        .pending.length === 1,
+      "sync prematurely cleared pending content",
+    );
+    json(await cli(["render", sourceName], rebuilt), "post-sync render");
+    const completed = json<Snapshot>(
+      await cli(["get", sourceName], rebuilt),
+      "completed get",
+    );
+    assert(
+      completed.docId === restored.docId && completed.pending.length === 0 &&
+        finding(completed).x === 137 &&
+        finding(completed).html === "Saved draft: café.",
+      "installed sync/render lost identity, content or retained design",
+    );
     const invalid = await cli(["unknown-npm-smoke-command"], rebuilt);
     assert(
       invalid.code === 1 && invalid.stderr.includes("UNKNOWN_COMMAND"),
@@ -256,9 +312,11 @@ export async function npmCheck() {
       tarballFiles: expected.length,
       verifiedRuntimeFiles: manifest.files.length,
       npmInstall: "offline tarball, isolated prefix, relocated launcher",
-      cli: "version/doctor/render/validate/get/patch",
+      cli:
+        "version/doctor/render/validate/get/patch/selected-sync and sibling-source refusals",
       rebuild: "QMD plus project/state; no previous HTML or staging directory",
-      pending: restored.pending.length,
+      pendingBeforeSync: restored.pending.length,
+      pendingAfterVerifiedSync: completed.pending.length,
       registryPublication: false,
     };
   } finally {

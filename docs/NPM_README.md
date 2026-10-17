@@ -6,7 +6,7 @@ Studio, reviewed QMD synchronization and an offline standalone Bento HTML
 output.
 
 This npm CLI package is named `@brianmsm/quarto-bento` and currently targets
-**Linux only**. Version `0.1.0` is a development release, not a stable v1.
+**Linux only**. Version `0.1.1` is a development release, not a stable v1.
 
 ## Requirements
 
@@ -26,7 +26,7 @@ executable code you trust.
 With Node, Deno and Quarto already installed, install the pinned CLI version:
 
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.0
+npm install -g @brianmsm/quarto-bento@0.1.1
 qbento --version
 qbento doctor
 ```
@@ -35,7 +35,7 @@ If your npm global prefix is not writable, use a user-owned prefix instead:
 
 ```sh
 npm install -g --prefix "$HOME/.local" \
-  @brianmsm/quarto-bento@0.1.0
+  @brianmsm/quarto-bento@0.1.1
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
@@ -46,7 +46,7 @@ user-installed dependency:
 
 ```sh
 mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.0'
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
 qbento doctor
 ```
 

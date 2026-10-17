@@ -16,6 +16,10 @@ use, inspection and contributions; a versioned v1 release has not been declared.
 Windows and macOS qualification are future work outside the completed Linux
 objective.
 
+A compatible `0.1.1` correction is being prepared in this checkout; see the
+[changelog](CHANGELOG.md). The publicly verified npm version remains `0.1.0`
+until a separate publication receipt confirms the new archive.
+
 ## Install the Linux CLI
 
 Quarto-Bento's npm CLI is `@brianmsm/quarto-bento`. Install Node.js 22 or later,

@@ -399,6 +399,41 @@ once per render and protect modified HTML. See the
 [verified integration](evidence/QUARTO.md) before adapting an existing Quarto
 project.
 
+## Select a synchronization batch and finish it
+
+In the `0.1.1` implementation, **Revisar cambios** has a selection checkbox for
+each pending edit and lists excluded changes. Deselection preserves work. A
+separate checkbox confirms each selected deletion; excluded deletions need no
+confirmation. Review the refreshed complete proposal before **Aplicar**.
+Cards/KPIs may require all coupled semantic members to be selected together.
+
+For agent/terminal use, create a versioned selection file bound to the document
+ID and revision from `qbento get`, then run:
+
+```sh
+qbento sync /path/to/deck.qmd --select selection.json > plan.json
+qbento sync /path/to/deck.qmd --apply plan.json
+```
+
+The exact
+[selection-file schema](AGENT-API.md#select-only-the-changes-you-intend-to-synchronize)
+and refusal cases are part of the agent contract. Version `0.1.0` lacks this
+public selection interface; ordinary preview still includes all pending edits.
+
+After Apply, QMD can be updated while changes still appear pending. Its receipt
+lists `appliedChangeIds`, `pendingRetained: true` and `renderNeeded: true`.
+Recalculate explicitly when execution is authorized; it verifies the updated
+source and clears confirmed edits. Until then, preserve any approval marker.
+`APPROVAL_PENDING` or `SYNC_APPROVAL_PENDING` can mean a successful sync is
+awaiting render, rather than requiring another sync or recovery.
+
+All read-only state commands now verify which QMD owns the directory's saved
+project. `status`, `diff`, `get` and Studio refuse `PROJECT_SOURCE_MISMATCH` for
+a different QMD. A genuinely uninitialized project reports `NO_BASELINE`. Saved
+state with missing source metadata reports `PROJECT_BINDING_MISSING`; restore
+its binding instead of initializing it as another QMD. This keeps the existing
+one-presentation-per-directory rule; it does not add multi-QMD editing.
+
 ## Common diagnostics
 
 | Situation                               | Next step                                                                                                                                                                       |

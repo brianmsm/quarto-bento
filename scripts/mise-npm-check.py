@@ -23,7 +23,7 @@ def check(archive: Path):
         metadata = json.load(packed.extractfile('package/package.json'))
         manifest_bytes = packed.extractfile('package/distribution/manifest.json').read()
     if (metadata.get('name') != '@brianmsm/quarto-bento'
-            or metadata.get('version') != '0.1.0'
+            or metadata.get('version') != '0.1.1'
             or metadata.get('bin') != {'qbento': 'bin/qbento-npm.mjs'}
             or metadata.get('os') != ['linux']
             or any(key in metadata for key in ('scripts', 'dependencies',
@@ -67,6 +67,8 @@ def check(archive: Path):
         caller.mkdir()
         config = root / 'empty npmrc'
         config.write_text('')
+        global_config = root / 'empty global npmrc'
+        global_config.write_text('')
         env = {key: value for key, value in os.environ.items()
                if not key.startswith('MISE_') and not key.upper().startswith('NPM_CONFIG_')
                and key not in ('NPM_TOKEN', 'NODE_AUTH_TOKEN')}
@@ -78,7 +80,7 @@ def check(archive: Path):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         env.update(MISE_NO_CONFIG='1', NPM_CONFIG_USERCONFIG=str(config),
-                   NPM_CONFIG_GLOBALCONFIG=str(config),
+                   NPM_CONFIG_GLOBALCONFIG=str(global_config),
                    NPM_CONFIG_CACHE=str(root / 'npm cache'),
                    NPM_CONFIG_REGISTRY=f'http://127.0.0.1:{server.server_port}/',
                    NO_COLOR='1', CI='1')

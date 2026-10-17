@@ -136,6 +136,14 @@ older suite/artifact counts describe those earlier revisions. The initial
 startup sequence—pin upstream, prove S0, then S1/S2/S4—is complete for the
 supported scope and must not be repeated as unimplemented work.
 
+## Compatible correction under review
+
+The `0.1.1` implementation exposes selected source-sync batches and consistent
+read-only source binding, and clarifies the post-Apply approval lifecycle.
+See [the changelog](../CHANGELOG.md) and [correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
+This preserves prior Linux acceptance and the bounded codecs. Registry
+publication remains a separate action after validation.
+
 ## Future acceptance and distribution work
 
 - Freeze an explicit feature/platform boundary before declaring a public v1.

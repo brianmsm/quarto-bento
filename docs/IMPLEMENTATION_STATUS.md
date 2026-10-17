@@ -14,6 +14,15 @@ completed objective, and hosted CI is deferred. The earlier
 [first-slice evidence](evidence/FIRST-SLICE.md) remains valid for its recorded
 revision and scope.
 
+## Prepared correction release
+
+The working `0.1.1` correction fixes read-only QMD association checks, exposes
+selected sync in CLI/Studio and clarifies pending state after Apply. The earlier
+578-test application receipt remains historical. Validation of these changes
+is recorded separately in [the correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
+The last publicly verified npm version is `0.1.0`; preparing source/package
+metadata does not publish `0.1.1`.
+
 ## Execution baseline
 
 - Root documentation preserved in Git before code changes (`e7f3f46`).

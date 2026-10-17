@@ -1,11 +1,10 @@
 # Structured JSON operations for agents
 
 Implemented Linux contract, reviewed for public source publication 2026-10-13.
-These commands operate on the same
-saved project as Studio. They do not require a browser, edit generated HTML,
-execute Quarto implicitly, or synchronize QMD implicitly. The JSON protocol is
-version 1 and validates against the bundled Bento Slides revision
-`3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (1.2.6).
+These commands operate on the same saved project as Studio. They do not require
+a browser, edit generated HTML, execute Quarto implicitly, or synchronize QMD
+implicitly. The JSON protocol is version 1 and validates against the bundled
+Bento Slides revision `3d6f7f1fcdf2308e875345ce4f1e0ec0820c914b` (1.2.6).
 
 ```sh
 qbento get presentation.qmd
@@ -14,8 +13,13 @@ qbento patch presentation.qmd patch.json
 
 For the development checkout, use `deno task qbento` in place of `qbento`.
 Render the QMD once before using these operations. Each `.qbento/` directory is
-bound to its single QMD; supplying another QMD in the same directory refuses
-instead of returning or editing the first deck.
+bound to its single QMD. In `0.1.1`, `get`, `status`, `diff` and Studio all
+verify this association: another QMD refuses `PROJECT_SOURCE_MISMATCH`. A
+genuinely uninitialized project reports `NO_BASELINE`; saved state whose source
+binding is missing reports `PROJECT_BINDING_MISSING` and must be restored
+without automatically adopting it for another QMD. Version `0.1.0` already
+guarded `get`, but its `status`/`diff` readers could return another document's
+state.
 
 ## Read a snapshot
 
@@ -229,12 +233,11 @@ authoring. Plain nonempty `notes` are supported on created and existing slides:
 Save retains them as pending, and reviewed sync inserts a notes container when
 none existed in the unchanged executed source. Existing bound notes use their
 body-only patch. Notes may be omitted or empty; `slide.title` must be omitted or
-empty. See [notes creation evidence](evidence/NOTES.md).
-The structural scanner can conservatively refuse table-like text containing a
-pipe (`|`) even when it is intended as a literal paragraph. Images, tables,
-charts, executable producers and declared
-`origin`/`producer`/`provenance`/`source` metadata are outside this creation
-subset. Computed content continues to originate from Quarto execution.
+empty. See [notes creation evidence](evidence/NOTES.md). The structural scanner
+can conservatively refuse table-like text containing a pipe (`|`) even when it
+is intended as a literal paragraph. Images, tables, charts, executable producers
+and declared `origin`/`producer`/`provenance`/`source` metadata are outside this
+creation subset. Computed content continues to originate from Quarto execution.
 
 Saving produces a durable authored `create-slide` pending change without writing
 QMD or generated HTML. The live source hash used to check fresh IDs is rechecked
@@ -268,10 +271,86 @@ qbento render presentation.qmd
 ```
 
 Existing source-safety limits still apply: unsupported rich content, unverified
-identities, computed conflicts, ambiguous notes containers or unsafe
-execution order can refuse a sync/render even though a pending edit was saved.
-Resolve those changes through the current reviewed workflow. Patch neither
-clears pending edits nor grants source-deletion approval.
+identities, computed conflicts, ambiguous notes containers or unsafe execution
+order can refuse a sync/render even though a pending edit was saved. Resolve
+those changes through the current reviewed workflow. Patch neither clears
+pending edits nor grants source-deletion approval.
+
+## Select only the changes you intend to synchronize
+
+The `0.1.1` implementation exposes selected synchronization in the CLI and
+Studio. Version `0.1.0` previews all pending changes; it does not offer this
+selection interface. Use `qbento get deck.qmd` to obtain the current `docId`,
+revision and exact `pending[].id` values. A change ID is different from a slide
+or element ID; copy the complete observed string.
+
+Write a regular UTF-8 JSON selection file (at most 1 MiB):
+
+```json
+{
+  "version": 1,
+  "docId": "the exact document ID from get",
+  "expectedRevision": 12,
+  "selectedChangeIds": ["an exact pending change ID from get"],
+  "confirmedDeleteIds": []
+}
+```
+
+Replace all illustrative values with the current snapshot. `confirmedDeleteIds`
+is optional and confirms only selected destructive actions. It does not select a
+change. Duplicate, unknown, malformed or stale IDs refuse without writing source
+or state. A foreign `docId` refuses `UNRELATED_DOCUMENT`; an old revision
+refuses `STALE_REVISION`. Read the current snapshot and reconsider the selection
+rather than replaying it blindly.
+
+```sh
+qbento sync deck.qmd --select selection.json > plan.json
+# Review the complete proposed patches, result and excludedChangeIds.
+qbento sync deck.qmd --apply plan.json
+```
+
+The existing `qbento sync deck.qmd` still previews all pending changes. A
+selection preview is read-only. Apply verifies the complete plan again; do not
+manually edit its IDs, patches or hashes. If no selected changes or optional
+annotation updates remain, preview reports `NO_PENDING_CHANGES`.
+
+Studio's **Revisar cambios** lists each pending change with its own selection
+checkbox. All begin selected. Excluded changes are listed and preserved. The
+separate deletion checkboxes confirm only selected deletions. Changing a
+selection invalidates the previous preview; **Aplicar** becomes available only
+for a current complete plan. Component creation remains atomic: select all
+semantic members of a card/KPI together, or exclude the component. The core
+refuses partial component selections and overlapping structural operations.
+Selecting a deletion while excluding pending edits on the deleted element or
+slide refuses `PARTIAL_DELETE_SELECTION`; include the affected edits in the
+reviewed deletion or preserve/restore the target instead.
+
+A selected semantic change can require supporting identity acquisition or
+optional annotations elsewhere in QMD. Inspect the full result, not only the
+selected row. Selection preserves excluded work; it does not resolve unrelated
+conflicts or guarantee that a later strict render can proceed.
+
+## State after a successful synchronization
+
+A successful sync receipt contains `appliedChangeIds`, `pendingRetained: true`
+and `renderNeeded: true`, plus recovery backups and a receipt path. QMD is
+already updated, while semantic pending entries and the last executed baseline
+remain until a later render verifies the new source. Nonempty `pending` alone
+does not mean that Apply failed or that the same plan should be reapplied.
+
+Identity acquisition, creation, deletion or normalization can also retain
+`.qbento/sync-approved.json`. A second application may refuse
+`APPROVAL_PENDING`, and reconciliation may refuse `SYNC_APPROVAL_PENDING`. These
+can describe a normal successful Apply awaiting execution. With execution
+authorized, run `qbento render deck.qmd` and inspect the result. With execution
+prohibited or deferred, preserve the pending state and approval and report "QMD
+updated; rendering still required." Do not delete approval/journal files or
+initiate recovery solely because pending entries remain. Recovery is for a
+reported interrupted operation, using its offered actions.
+
+The render clears only applied edits verified against executed source and
+consumes the relevant approval. Unselected changes remain recoverable. Inspect
+any remaining diagnostics/conflicts before continuing.
 
 ## Errors and validation evidence
 

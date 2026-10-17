@@ -1,6 +1,6 @@
 {
   "name": "@brianmsm/quarto-bento",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Offline Quarto and Bento authoring with retained design and reviewed QMD synchronization",
   "type": "module",

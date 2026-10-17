@@ -19,6 +19,10 @@ recorded in `docs/evidence/NPM-CLI.md`, separately from the earlier local
 installation, relocation/rebuild and loopback mise checks. The Node shim
 delegates to external Deno; package
 metadata must not trigger lifecycle hooks or environment installation.
+A compatible `0.1.1` correction is prepared in this checkout: consistent
+source-binding reads, CLI/Studio selected sync and explicit post-sync pending
+guidance. Read `docs/evidence/SYNC-SELECTION-0.1.1.md` and `CHANGELOG.md`; the last
+publicly verified npm version is still `0.1.0` until a new publication receipt.
 The earlier application baseline is recorded in
 `docs/evidence/SECURITY-LINUX.md`. Runtime `2ee7974` passed 578 tests and four
 steps with zero failures. Its 117-file clean portable and state-only smoke are

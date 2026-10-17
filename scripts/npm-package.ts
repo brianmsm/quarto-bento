@@ -66,7 +66,7 @@ function validateMetadata(bytes: Uint8Array) {
   const files = metadata.files;
   if (
     metadata.name !== "@brianmsm/quarto-bento" ||
-    metadata.version !== "0.1.0" || metadata.license !== "MIT" ||
+    metadata.version !== "0.1.1" || metadata.license !== "MIT" ||
     metadata.private !== true ||
     !isRecord(metadata.bin) || Object.keys(metadata.bin).length !== 1 ||
     metadata.bin.qbento !== "bin/qbento-npm.mjs" ||
