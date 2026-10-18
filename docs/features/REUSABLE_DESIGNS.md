@@ -1,8 +1,8 @@
 # Reusable presentation designs
 
 Owner-authorized feature, 2026-10-18. Implementation branch:
-`codex/reusable-designs`. This feature extends the supported Linux workflow;
-it does not declare a stable release or authorize npm publication.
+`codex/reusable-designs`. This feature extends the supported Linux workflow; it
+does not declare a stable release or authorize npm publication.
 
 ## User outcome
 
@@ -27,8 +27,8 @@ content, student material, figures or private assets belong in a shared design.
   design import, render and subsequent design updates.
 - Share a versioned JSON design package, independent of a deck's identity,
   semantic content and saved state. Import by value into the target registry.
-- Inspect and preview the complete replacement before applying it. Bind the
-  plan to the target document, revision, source and exact registry bytes.
+- Inspect and preview the complete replacement before applying it. Bind the plan
+  to the target document, revision, source and exact registry bytes.
 - Use the existing registry save journal and recoverable history. Import never
   implicitly rewrites QMD, executes code or publishes generated HTML.
 - Expose export/preview/apply in CLI and Studio. Preserve advanced definitions
@@ -42,8 +42,8 @@ content, student material, figures or private assets belong in a shared design.
 
 Packages contain definitions, never `.qbento/state.json`, native semantic
 templates, executable CSS/JavaScript, arbitrary assets, paths or URLs. Each
-presentation keeps its own document identity and local registry snapshot.
-Shared package updates require another explicit preview/application.
+presentation keeps its own document identity and local registry snapshot. Shared
+package updates require another explicit preview/application.
 
 Text/card styles and native slide variants are supported vocabularies rather
 than a universal CSS translator. Adaptation does not convert course content,
@@ -59,14 +59,19 @@ remain supplied by the user; no network font installation is introduced.
 3. Rich definitions survive native export/import and basic Studio form edits.
 4. Invalid packages, unknown selectors, foreign documents, changed source,
    changed registry bytes and stale plan revisions refuse safely.
-5. Real Quarto execution and Chromium show title/section variants, styled
-   cards, code and ordinary text; subsequent data regeneration retains design.
+5. Real Quarto execution and Chromium show title/section variants, styled cards,
+   code and ordinary text; subsequent data regeneration retains design.
 6. An explicitly mapped local Metropolis/SPP reference produces a bounded
    adaptation draft. Script execution and external fetching remain disabled.
 7. A relocated packaged application can perform the new operations offline.
 
 ## Work units and evidence
 
-Implementation and validation receipts will be recorded here before closeout.
-Independent renderer, package core, adaptation and Studio worktrees are merged
-into the integration branch before the complete acceptance run.
+Independent renderer, package core, adaptation and Studio work units were
+integrated into `codex/reusable-designs`. Architecture review identified and
+closed stale export defaults, source checks during registry publication, bounded
+CLI reads, native-sample failure handling and retained root theme attributes.
+The integrated runtime is `0d6d424`; `6317ce9` updates existing Studio test
+harness dependencies. See [the Linux receipt](../evidence/REUSABLE-DESIGNS.md)
+for 45 focused feature tests, real browser inspection, actual SPP sampling,
+portable reconstruction and the separately reported broad regression result.

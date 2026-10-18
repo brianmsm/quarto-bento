@@ -1,6 +1,6 @@
 # Implementation ledger
 
-Updated 2026-10-17. The owner has closed the Linux-local implementation and
+Updated 2026-10-18. The owner has closed the Linux-local implementation and
 validation objective at runtime `2ee7974` and authorized publication of the
 source repository on GitHub. The complete local suite passed **578 tests and
 4 steps, zero failures**; the **117-file portable smoke** rebuilt from QMD and
@@ -31,6 +31,25 @@ the owner-requested global mise update verified all 117 payload hashes, version,
 doctor and rendering. The initial `0.1.0` archive remains unchanged.
 
 ## Execution baseline
+
+### Current source feature after npm 0.1.1
+
+Owner-authorized reusable presentation designs add bounded role/named styles,
+slide variants, portable content-free packages, checked initialization/import,
+Studio native preview and optional local Reveal style adaptation. Existing
+QMD/design authority and pending-edit rules remain unchanged. The public npm
+archive and global installation remain 0.1.1; this feature is a source addition.
+See [the feature contract](features/REUSABLE_DESIGNS.md),
+[package guide](DESIGN_PACKAGES.md) and
+[integrated evidence](evidence/REUSABLE-DESIGNS.md).
+The final focused run passed 45 feature tests; eleven existing Studio cases
+passed after updating their injected module dependencies. The broad run passed
+634 tests and four steps, with ten harness failures corrected by that rerun and
+one optional upstream-source comparison omitted. This is combined evidence,
+not a single clean final full-suite run. A separate 124-file portable check
+and real Chromium workflow passed on Deno 2.9.7.
+
+### Historical execution baseline
 
 - Root documentation preserved in Git before code changes (`e7f3f46`).
 - Quarto 1.10.19, Deno 2.9.6, R 4.6.1 on Linux.

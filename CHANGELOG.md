@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — reusable presentation designs
+
+- Share content-free design packages across independently bound QMD projects.
+  Initialize a new deck before its first render or preview/apply a replacement
+  in an existing saved project, preserving pending work and native overrides.
+- Define bounded title/body/code/card styles, named text/card/code styles and
+  slide variants with frames and pure visual decorations. Existing four-field
+  themes, saved-state schema 1 and the JSON agent protocol remain compatible.
+- Export/import through Studio with a native sample, complete replacement review
+  and guarded drafts; use the same checked operations through `qbento design`.
+- Sample explicitly mapped local Reveal HTML styles, including Quarto embedded
+  stylesheet data, without executing reference scripts or loading remote assets.
+  Keep the provenance report separate from the reusable package.
+- Add a neutral course example and an explicit SPP/Metropolis reference mapping.
+
+These source additions are not part of the published npm `0.1.1` archive.
+Extended design registries require this newer runtime; older runtimes refuse
+their extra fields. No release, installed-runtime update or platform expansion
+is implied.
+
 ## 0.1.1 — 2026-10-17
 
 Compatible corrections within the Linux `0.1.x` development series. JSON API

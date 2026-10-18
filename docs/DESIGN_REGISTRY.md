@@ -2,8 +2,9 @@
 
 The implemented registry is optional JSON data at `.qbento/design.json`, next to
 `.qbento/state.json`. It supplies reusable layout definitions and a selected
-basic theme. It does not execute code, select remote files or manage
-environments. The ordinary `qbento render deck.qmd` and installed `qbento-html`
+theme, optionally including native styles and slide variants. It does not
+execute code, select remote files or manage environments. The ordinary
+`qbento render deck.qmd` and installed `qbento-html`
 Quarto workflow both load and validate it before computation.
 
 ```json
@@ -103,9 +104,13 @@ output or saved state. See the
 [reusable layout receipt](evidence/REUSABLE-LAYOUTS.md) and
 [plain deck example](../examples/reusable-layouts/README.md).
 
-The theme subset accepts only `background`, `color`, `accent` and `fontFamily`,
-using the same bounded value validation as QMD design attributes. Other fields
-and unknown schema versions refuse. When themes are declared, choose
+Themes require `background`, `color`, `accent` and `fontFamily`, using the same
+bounded value validation as QMD design attributes. The current development
+source additionally accepts `styles`, `namedStyles`, `variants` and an explicit
+`defaultVariant`. The [rendering contract](evidence/REUSABLE-THEME-RENDERER.md)
+specifies their bounded fields, targets and precedence. No arbitrary CSS, HTML,
+resources or semantic template content is accepted. Other fields and unknown
+schema versions refuse. When themes are declared, choose
 `activeTheme` explicitly; JSON key order never selects a theme. The fixed file
 is limited to 256 KiB and must be a regular file, without symbolic/hard links.
 Changing, adding or removing it during a checked render aborts publication with
@@ -121,6 +126,13 @@ layouts, named themes and the explicit active theme. **Guardar diseños** saves
 the registry alone; **Recalcular** applies it to the deck while retaining saved
 overrides and pending semantics. The form does not rewrite QMD layout references
 when a name changes. Direct JSON editing remains supported.
+
+Reusable definitions can be exported as a `qbento/design` package and explicitly
+imported into another independently bound QMD project. Studio preserves advanced
+definitions when its basic fields change and offers a native sample before
+applying a package. See [packages](DESIGN_PACKAGES.md) and
+[the Studio workflow](STUDIO_DESIGNS.md). Extended fields require the current
+runtime and are not supported by the historical npm 0.1.1 archive.
 
 Studio checks the loaded registry bytes, project identity and revision before
 saving. If another editor changes them, the draft remains available and the save

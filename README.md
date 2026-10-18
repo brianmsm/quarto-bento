@@ -125,6 +125,37 @@ copy before rendering again. See [capture](docs/evidence/CAPTURE.md) and
 
 ## Supported workflows
 
+### Reuse a presentation design (current development source)
+
+Define a course design once and reuse its native text/code/card styles, named
+slide templates and layouts in independent presentations. The current source
+adds reviewed package export/import in Studio and the `design` CLI family.
+These additions are **not included in the published npm 0.1.1 archive**.
+
+For a new QMD that already selects named styles or slide variants:
+
+```sh
+deno task qbento design init /path/to/lesson/deck.qmd /path/to/course.design.json
+deno task qbento render /path/to/lesson/deck.qmd
+```
+
+For an existing rendered project, use **Diseños y temas** to export or review a
+local package, inspect its native example, then explicitly apply and recalculate.
+CLI agents use `design export`, `design preview` and `design apply` with checked
+JSON plans. A package contains reusable definitions and keeps session content,
+document identity, pending edits and individual visual adjustments separate.
+Import copies the design locally; later package updates require another review.
+
+An optional local `design adapt` workflow samples explicit styles from an
+existing self-contained Reveal HTML without executing its scripts or fetching
+resources. Review the adaptation once and reuse its native package in later
+sessions. See the [course example](examples/reusable-designs/README.md),
+[package workflow](docs/DESIGN_PACKAGES.md),
+[Studio guide](docs/STUDIO_DESIGNS.md) and
+[Reveal adaptation](docs/DESIGN_ADAPTATION.md).
+
+### Content and computation
+
 The documented single-QMD Linux workflow includes ordinary headings and rich
 text, bounded lists, displayed code, display equations, speaker notes, local
 images and captions, native/simple tables and charts, cards and two-column

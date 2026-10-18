@@ -90,6 +90,18 @@ The GitHub workflow is a manually dispatched Linux portable smoke. It is a
 smaller authored-source test and does not reproduce the full R/Python/browser
 acceptance suite.
 
+The reusable-design feature was also validated locally with Deno 2.9.7. Its
+current-runtime portable check exercises initialization, export, checked import,
+relocation/rebuild and installed-Chromium style adaptation:
+
+```sh
+deno run --no-config --no-remote --no-npm --allow-read --allow-write \
+  --allow-run --allow-env scripts/reusable-design-check.ts
+```
+
+This does not relax the historical `portable-check.ts` Deno version guard or
+claim an npm publication. See the [feature receipt](docs/evidence/REUSABLE-DESIGNS.md).
+
 ## Changes and reviews
 
 Keep changes focused and document their user-visible behavior, supported scope

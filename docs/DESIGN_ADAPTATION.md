@@ -92,6 +92,12 @@ code subset. Cards additionally capture uniform borders, uniform pixel corner
 radii, fill and opacity. Effective canvas and variant backgrounds are composed
 through their ancestors over white.
 
+Sanitized classes, IDs, language/direction, data/ARIA attributes and inline
+styles on the reference's HTML and body roots are retained for matching and
+inheritance. Theme rules that depend on `body.course` or
+`html[data-theme="dark"]` therefore remain effective without running the
+reference's event handlers or scripts.
+
 The package contains only validated native design data: no selectors, HTML, CSS,
 scripts, reference paths, source text or presentation state. The separate report
 contains the reference SHA-256, browser version, selected properties, excluded
@@ -122,6 +128,13 @@ project's supported resource workflow and inspect the native preview; a retained
 family name alone does not prove matching glyphs or metrics. Original graph
 images retain their execution-produced design and are not recolored by this
 helper.
+
+The optional mapping field `fontFallback`, for example `"Arial, sans-serif"`,
+explicitly appends a local fallback to sampled families without an existing
+generic fallback. The SPP reference mapping uses it because Fira Sans was
+embedded in the reference HTML but is not installed on the acceptance host. This
+preserves the requested family while giving new native decks a deliberate
+fallback; it does not promise identical glyph metrics or install a font.
 
 Review at least a title slide, section separator, body slide, card, code sample
 and executed figure in native Bento before adopting a course design. Keep

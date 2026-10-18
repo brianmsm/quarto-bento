@@ -10,6 +10,11 @@ See [publication scope](../PUBLICATION.md) for the current baseline.
 
 ## Current combined results
 
+- [Reusable presentation designs](REUSABLE-DESIGNS.md): current source feature
+  with native styles/templates, content-free packages, safe initialization and
+  import, Studio native samples and local Reveal adaptation; separate from npm
+  0.1.1 publication.
+
 - [Published 0.1.1 corrections](SYNC-SELECTION-0.1.1.md): bound source reads,
   reviewed selective sync and post-Apply pending semantics; separate local
   runtime evidence, anonymous public npm/mise verification and the owner-requested

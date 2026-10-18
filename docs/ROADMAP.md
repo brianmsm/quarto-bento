@@ -24,6 +24,13 @@ shipping, not guessed by an agent.
 
 ## Original feasibility gates — bounded Linux proof integrated
 
+The 2026-10-18 source addition implements reusable native presentation designs:
+checked package initialization/import/export, named role styles and slide
+variants, Studio samples and explicit local Reveal style adaptation. See
+[the feature contract](features/REUSABLE_DESIGNS.md) and
+[the integrated receipt](evidence/REUSABLE-DESIGNS.md). This addition is separate
+from the published npm 0.1.1 archive and does not freeze the v1 boundary.
+
 The questions below defined the initial feasibility work. The integrated Linux
 implementation now demonstrates bounded S0–S4 workflows; those questions are
 acceptance criteria and historical context, not instructions to repeat the

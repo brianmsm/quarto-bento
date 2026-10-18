@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "sourceSha256": "d515c3c805514a6acc5c34043a34a6606ea3b93564bf651aa250f591a0d6bf39",
+  "chromium": "Chrome/154.0.8037.97",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "samples": [
+    {
+      "name": "title",
+      "selector": "#covariación-general-y-específica > h2",
+      "properties": {
+        "fontSize": 45.76,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#f1f1f1",
+        "lineHeight": 1,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0
+      }
+    },
+    {
+      "name": "body",
+      "selector": "#covariación-general-y-específica .card-pink > p:not(.card-title)",
+      "properties": {
+        "fontSize": 32,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#243a42",
+        "lineHeight": 1.29,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0
+      }
+    },
+    {
+      "name": "canvas",
+      "selector": ".reveal",
+      "properties": {
+        "background": "#f1f1f1"
+      }
+    },
+    {
+      "name": "pink-card",
+      "selector": "#covariación-general-y-específica .card-pink",
+      "properties": {
+        "fontSize": 32,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#243a42",
+        "lineHeight": 1.2,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "fill": "#fff7fa",
+        "opacity": 1,
+        "strokeWidth": 2,
+        "stroke": "#ebbbd1",
+        "radius": 16
+      }
+    },
+    {
+      "name": "teal-card",
+      "selector": "#covariación-general-y-específica .card-teal",
+      "properties": {
+        "fontSize": 32,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#243a42",
+        "lineHeight": 1.2,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0,
+        "fill": "#f5fbfb",
+        "opacity": 1,
+        "strokeWidth": 2,
+        "stroke": "#9dcdd0",
+        "radius": 16
+      }
+    },
+    {
+      "name": "caption",
+      "selector": "#covariación-general-y-específica > .source",
+      "properties": {
+        "fontSize": 23.04,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#36545c",
+        "lineHeight": 1.3,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0
+      }
+    },
+    {
+      "name": "variant:content",
+      "selector": "#covariación-general-y-específica",
+      "properties": {
+        "background": "#f1f1f1"
+      }
+    },
+    {
+      "name": "variant-title:content",
+      "selector": "#covariación-general-y-específica > h2",
+      "properties": {
+        "fontSize": 45.76,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#f1f1f1",
+        "lineHeight": 1,
+        "align": "left",
+        "fontWeight": 400,
+        "letterSpacing": 0
+      }
+    },
+    {
+      "name": "variant:section",
+      "selector": "#fundamentos-del-modelo-bifactor",
+      "properties": {
+        "background": "#f1f1f1"
+      }
+    },
+    {
+      "name": "variant-title:section",
+      "selector": "#fundamentos-del-modelo-bifactor > h2",
+      "properties": {
+        "fontSize": 54.4,
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "color": "#ffffff",
+        "lineHeight": 1.14,
+        "align": "center",
+        "fontWeight": 400,
+        "letterSpacing": 0
+      }
+    }
+  ],
+  "excluded": {
+    "scripts": 19,
+    "externalStylesheets": 0,
+    "inlinedDataStylesheets": 3,
+    "cssImports": 0,
+    "activeElements": 48,
+    "resourceReferences": 152
+  },
+  "warnings": [
+    "Only inline CSS, embedded data:text/css stylesheets and style attributes are sampled. External stylesheets, scripts, images and frames are excluded.",
+    "No slide layout, semantic content or QMD conversion is performed. Explicit template geometry must be reviewed in native Bento.",
+    "Fonts are not embedded in the design package; the sampled family must be available on each machine. Font metrics may differ.",
+    "Reveal JavaScript is disabled. The canvas is normalized to 1280 by 720; responsive, runtime and presentation-state styles may differ.",
+    "Explicit fallback font stack appended: Arial, sans-serif. Requested fonts are not installed or embedded by adaptation."
+  ],
+  "fonts": [
+    {
+      "family": "Fira Sans, Arial, sans-serif",
+      "embeddedInPackage": false
+    }
+  ]
+}

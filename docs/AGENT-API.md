@@ -21,6 +21,41 @@ without automatically adopting it for another QMD. Version `0.1.0` already
 guarded `get`, but its `status`/`diff` readers could return another document's
 state.
 
+## Reusable designs in the current source build
+
+The `design` CLI family shares the same checked registry core as Studio:
+
+```sh
+deno task qbento design init lesson.qmd course.design.json
+deno task qbento render lesson.qmd
+deno task qbento design show lesson.qmd
+deno task qbento design export lesson.qmd 'Course design' > course.design.json
+deno task qbento design preview other.qmd course.design.json > design-plan.json
+# Inspect the entire plan, then pass it back unchanged:
+deno task qbento design apply other.qmd design-plan.json
+```
+
+`design init` only initializes a new directory without prior `.qbento` state or
+Bento output. It associates the selected source and installs design definitions;
+it does not execute QMD. Existing saved projects require preview/apply.
+Application checks document identity, revision, QMD hash, registry bytes and
+the complete proposed package. It retains pending semantics/native overrides
+and reports `renderNeeded`; it does not implicitly render or synchronize source.
+Unknown style/variant/layout references in the original QMD refuse before
+installing incompatible design definitions.
+
+`design adapt reference.html mapping.json` optionally uses installed local
+Chromium to sample explicit styles from inert self-contained Reveal HTML. The
+default JSON result separates `package` from its provenance `report`;
+`--package` emits the reusable package alone. Reference scripts and external
+resources are disabled. See [packages](DESIGN_PACKAGES.md),
+[adaptation](DESIGN_ADAPTATION.md), and the
+[native field grammar](evidence/REUSABLE-THEME-RENDERER.md).
+
+These additions require the current source build and are absent from the
+published npm 0.1.1 archive. Existing `get`/`patch` protocol and state schema
+versions remain 1.
+
 ## Read a snapshot
 
 `get` emits this object to stdout and exits 0:

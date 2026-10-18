@@ -460,8 +460,29 @@ User-supplied QMD design attributes (including roles, layouts, coordinates, anim
 
 ## Local layout and theme registry
 
-The implemented optional `.qbento/design.json` registry selects a basic theme
-and reusable named column layouts. Use `bento-layout-name` in QMD; keep explicit
-QMD design ownership separate from native sparse overrides. See the
+The implemented optional `.qbento/design.json` registry selects a theme
+and reusable named column layouts. Current source builds also support bounded
+role/named styles and named slide variants:
+
+```markdown
+## New section {#new-section bento-variant="section"}
+
+::: {#question .bento-card bento-style="question"}
+An authored question using the shared course design.
+:::
+```
+
+The names must exist in the active theme. Named styles target `text`, `code` or
+`card`; selectors need explicit source IDs and compatible original blocks.
+`bento-role` remains reserved for KPI roles. A default variant applies to slides
+without an explicit variant. Named style values remain design defaults, and
+explicit QMD properties keep their existing ownership.
+
+Initialize a new source with `design init source.qmd package.json` before its
+first render when it already mentions these names. Existing saved projects use
+checked `design preview` and `design apply`. A decorated default variant requires
+the source content to start under a `##` slide heading. Use `bento-layout-name`
+in QMD; keep explicit QMD design ownership separate from native sparse
+overrides. See the
 [registry schema and authority contract](DESIGN_REGISTRY.md) and
-[executed/native evidence](evidence/DESIGN_REGISTRY.md).
+[reusable course example](../examples/reusable-designs/README.md).

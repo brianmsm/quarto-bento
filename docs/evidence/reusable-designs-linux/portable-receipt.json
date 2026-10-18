@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "deno": "2.9.7",
+  "platform": "linux",
+  "portableFiles": 124,
+  "docId": "ebacb97d-c3e6-4953-898c-4326714aa47a",
+  "relocationPreservedIdentity": true,
+  "sourceUnchanged": true,
+  "adaptation": true
+}

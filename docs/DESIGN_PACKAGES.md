@@ -7,6 +7,12 @@ session. Import uses the file's values; there is no external inheritance, remote
 dependency, or automatic update. Version the shared package and each
 presentation's `.qbento/design.json` with Git.
 
+Without an active registry theme, Quarto-Bento uses its native neutral defaults:
+white background (`#ffffff`), dark text (`#172a35`), teal accent (`#156f65`) and
+`Arial, sans-serif`. A QMD's Reveal `theme:` value does not select a Bento
+design. Choose and import a native package explicitly when a course identity is
+required. Each presentation retains its own saved native overrides.
+
 This is a native Quarto-Bento design workflow. Reveal.js themes, SCSS, CSS,
 Metropolis, and `_brand.yml` are not automatically converted. A design adapted
 from another format can be registered once and reused in later sessions. Inspect
@@ -75,7 +81,8 @@ HTML and pending publication outputs in the source directory also refuse,
 including a sibling presentation's output. Each presentation should have its own
 directory. Use checked import below for an existing saved project.
 
-QMD, saved state, project identity and generated HTML are not written during
+Initialization records the selected QMD association in `project.json`. QMD,
+saved deck state, document identity and generated HTML are not written during
 initialization. An exclusive directory creation and atomic no-clobber
 publication protect concurrent initializers and preserve concurrent files. The
 source hash is checked before publication and completion.

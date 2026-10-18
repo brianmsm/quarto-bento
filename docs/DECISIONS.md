@@ -18,6 +18,7 @@
 | Annotations | Configurable `none` / `minimal` (default) / `detailed` **informational** QMD annotations. Necessary semantic structure and technical IDs are not optional. |
 | Slides | Create, reorder, hide, restore, delete from Bento. Confirmed deletion changes QMD; hide retains it. |
 | Layouts/themes | Reusable, first-class; editable from QMD and Studio; design persisted in `.qbento/`. |
+| Reusable designs (owner authorization, 2026-10-18) | Implement native styles/slide variants and content-free packages shared across independent presentations, plus a bounded local Reveal style adaptation workflow. Imports are pinned by value and explicitly reviewed; saved semantic/native state and QMD ownership remain unchanged. New-deck initialization replaces no existing state. No stable release, npm publication or global installation update is implied. |
 | Rendering | Bento HTML and PDF primary; Reveal.js optional secondary output, without design-parity promise. SVG preferred for static computed vector figures. |
 | Figures/tables | Native Bento charts/tables only when fidelity is adequate; complex visuals may use SVG/HTML projections. |
 | Widgets | Static compatible fallback for standalone Bento/PDF; supported widgets interactive in enhanced Presenter, isolated from pure-data BentoDoc; offline where dependencies can be bundled. |
