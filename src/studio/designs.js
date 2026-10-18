@@ -295,7 +295,8 @@ export function attachReusableDesigns({
       ) {
         throw new Error("El servidor devolvió un paquete de diseño no válido.");
       }
-      const blob = new Blob([JSON.stringify(pkg, null, 2) + "\n"], {
+      // Match the core package byte limit and the file input's bounded reader.
+      const blob = new Blob([JSON.stringify(pkg) + "\n"], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob),

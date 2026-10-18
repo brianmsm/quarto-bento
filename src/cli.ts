@@ -282,7 +282,10 @@ if (import.meta.main) {
       default:
         throw new Error(`UNKNOWN_COMMAND: ${command}`);
     }
-    if (result !== undefined) console.log(JSON.stringify(result, null, 2));
+    if (result !== undefined) {
+      // Match the bounded design readers, including saved import plans.
+      console.log(JSON.stringify(result, null, command === "design" ? 0 : 2));
+    }
   } catch (error) {
     const e = error as Error & { code?: string; details?: unknown };
     console.error(

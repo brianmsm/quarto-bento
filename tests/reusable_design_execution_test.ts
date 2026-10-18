@@ -27,6 +27,176 @@ async function rejects(action: () => Promise<unknown>, code: string) {
   throw new Error(`expected ${code}`);
 }
 
+Deno.test("layout arity refuses initialization import and render before executing R", async () => {
+  const directory = await Deno.makeTempDir({ prefix: "qbento-layout-arity-" });
+  try {
+    const source = directory + "/deck.qmd";
+    const qmd = `## Slide {#slide}
+
+:::: {#columns .bento-layout bento-layout-name="pair"}
+::: {#left}
+Left.
+:::
+::: {#right}
+Right.
+:::
+::::
+
+## Computation {#computation}
+
+\`\`\`{r}
+#| label: producer
+#| echo: false
+file.create("producer-ran")
+\`\`\`
+`;
+    await Deno.writeTextFile(source, qmd);
+    const pkg = {
+      format: "qbento/design",
+      version: 1,
+      name: "Layout compatibility",
+      registry: {
+        schemaVersion: 1,
+        layouts: { pair: { columns: 3, gap: 16, padding: 12 } },
+      },
+    };
+    await rejects(() => initializeDesignPackage(source, pkg), "LAYOUT_ARITY");
+    assert(
+      !await Deno.stat(directory + "/.qbento").then(() => true, () => false),
+    );
+    pkg.registry.layouts.pair.columns = 2;
+    await initializeDesignPackage(source, pkg);
+    await renderProject(source);
+    await Deno.remove(directory + "/producer-ran");
+    const paths = [
+      "deck.qmd",
+      ".qbento/design.json",
+      ".qbento/state.json",
+      "deck.bento.html",
+    ];
+    const before = await Promise.all(
+      paths.map((path) => Deno.readTextFile(directory + "/" + path)),
+    );
+    const plan = await previewDesignImport(source, pkg);
+    pkg.registry.layouts.pair.columns = 3;
+    await rejects(() => previewDesignImport(source, pkg), "LAYOUT_ARITY");
+    await rejects(
+      () => applyDesignImport(source, { ...plan, package: pkg }),
+      "LAYOUT_ARITY",
+    );
+    for (const [i, path] of paths.entries()) {
+      assert(
+        await Deno.readTextFile(directory + "/" + path) === before[i],
+        path,
+      );
+    }
+    await Deno.writeTextFile(
+      directory + "/.qbento/design.json",
+      JSON.stringify(pkg.registry),
+    );
+    await rejects(() => renderProject(source), "LAYOUT_ARITY");
+    assert(
+      !await Deno.stat(directory + "/producer-ran").then(
+        () => true,
+        () => false,
+      ),
+    );
+    for (const [i, path] of paths.entries()) {
+      if (path !== ".qbento/design.json") {
+        assert(
+          await Deno.readTextFile(directory + "/" + path) === before[i],
+          path,
+        );
+      }
+    }
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("styled bento-code wrappers reserve their final height beside computed card figures", async () => {
+  const directory = await Deno.makeTempDir({
+    prefix: "qbento-card-code-style-",
+  });
+  try {
+    const source = directory + "/deck.qmd";
+    const qmd = ["typed", "transparent"].map((id) =>
+      `## ${id} {#${id}}
+
+:::: {#${id}-card .bento-card}
+::: {#${id}-snippet ${id === "typed" ? ".bento-code" : ""} bento-style="large"}
+
+\`\`\`r
+stop("displayed only")
+\`\`\`
+
+:::
+
+\`\`\`{r}
+#| label: fig-${id}
+#| echo: false
+#| dev: svg
+plot(c(1, 2, 3))
+\`\`\`
+
+::::
+`
+    ).join("\n");
+    await Deno.writeTextFile(source, qmd);
+    await initializeDesignPackage(source, {
+      format: "qbento/design",
+      version: 1,
+      name: "Card code",
+      registry: {
+        schemaVersion: 1,
+        activeTheme: "test",
+        themes: {
+          test: {
+            background: "#ffffff",
+            color: "#111111",
+            accent: "#009988",
+            fontFamily: "Arial",
+            namedStyles: {
+              large: { target: "code", properties: { fontSize: 48 } },
+            },
+          },
+        },
+      },
+    });
+    const result = await renderProject(source);
+    const frames = result.state.emitted.slides.map((slide) => {
+      const code = slide.elements.find((element) => element.type === "code")!;
+      const figure = slide.elements.find((element) =>
+        element.type === "image"
+      )!;
+      const background = slide.elements.find((element) =>
+        element.type === "shape"
+      )!;
+      assert(code.fontSize === 48 && code.h === 120);
+      assert(code.content === 'stop("displayed only")');
+      assert(Number(figure.y) >= Number(code.y) + Number(code.h) + 16);
+      assert(
+        Number(figure.y) + Number(figure.h) <=
+          Number(background.y) + Number(background.h) - 24,
+      );
+      return [
+        code.x,
+        code.y,
+        code.w,
+        code.h,
+        figure.x,
+        figure.y,
+        figure.w,
+        figure.h,
+      ];
+    });
+    assert(JSON.stringify(frames[0]) === JSON.stringify(frames[1]));
+    assert(await Deno.readTextFile(source) === qmd);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
 Deno.test("real Quarto preserves named wrapper heading styles inside and outside cards with explicit source precedence", async () => {
   const directory = await Deno.makeTempDir({ prefix: "qbento-heading-style-" });
   try {

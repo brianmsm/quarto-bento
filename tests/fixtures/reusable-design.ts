@@ -1,4 +1,40 @@
 import type { DesignTheme } from "../../src/render/design.ts";
+import type { DesignPackage } from "../../src/core/design-package.ts";
+
+/** A valid saved registry whose indented package exceeds the file read limit. */
+export function largeDesignPackage(): DesignPackage {
+  const themes: Record<string, DesignTheme> = {};
+  for (let i = 0; i < 14; i++) {
+    const namedStyles: NonNullable<DesignTheme["namedStyles"]> = {};
+    for (let j = 0; j < 64; j++) {
+      namedStyles[`style-${j}`] = {
+        target: "code",
+        properties: {
+          fontSize: 24,
+          fontFamily: "Arial",
+          color: "#123456",
+          lineHeight: 1.2,
+          align: "left",
+          valign: "top",
+        },
+      };
+    }
+    themes[`theme-${i}`] = {
+      background: "#ffffff",
+      color: "#111111",
+      accent: "#008899",
+      fontFamily: "Arial",
+      namedStyles,
+    };
+  }
+  return {
+    format: "qbento/design",
+    version: 1,
+    name: "Large course",
+    registry: { schemaVersion: 1, themes, activeTheme: "theme-0" },
+  };
+}
+
 export const reusableTheme: DesignTheme = {
   background: "#fafafa",
   color: "#303030",

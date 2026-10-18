@@ -1,6 +1,6 @@
 # Implementation ledger
 
-Updated 2026-10-18. The owner has closed the Linux-local implementation and
+Updated 2026-10-19. The owner has closed the Linux-local implementation and
 validation objective at runtime `2ee7974` and authorized publication of the
 source repository on GitHub. The complete local suite passed **578 tests and
 4 steps, zero failures**; the **117-file portable smoke** rebuilt from QMD and
@@ -51,6 +51,12 @@ and real Chromium workflow passed on Deno 2.9.7.
 Subsequent source-review corrections check authored wrapper style targets before
 import/execution and preserve inherited heading styles; their regression
 evidence is recorded [separately](evidence/REUSABLE-DESIGNS.md#subsequent-review-corrections-2026-10-18).
+The 2026-10-19 review corrections additionally validate layout column counts
+before import/execution, measure styled code wrappers before allocating figure
+space, and keep exported design JSON within the bounded readers' byte limits.
+The related regression run passed 99 tests with zero failures. Its checks are
+recorded in the same receipt under
+[the follow-up corrections](evidence/REUSABLE-DESIGNS.md#follow-up-review-corrections-2026-10-19).
 
 ### Historical execution baseline
 

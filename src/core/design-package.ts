@@ -36,7 +36,8 @@ export interface DesignImportPlan {
 
 function jsonSize(value: unknown, maximum: number, code: string) {
   assertJson(value);
-  if (new TextEncoder().encode(JSON.stringify(value)).length > maximum) {
+  // CLI design output and Studio package downloads use compact JSON plus LF.
+  if (new TextEncoder().encode(JSON.stringify(value) + "\n").length > maximum) {
     throw new StateError(code, "Design data exceeds its size limit.");
   }
 }

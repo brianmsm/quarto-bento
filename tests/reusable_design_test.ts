@@ -207,6 +207,37 @@ Deno.test("reusable design selectors require known names, source IDs and compati
       undefined,
   );
 });
+Deno.test("source preflight checks layout arity using direct children rather than their nested content", () => {
+  const qmd = `## Slide {#slide}
+
+::::: {#outer .bento-layout bento-layout-name="pair"}
+<!-- A comment does not add a column. -->
+:::: {#left .bento-layout bento-layout-name="two-column"}
+::: {#first}
+First.
+:::
+::: {#second}
+Second.
+:::
+::::
+::: {#right}
+### Heading {#heading}
+Body.
+:::
+:::::
+`;
+  const source = scanSource(qmd);
+  assert(source.diagnostics.length === 0);
+  const layouts = { pair: { columns: 2, gap: 16, padding: 12 } };
+  assertReusableDesignSource(source, { layouts });
+  for (const columns of [1, 3]) {
+    refuses(() =>
+      assertReusableDesignSource(source, {
+        layouts: { pair: { ...layouts.pair, columns } },
+      }), "LAYOUT_ARITY");
+  }
+});
+
 Deno.test("source preflight checks named styles against authored content inside plain and nested divs", () => {
   for (
     const [content, compatible, incompatible] of [

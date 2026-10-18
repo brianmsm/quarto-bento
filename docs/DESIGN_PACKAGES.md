@@ -103,7 +103,11 @@ document identity and baseline. Preview then shows the complete before and after
 registries, the theme and layout names that will be removed, and that a render
 is needed. Import replaces the entire destination registry. It does not silently
 merge same-named definitions. Review removed names against any QMD references;
-an undefined reference requires an explicit source/design correction.
+an undefined reference requires an explicit source/design correction. For
+supported layouts with identified direct div children, the selected layout's
+column count must also match those children. An incompatible replacement refuses
+before initialization/import or Quarto execution; nested content and source
+comments do not add columns.
 
 Applying rechecks the destination document identity, saved revision, current QMD
 hash, exact registry bytes and complete plan. Changed source, native saves,
@@ -143,7 +147,11 @@ Packages are limited to 256 KiB, including the envelope, and names to 120
 characters without control characters. Saved plans have a bounded size for their
 package and before/after registry snapshots. Readers refuse malformed
 UTF-8/JSON, unsupported schemas, nonregular files, symbolic links and hard
-links.
+links. CLI design results (including exported packages and saved import plans)
+and Studio package downloads use compact JSON with a final newline. The size
+check includes that newline; indentation must not make an otherwise valid export
+exceed its reader's byte limit. Review views still format the parsed JSON for
+inspection.
 
 These operations need no Quarto execution or cloud connection. Their import
 receipt reports `renderNeeded: true`; execution remains a separate explicit

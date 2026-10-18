@@ -18,6 +18,12 @@
   or nested QMD wrappers before design import or computation.
 - Preserve named wrapper styles on headings inside and outside cards, with
   explicit QMD properties retaining precedence over inherited defaults.
+- Reject layout column-count changes incompatible with the original QMD before
+  design initialization/import or computation.
+- Measure styled `.bento-code` wrappers at their selected typography before
+  allocating the remaining card space to computed figures.
+- Export compact design JSON in CLI and Studio, counting its final newline in
+  byte limits so large valid exports remain readable by the bounded importers.
 
 These source additions are not part of the published npm `0.1.1` archive.
 Extended design registries require this newer runtime; older runtimes refuse

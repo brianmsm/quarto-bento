@@ -1055,7 +1055,10 @@ export async function projectAst(
                 const nested = (node.c as [Attr, Node[]])[1].filter((item) =>
                   item.t !== "RawBlock"
                 );
-                if (own?.component) return 90;
+                // Displayed-code wrappers are transparent to measurement:
+                // their selected typography must reserve space before images
+                // receive the remainder of the card.
+                if (own?.component && own.component !== "code") return 90;
                 return nested.reduce(
                   (sum, item) =>
                     sum +

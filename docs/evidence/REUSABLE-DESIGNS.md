@@ -203,3 +203,49 @@ deno test --allow-read --allow-write --allow-env --allow-run \
 `deno task check`, `deno lint src tests scripts`, source/script and changed-test
 formatting, and Git whitespace checks also passed. This is a targeted regression
 run, not a new full-suite, foreground visual, portable or publication receipt.
+
+## Follow-up review corrections (2026-10-19)
+
+Review of `1b7e265..1f4377d` reproduced three additional defects after the
+heading/style corrections. The fixes preserve source ownership, saved-state and
+package schema versions, and the 256 KiB package limit:
+
+- Layout preflight checks the selected column count against identified direct
+  source divs. It does not count nested content or source comments as additional
+  slots. A package changing a used layout from two to three columns refuses
+  initialization, Preview and Apply. A manually incompatible registry also
+  refuses before an R filesystem marker can be created; QMD, saved state and
+  generated HTML remain unchanged.
+- Card measurement descends into `.bento-code` wrappers using their selected
+  code typography before giving computed figures the remaining height. A
+  one-line displayed code sample at 48 px now reserves 120 px, and its R figure
+  fits the same card with the same geometry as the equivalent plain wrapper. The
+  displayed sample contains `stop("displayed only")` and remains displayed,
+  never executed. The QMD is byte-identical after rendering.
+- CLI design results and Studio package downloads use compact JSON with a final
+  newline, matching the core size check. A valid saved registry with fourteen
+  themes and 64 named styles per theme previously exported an indented package
+  larger than its reader's limit. The real CLI export/inspect/preview,
+  saved-plan Apply, and shipped Studio client's Blob download/file-selection
+  paths now round-trip that fixture within the existing bounds. Studio review
+  views keep their formatted JSON; ordinary non-design CLI output keeps its
+  indentation.
+
+All five new regressions failed against `1f4377d` for the reproduced reasons,
+then passed after the fixes (**5 passed, zero failures**, 29 seconds). The
+environment remains Linux with Deno 2.9.7 and Quarto 1.10.19. The new Studio
+download check exercises the shipped client with its existing DOM harness and
+real Blob/file reader; it is not a new foreground-browser acceptance claim.
+
+The related regression command listed in the preceding section was rerun with
+the five new cases included: **99 tests passed, zero failures**, in 8 minutes
+6 seconds. Type checking (`deno task check`), lint (`deno lint src tests scripts`),
+source/script and changed-test formatting, and Git whitespace checks passed.
+The historical Markdown formatting differences in the earlier receipt were
+left unchanged. This is a clean run of the selected regression files, not a
+full-repository test-suite result.
+
+Local logs are retained under `output/reusable-designs/review-fixes-20261019/`:
+`before.log`, `targeted.log` and `regressions.log`. No npm publication, global
+installation change, portable rebuild, hosted result or other-platform result is
+implied by these corrections.

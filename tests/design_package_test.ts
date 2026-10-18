@@ -18,6 +18,8 @@ import {
 } from "../src/core/project.ts";
 import { hashSource } from "../src/source/mod.ts";
 import { equal } from "../src/state/mod.ts";
+import { MAX_DESIGN_REGISTRY_BYTES } from "../src/render/registry.ts";
+import { largeDesignPackage } from "./fixtures/reusable-design.ts";
 
 function assert(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
@@ -435,6 +437,60 @@ Deno.test("design package and plan readers retain a deterministic JSON round tri
       () => applyDesignImport(f.source, read),
       "STALE_DESIGN_IMPORT",
     );
+  } finally {
+    await Deno.remove(f.directory, { recursive: true });
+  }
+});
+
+Deno.test("large design CLI export and preview files can be read and applied unchanged", async () => {
+  const f = await fixture();
+  try {
+    const pkg = largeDesignPackage();
+    const bytes = (value: unknown) =>
+      new TextEncoder().encode(JSON.stringify(value, null, 2) + "\n").length;
+    assert(bytes(pkg.registry) <= MAX_DESIGN_REGISTRY_BYTES);
+    assert(bytes(pkg) > MAX_DESIGN_REGISTRY_BYTES);
+    const snapshot = await readProjectRegistry(f.source);
+    await saveProjectRegistry(f.source, {
+      expectedDocId: snapshot.docId,
+      expectedRevision: snapshot.revision,
+      expectedHash: snapshot.hash,
+      registry: pkg.registry,
+    });
+    const cli = async (...args: string[]) => {
+      const output = await new Deno.Command(Deno.execPath(), {
+        args: [
+          "run",
+          "--allow-read",
+          "--allow-env",
+          new URL("../src/cli.ts", import.meta.url).pathname,
+          "design",
+          ...args,
+        ],
+      }).output();
+      assert(output.success, new TextDecoder().decode(output.stderr));
+      return output.stdout;
+    };
+    const path = f.directory + "/large.design.json";
+    const exported = await cli("export", f.source, pkg.name);
+    assert(
+      exported.length <= MAX_DESIGN_REGISTRY_BYTES,
+      "Export exceeds its reader limit",
+    );
+    await Deno.writeFile(path, exported);
+    assert(equal(await readDesignPackageFile(path), pkg));
+    assert(
+      equal(
+        JSON.parse(new TextDecoder().decode(await cli("inspect", path))),
+        pkg,
+      ),
+    );
+    const planPath = f.directory + "/large.plan.json";
+    await Deno.writeFile(planPath, await cli("preview", f.source, path));
+    const plan = await readDesignImportPlanFile(planPath);
+    await applyDesignImport(f.source, plan);
+    assert(equal((await readProjectRegistry(f.source)).registry, pkg.registry));
+    assert(await Deno.readTextFile(f.source) === f.text);
   } finally {
     await Deno.remove(f.directory, { recursive: true });
   }

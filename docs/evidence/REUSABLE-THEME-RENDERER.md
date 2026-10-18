@@ -86,3 +86,13 @@ remain explicit.
 The themed-introduction regression also invokes `renderProject` on an actual QMD
 containing an R producer with a filesystem marker. It verifies the guard runs
 before that producer, with unchanged QMD and no output/state publication.
+
+## Follow-up measurement correction (2026-10-19)
+
+Displayed-code wrappers (`.bento-code`) are now transparent to row measurement.
+Their named code typography is measured before computed figures receive the
+remaining card height, just as for a plain wrapper around the same displayed
+code. This does not execute displayed code or change its source ownership. The
+subsequent regression and its separate validation are recorded in
+[the integrated receipt](REUSABLE-DESIGNS.md#follow-up-review-corrections-2026-10-19);
+the original 2026-10-18 evidence above is unchanged.

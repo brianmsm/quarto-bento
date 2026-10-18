@@ -25,6 +25,16 @@ export function originalThemeAttributes(
     ? undefined
     : originalPandocAttributes(content, originalAttributeTokens(content));
 }
+function sourceChildren(
+  source: SourceDocument,
+  block: SourceBlock,
+): SourceBlock[] {
+  return source.blocks.filter((child) =>
+    child.parentId === block.id &&
+    child.span.start >= block.contentSpan.start &&
+    child.span.end <= block.contentSpan.end
+  );
+}
 /** Resolve a single authored object through transparent source wrappers.
  * Computed/unsupported content still needs the executed projection's check.
  */
@@ -36,11 +46,7 @@ function authoredStyleTarget(
     const attr = originalThemeAttributes(block);
     const component = attr && parseDesignAttributes(attr).component;
     if (component && component !== "code") return undefined;
-    const children = source.blocks.filter((child) =>
-      child.parentId === block.id &&
-      child.span.start >= block.contentSpan.start &&
-      child.span.end <= block.contentSpan.end
-    );
+    const children = sourceChildren(source, block);
     if (children.length !== 1) return undefined;
     block = children[0];
   }
@@ -71,12 +77,26 @@ export function assertReusableDesignSource(
       );
     }
     const declaration = parseDesignAttributes(attr);
-    if (
-      declaration.layout &&
-      !Object.hasOwn(defaults.layouts ?? {}, declaration.layout) &&
-      !Object.hasOwn(builtinLayouts, declaration.layout)
-    ) {
-      throw new DesignError("UNKNOWN_LAYOUT", declaration.layout);
+    if (declaration.layout) {
+      const layout = Object.hasOwn(defaults.layouts ?? {}, declaration.layout)
+        ? defaults.layouts![declaration.layout]
+        : Object.hasOwn(builtinLayouts, declaration.layout)
+        ? builtinLayouts[declaration.layout]
+        : undefined;
+      if (!layout) throw new DesignError("UNKNOWN_LAYOUT", declaration.layout);
+      const children = sourceChildren(source, block);
+      // Identified direct divs are the supported layout slots. Nested content
+      // and source comments do not add columns; unsupported shapes still go
+      // through the executed projection's existing diagnostics.
+      if (
+        children.every((child) => child.kind === "div" && child.stable) &&
+        children.length !== layout.columns
+      ) {
+        throw new DesignError(
+          "LAYOUT_ARITY",
+          `${declaration.layout} expects ${layout.columns} semantic children; ${block.id} has ${children.length}.`,
+        );
+      }
     }
     if (declaration.variant) {
       if (block.kind !== "heading" || block.level !== 2 || block.parentId) {

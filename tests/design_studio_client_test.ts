@@ -1,3 +1,10 @@
+import { largeDesignPackage } from "./fixtures/reusable-design.ts";
+import {
+  readDesignPackageFile,
+  validateDesignPackage,
+} from "../src/core/design-package.ts";
+import { MAX_DESIGN_REGISTRY_BYTES } from "../src/render/registry.ts";
+
 function assert(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
@@ -227,6 +234,41 @@ Deno.test("design export saves first, downloads the named JSON package, and does
   equal(c.revoked[0], "blob:1");
   equal(calls.some(([path]) => path === "render"), false);
 });
+Deno.test("large Studio design download remains within the package reader limit and can be selected again", async () => {
+  const pkg = validateDesignPackage(largeDesignPackage());
+  const c = await loadClient({ api: () => Promise.resolve(pkg) });
+  c.node("design-name").value = pkg.name;
+  await c.node("design-export").emit("click");
+  equal(c.errors(), 0);
+  equal(c.blobs.length, 1);
+  const blob = c.blobs[0];
+  assert(
+    blob.size <= MAX_DESIGN_REGISTRY_BYTES,
+    "Download exceeds its reader limit",
+  );
+  const directory = await Deno.makeTempDir({
+    prefix: "qbento-design-download-",
+  });
+  try {
+    const path = directory + "/design.json";
+    await Deno.writeFile(path, new Uint8Array(await blob.arrayBuffer()));
+    equal(
+      JSON.stringify(await readDesignPackageFile(path)),
+      JSON.stringify(pkg),
+    );
+    const input = c.node("design-file");
+    input.files = [{
+      name: "design.json",
+      size: blob.size,
+      text: () => blob.text(),
+    }];
+    await input.emit("change");
+    assert(!c.node("design-preview").disabled);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
 Deno.test("import preview shows the full replacement and deleted definitions before explicit apply", async () => {
   const calls: Array<[string, unknown]> = [],
     plan = makePlan(),
