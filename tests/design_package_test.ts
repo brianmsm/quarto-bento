@@ -3,6 +3,7 @@ import {
   exportDesignPackage,
   previewDesignImport,
   readDesignImportPlanFile,
+  readDesignJsonFile,
   readDesignPackageFile,
   validateDesignPackage,
 } from "../src/core/design-package.ts";
@@ -135,6 +136,104 @@ Deno.test("design export captures only document base theme plus registered defin
       ]
     ) assert(!json.includes(forbidden), forbidden);
   } finally {
+    await Deno.remove(f.directory, { recursive: true });
+  }
+});
+
+Deno.test("design export uses newly saved and imported registry defaults before recalculation while retaining only true native theme overrides", async () => {
+  const f = await fixture();
+  try {
+    const dark = sample();
+    dark.registry.themes!.spp.background = "#181818";
+    dark.registry.themes!.spp.color = "#f4f4f4";
+    const snapshot = await readProjectRegistry(f.source);
+    await saveProjectRegistry(f.source, {
+      expectedDocId: snapshot.docId,
+      expectedRevision: snapshot.revision,
+      expectedHash: snapshot.hash,
+      registry: dark.registry,
+    });
+    assert(
+      equal((await readProject(f.source)).emitted, f.rendered.state.emitted),
+    );
+    const savedExport = await exportDesignPackage(
+      f.source,
+      "Newly saved dark theme",
+    );
+    assert(equal(savedExport.registry, dark.registry));
+    const imported = structuredClone(dark);
+    imported.registry.themes!.spp.background = "#242424";
+    await applyDesignImport(
+      f.source,
+      await previewDesignImport(f.source, imported),
+    );
+    const importedExport = await exportDesignPackage(
+      f.source,
+      "Newly imported dark theme",
+    );
+    assert(equal(importedExport.registry, imported.registry));
+    const state = await readProject(f.source);
+    const native = structuredClone(state.emitted);
+    native.theme = { ...(native.theme as object), accent: "#ee55aa" };
+    await saveProject(f.source, native, state.revision);
+    const nativeExport = await exportDesignPackage(
+      f.source,
+      "Native accent on current dark design",
+    );
+    assert(nativeExport.registry.themes!.spp.background === "#242424");
+    assert(nativeExport.registry.themes!.spp.color === "#f4f4f4");
+    assert(nativeExport.registry.themes!.spp.accent === "#ee55aa");
+    assert(equal(nativeExport.registry.layouts, imported.registry.layouts));
+    assert((await readProject(f.source)).pending.length === 0);
+  } finally {
+    await Deno.remove(f.directory, { recursive: true });
+  }
+});
+
+Deno.test("design import checks source changes during publication and restores the prior registry through its journal", async () => {
+  const f = await fixture();
+  const originalRename = Deno.rename;
+  try {
+    await applyDesignImport(
+      f.source,
+      await previewDesignImport(f.source, sample()),
+    );
+    const candidate = sample();
+    candidate.registry.themes!.spp.background = "#000000";
+    const plan = await previewDesignImport(f.source, candidate);
+    const before = await files(f.directory);
+    let injected = false;
+    Deno.rename = async (oldPath, newPath) => {
+      await originalRename(oldPath, newPath);
+      // Mutation after the backup rename exercises the final source check and
+      // recovery path, rather than merely detecting a stale preview up front.
+      if (
+        !injected && String(oldPath) === f.directory + "/.qbento/design.json"
+      ) {
+        injected = true;
+        await Deno.writeTextFile(
+          f.source,
+          f.text + "\nChanged during registry publication\n",
+        );
+      }
+    };
+    await rejects(() => applyDesignImport(f.source, plan), "STALE_SOURCE");
+    assert(injected);
+    const after = await files(f.directory);
+    for (
+      const path of [
+        ".qbento/design.json",
+        ".qbento/state.json",
+        "deck.bento.html",
+      ]
+    ) assert(before[path] === after[path], path);
+    assert(
+      await Deno.readTextFile(f.source) ===
+        f.text + "\nChanged during registry publication\n",
+    );
+    assert(!Object.keys(after).includes(".qbento/design-save.json"));
+  } finally {
+    Deno.rename = originalRename;
     await Deno.remove(f.directory, { recursive: true });
   }
 });
@@ -313,6 +412,9 @@ Deno.test("package boundaries reject unsupported fields, resources, unsafe file 
       () => readDesignPackageFile(path),
       "DESIGN_PACKAGE_TOO_LARGE",
     );
+    const mapping = { styles: { heading: ".reveal h2" } };
+    await Deno.writeTextFile(path, JSON.stringify(mapping));
+    assert(equal(await readDesignJsonFile(path), mapping));
     await Deno.writeTextFile(path, "invalid JSON");
     await rejects(() => readDesignPackageFile(path), "INVALID_DESIGN_PACKAGE");
   } finally {

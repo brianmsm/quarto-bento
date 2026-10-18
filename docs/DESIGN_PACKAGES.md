@@ -44,11 +44,13 @@ Unsupported fields refuse; JSON data never runs code or installs fonts or
 environments. Font families still require locally available fonts or the
 existing bundled fonts. Arbitrary external assets are not packaged.
 
-Export reads the saved presentation. It copies its registry and updates the
-active theme's four base properties from the saved document-wide theme:
-background, text color, accent and font family. This includes changes saved
-through Bento's native theme controls. Without a named theme, export creates
-`exported`. Registered component styles and layout definitions are retained.
+Export reads the current saved design registry, including a theme just saved or
+imported before recalculation. It combines that theme's background, text color,
+accent and font family with actual saved document-wide native theme overrides.
+An older rendered default never overwrites a newer registry value. This includes
+changes saved through Bento's native theme controls. Without a named theme,
+export creates `exported`. Registered component styles and layout definitions
+are retained.
 
 Export does not infer a style from the first slide, a selected object or an
 arbitrary collection of native edits. It never includes slide or object IDs,
@@ -87,7 +89,10 @@ not change automatically.
 The UI and CLI can use the same JSON core in `src/core/design-package.ts`:
 
 - `validateDesignPackage(value)` validates and returns independent JSON data.
-- `readDesignPackageFile(path)` reads a bounded local package file.
+- `readDesignJsonFile(path, maximum?)` reads bounded local JSON for
+  integrations.
+- `readDesignPackageFile(path)` reads and validates a bounded local package
+  file.
 - `exportDesignPackage(source, name)` produces a package without writing it.
 - `previewDesignImport(source, package)` produces a deterministic read-only
   plan.

@@ -74,9 +74,10 @@ export function validateDesignPackage(value: unknown): DesignPackage {
   };
 }
 
-async function readBoundedJson(
+/** Bounded local pure JSON reader shared by package, plan and CLI mapping inputs. */
+export async function readDesignJsonFile(
   path: string,
-  maximum: number,
+  maximum = MAX_DESIGN_REGISTRY_BYTES,
 ): Promise<unknown> {
   const before = await Deno.lstat(path);
   const regular = (info: Deno.FileInfo) =>
@@ -138,7 +139,7 @@ export async function readDesignPackageFile(
   path: string,
 ): Promise<DesignPackage> {
   return validateDesignPackage(
-    await readBoundedJson(path, MAX_DESIGN_REGISTRY_BYTES),
+    await readDesignJsonFile(path, MAX_DESIGN_REGISTRY_BYTES),
   );
 }
 
@@ -157,23 +158,37 @@ export async function exportDesignPackage(
   }
   const registry = structuredClone(snapshot.registry);
   const active = registry.activeTheme ?? "exported";
-  const theme = state.emitted.theme;
-  if (!theme || typeof theme !== "object" || Array.isArray(theme)) {
+  const emittedTheme = state.emitted.theme;
+  if (
+    !emittedTheme || typeof emittedTheme !== "object" ||
+    Array.isArray(emittedTheme)
+  ) {
     throw new StateError(
       "INVALID_DESIGN_PACKAGE",
       "Saved document has no reusable base theme.",
     );
   }
-  registry.themes = {
-    ...registry.themes,
-    [active]: {
-      ...registry.themes?.[active],
-      background: theme.background,
-      color: theme.color,
-      accent: theme.accent,
-      fontFamily: theme.fontFamily,
-    } as NonNullable<DesignRegistry["themes"]>[string],
-  };
+  // A newly saved/imported registry may not have been rendered yet. Its base
+  // values are current; emitted contains the previous render's defaults. Only
+  // actual saved native document-theme overrides may take precedence over them.
+  const registered = registry.themes?.[active];
+  const baseFields = ["background", "color", "accent", "fontFamily"] as const;
+  const theme = { ...registered } as NonNullable<
+    DesignRegistry["themes"]
+  >[string];
+  for (const field of baseFields) {
+    let value: unknown = registered?.[field] ?? emittedTheme[field];
+    for (const override of state.overrides) {
+      if (override.target.slideId || override.target.elementId) continue;
+      const saved = override.fields.find((entry) =>
+        entry.path.length === 2 && entry.path[0] === "theme" &&
+        entry.path[1] === field
+      );
+      if (saved?.value.present) value = saved.value.value;
+    }
+    theme[field] = value as string;
+  }
+  registry.themes = { ...registry.themes, [active]: theme };
   registry.activeTheme = active;
   const after = await readProjectRegistry(source);
   if (
@@ -244,6 +259,7 @@ export async function applyDesignImport(source: string, value: unknown) {
     expectedDocId: rebuilt.docId,
     expectedRevision: rebuilt.expectedRevision,
     expectedHash: rebuilt.expectedHash,
+    expectedSourceHash: rebuilt.sourceHash,
     registry: rebuilt.changes.after,
   });
   return { ...saved, renderNeeded: true as const };
@@ -253,7 +269,7 @@ export async function applyDesignImport(source: string, value: unknown) {
 export async function readDesignImportPlanFile(
   path: string,
 ): Promise<DesignImportPlan> {
-  const value = await readBoundedJson(
+  const value = await readDesignJsonFile(
     path,
     MAX_DESIGN_REGISTRY_BYTES * 3 + 4096,
   );
