@@ -1,4 +1,14 @@
 import {
+  assertReusableDesignSource,
+  namedStyle,
+  originalThemeAttributes,
+  recoverThemeAttributes,
+  roleStyle,
+  textProperties,
+  variantDecorations,
+  variantFor,
+} from "./theme-styles.ts";
+import {
   assertImageShape,
   authoredImageData,
   executedImageShape,
@@ -59,6 +69,8 @@ import {
   designTheme,
   type Frame,
   parseDesignAttributes,
+  type ReusableStyle,
+  type SlideVariant,
 } from "./design.ts";
 import type {
   Ast,
@@ -142,6 +154,8 @@ export async function projectAst(
   const consumedImages = new Set<string>();
   const consumedRichTables = new Set<string>();
   const theme = designTheme(defaults);
+  if (source) assertReusableDesignSource(source, defaults);
+  const reusableTheme = defaults.theme;
   const consumedWidgets = new Set<string>();
   const expectedWidgets = new Map(
     widgets.size && source
@@ -179,6 +193,30 @@ export async function projectAst(
   let y = 166;
   let counter = 0;
   let contentFrame: Frame | undefined;
+  let slideContentFrame: Frame | undefined;
+  let slideVariant: SlideVariant | undefined;
+  let inheritedTextStyle: ReusableStyle = {};
+  let inheritedCodeStyle: ReusableStyle = {};
+  let inheritedCardTextStyle: ReusableStyle = {};
+  let inheritedCardCodeStyle: ReusableStyle = {};
+  const remainingFrame = () =>
+    contentFrame ??
+      (slideContentFrame
+        ? {
+          ...slideContentFrame,
+          y,
+          h: Math.max(.01, slideContentFrame.y + slideContentFrame.h - y),
+        }
+        : undefined);
+  const selectedStyle = (
+    attr: Attr,
+    target: "text" | "code" | "card",
+  ): ReusableStyle => {
+    const declaration = parseDesignAttributes(attr);
+    return declaration.style
+      ? namedStyle(reusableTheme, declaration.style, target).properties
+      : {};
+  };
   const tableSources = new Set<string>();
   const expectedCharts = new Set<string>();
   const consumedCharts = new Set<string>();
@@ -224,21 +262,41 @@ export async function projectAst(
   const computedCodeIndexes = new Map<string, number>();
   // Only the authenticated execution boundary may admit a weak table producer.
   let verifiedTableProducer: string | undefined;
-  function startSlide(id: string): Slide {
+  function startSlide(
+    id: string,
+    selectedVariant = reusableTheme?.defaultVariant,
+  ): Slide {
     if (document.slides.some((s) => s.id === id)) {
       throw new Error(`DUPLICATE_ID: ${id}`);
     }
+    // A slide never inherits a preceding section's template or component frame.
+    contentFrame = undefined;
+    inheritedTextStyle = {};
+    inheritedCodeStyle = {};
+    inheritedCardTextStyle = {};
+    inheritedCardCodeStyle = {};
+    slideVariant = variantFor(reusableTheme, selectedVariant);
+    slideContentFrame = slideVariant?.contentFrame;
     slide = {
       id,
-      background: theme.background,
+      background: slideVariant?.background ?? theme.background,
       transition: "fade",
       notes: "",
       elements: [],
     };
     document.slides.push(slide);
     result.origins[id] = {};
-    y = 166;
+    y = slideContentFrame?.y ?? 166;
     counter = 0;
+    for (
+      const element of variantDecorations(
+        id,
+        selectedVariant ?? "",
+        slideVariant ?? {},
+      )
+    ) {
+      add(element, { origin: "authored", sourceId: id, designOnly: true });
+    }
     return slide;
   }
   function add(el: Element, origin: Origin) {
@@ -249,7 +307,14 @@ export async function projectAst(
     slide!.elements.push(el);
     result.origins[slide!.id][el.id] = origin;
   }
-  function text(id: string, html: string, heading: boolean, origin: Origin) {
+  function text(
+    id: string,
+    html: string,
+    heading: boolean,
+    origin: Origin,
+    role: "title" | "heading" | "body" = heading ? "title" : "body",
+    specific: ReusableStyle = {},
+  ) {
     // A list is one editable object, but its default box needs room for its
     // item/paragraph lines. This is conservative initial layout, not font-ink
     // measurement; explicit layout frames and saved geometry retain authority.
@@ -264,13 +329,16 @@ export async function projectAst(
     const h = contentFrame && !heading
       ? contentFrame.h
       : Math.max(90, listLines * 40 + 20);
+    const frame = heading
+      ? slideVariant?.titleFrame
+      : contentFrame ?? slideContentFrame;
     add({
       id,
       type: "text",
-      x: contentFrame?.x ?? 80,
-      y: heading ? 52 : y,
-      w: contentFrame?.w ?? 1120,
-      h,
+      x: frame?.x ?? 80,
+      y: heading ? frame?.y ?? 52 : y,
+      w: frame?.w ?? 1120,
+      h: heading ? frame?.h ?? h : h,
       rotation: 0,
       opacity: 1,
       html,
@@ -281,6 +349,11 @@ export async function projectAst(
       align: "left",
       valign: "top",
       lineHeight: 1.25,
+      ...inheritedCardTextStyle,
+      ...roleStyle(reusableTheme, role),
+      ...inheritedTextStyle,
+      ...(heading ? slideVariant?.title : {}),
+      ...specific,
     }, origin);
     if (!heading) y += h + 20;
   }
@@ -312,6 +385,22 @@ export async function projectAst(
       throw new DesignError(
         "COMPONENT_TARGET",
         "Card/layout components belong to fenced divs.",
+      );
+    }
+    if (declaration.style) {
+      if (
+        !declaration.sourceId || elements.length !== 1 ||
+        !["text", "code"].includes(elements[0].type)
+      ) {
+        throw new DesignError(
+          "STYLE_TARGET_MISMATCH",
+          "Named text/code styles require exactly one compatible native object.",
+        );
+      }
+      namedStyle(
+        reusableTheme,
+        declaration.style,
+        elements[0].type as "text" | "code",
       );
     }
     if (!Object.keys(declaration.properties).length) return;
@@ -391,10 +480,11 @@ export async function projectAst(
       imageId: ids.imageId,
       captionId: ids.captionId,
     };
-    const imageHeight = contentFrame
-      ? Math.max(100, contentFrame.h - 90)
+    const imageFrame = remainingFrame();
+    const imageHeight = imageFrame
+      ? Math.max(100, imageFrame.h - 90)
       : Math.max(100, Math.min(400, 570 - y));
-    const x = contentFrame?.x ?? 160, w = contentFrame?.w ?? 880;
+    const x = imageFrame?.x ?? 160, w = imageFrame?.w ?? 880;
     add({
       id: ids.imageId,
       type: "image",
@@ -449,10 +539,10 @@ export async function projectAst(
     add({
       id,
       type: "image",
-      x: contentFrame?.x ?? 160,
+      x: remainingFrame()?.x ?? 160,
       y,
-      w: contentFrame?.w ?? 880,
-      h: contentFrame?.h ?? Math.max(100, Math.min(400, 670 - y)),
+      w: remainingFrame()?.w ?? 880,
+      h: remainingFrame()?.h ?? Math.max(100, Math.min(400, 670 - y)),
       rotation: 0,
       opacity: 1,
       src: await assetData(target[0], assetRoots),
@@ -499,10 +589,26 @@ export async function projectAst(
         sourceMarker = undefined;
       }
       if (node.t === "Header") {
-        const [level, attr, content] = node.c as [number, Attr, Node[]];
+        const [level, rawAttr, content] = node.c as [number, Attr, Node[]];
+        const attr = recoverThemeAttributes(
+          rawAttr,
+          "heading",
+          source,
+          computed,
+        );
+        const headerDesign = parseDesignAttributes(attr);
+        if (
+          headerDesign.variant &&
+          (level !== 2 || inComponent || computed || parentId)
+        ) {
+          throw new DesignError(
+            "VARIANT_TARGET_MISMATCH",
+            "bento-variant belongs to an original top-level level-2 slide heading.",
+          );
+        }
         if (level <= 2 && !inComponent) {
           const id = attr[0] || `qb-slide-${document.slides.length + 1}`;
-          startSlide(id);
+          startSlide(id, headerDesign.variant ?? reusableTheme?.defaultVariant);
           const nativeTitleId = attr[2].find(([name]) =>
             name === "bento-title-id"
           )?.[1];
@@ -514,11 +620,18 @@ export async function projectAst(
               "INVALID_ID: bento-title-id must be a safe explicit identity",
             );
           }
-          text(nativeTitleId ?? `${id}-title`, inline(content), true, {
-            origin: computed ? "computed" : "authored",
-            sourceId: id,
-            ...(computed && parentId ? { producer: parentId } : {}),
-          });
+          text(
+            nativeTitleId ?? `${id}-title`,
+            inline(content),
+            true,
+            {
+              origin: computed ? "computed" : "authored",
+              sourceId: id,
+              ...(computed && parentId ? { producer: parentId } : {}),
+            },
+            "title",
+            selectedStyle(attr, "text"),
+          );
         } else {
           headingIndex++;
           const mapped = inComponent && source && parentId
@@ -536,17 +649,27 @@ export async function projectAst(
               sourceId,
               ...(computed && parentId ? { producer: parentId } : {}),
             },
+            "heading",
+            {
+              fontSize: inComponent ? 32 : 26,
+              fontWeight: inComponent ? 700 : 400,
+              ...roleStyle(reusableTheme, "heading"),
+              ...selectedStyle(attr, "text"),
+            },
           );
-          if (inComponent) {
-            slide!.elements.at(-1)!.fontSize = 32;
-            slide!.elements.at(-1)!.fontWeight = 700;
-          }
         }
         design(attr, [slide!.elements.at(-1)!]);
       } else if (node.t === "Figure" && source && !computed) {
         await authoredFigure(node, parentId);
       } else if (node.t === "Div") {
-        const [attr, children] = node.c as [Attr, Node[]];
+        const [rawAttr, children] = node.c as [Attr, Node[]];
+        const attr = recoverThemeAttributes(rawAttr, "div", source, computed);
+        if (parseDesignAttributes(attr).variant) {
+          throw new DesignError(
+            "VARIANT_TARGET_MISMATCH",
+            "bento-variant belongs to a level-2 slide heading.",
+          );
+        }
         const chartAncestor = chartAncestors.get(attr[0]);
         if (
           chartAncestor && (chartAncestor.parentId !== parentId ||
@@ -688,7 +811,7 @@ export async function projectAst(
             source,
             attr,
             children,
-            contentFrame ?? retainedFrames.get(attr[0]) ?? {
+            contentFrame ?? retainedFrames.get(attr[0]) ?? remainingFrame() ?? {
               x: 80,
               y,
               w: 1120,
@@ -748,12 +871,17 @@ export async function projectAst(
             );
           }
           if (!slide) startSlide("qb-introduction");
-          const projected = await projectGraph(source, node, {
-            x: 80,
-            y,
-            w: 1120,
-            h: Math.min(470, 680 - y),
-          }, defaults);
+          const projected = await projectGraph(
+            source,
+            node,
+            remainingFrame() ?? {
+              x: 80,
+              y,
+              w: 1120,
+              h: Math.min(470, 680 - y),
+            },
+            defaults,
+          );
           for (const element of projected.elements) {
             add(element, projected.origins[element.id]);
           }
@@ -785,9 +913,33 @@ export async function projectAst(
               "Named layouts require identified direct fenced-div children.",
             );
           }
+          const cardDefaults = declaration.component === "card"
+            ? {
+              ...roleStyle(reusableTheme, "card"),
+              ...selectedStyle(attr, "card"),
+            }
+            : {};
+          if (declaration.component === "layout" && declaration.style) {
+            throw new DesignError(
+              "STYLE_TARGET_MISMATCH",
+              "Named styles belong to card, text or code objects.",
+            );
+          }
+          const previousTextStyle = inheritedCardTextStyle,
+            previousCodeStyle = inheritedCardCodeStyle;
+          const cardText = textProperties(cardDefaults);
+          inheritedCardTextStyle = { ...inheritedCardTextStyle, ...cardText };
+          inheritedCardCodeStyle = {
+            ...inheritedCardCodeStyle,
+            ...Object.fromEntries(
+              Object.entries(cardText).filter(([field]) =>
+                !["fontWeight", "letterSpacing"].includes(field)
+              ),
+            ),
+          };
           const index = slide!.elements.length, componentY = y;
           const childGroups: Element[][] = [];
-          const base = retainedFrames.get(attr[0]) ?? contentFrame ??
+          const base = retainedFrames.get(attr[0]) ?? remainingFrame() ??
             {
               x: 80,
               y: componentY,
@@ -875,25 +1027,88 @@ export async function projectAst(
             const measuredTable = tableHeight(child);
             if (measuredTable !== undefined) return measuredTable;
             if (images([child]).length) return -1;
-            const explicitSize = Number(declaration.properties.fontSize);
-            if (child.t === "Header") {
-              const [, , content] = child.c as [number, Attr, Node[]];
-              const size = explicitSize || 32;
-              return lines(inline(content), size) * size * 1.25 + 4;
-            }
-            if (child.t === "Para" || child.t === "Plain") {
-              const size = explicitSize || 26;
-              return lines(inline(child.c as Node[]), size) * size * 1.25 + 5;
-            }
-            if (child.t === "CodeBlock") {
-              const size = explicitSize || 24;
-              return Math.max(
-                90,
-                ((child.c as [Attr, string])[1].split("\n").length + 1) * size *
-                  1.25,
-              );
-            }
-            return 90;
+            const measure = (
+              node: Node,
+              wrappers: ReusableStyle = {},
+            ): number => {
+              const attributes = node.t === "Header"
+                ? (node.c as [number, Attr, Node[]])[1]
+                : ["Div", "CodeBlock"].includes(node.t)
+                ? (node.c as [Attr, unknown])[0]
+                : undefined;
+              const attr = attributes &&
+                recoverThemeAttributes(
+                  attributes,
+                  node.t === "Header"
+                    ? "heading"
+                    : node.t === "CodeBlock"
+                    ? "code"
+                    : "div",
+                  source,
+                );
+              const own = attr ? parseDesignAttributes(attr) : undefined;
+              const selected = own?.style
+                ? namedStyle(reusableTheme, own.style).properties
+                : {};
+              if (node.t === "Div") {
+                const nested = (node.c as [Attr, Node[]])[1].filter((item) =>
+                  item.t !== "RawBlock"
+                );
+                if (own?.component) return 90;
+                return nested.reduce(
+                  (sum, item) =>
+                    sum +
+                    measure(item, {
+                      ...wrappers,
+                      ...selected,
+                      ...own?.properties,
+                    }),
+                  0,
+                ) + Math.max(0, nested.length - 1) * 20;
+              }
+              const role = node.t === "Header"
+                ? "heading"
+                : node.t === "CodeBlock"
+                ? "code"
+                : "body";
+              const values = {
+                fontSize: role === "heading" ? 32 : role === "code" ? 24 : 26,
+                lineHeight: 1.25,
+                ...(role === "code"
+                  ? inheritedCardCodeStyle
+                  : inheritedCardTextStyle),
+                ...roleStyle(reusableTheme, role),
+                ...(role === "code" ? inheritedCodeStyle : inheritedTextStyle),
+                ...wrappers,
+                ...selected,
+                ...own?.properties,
+                ...declaration.properties,
+              };
+              const size = Number(values.fontSize),
+                leading = Number(values.lineHeight);
+              if (node.t === "Header") {
+                return lines(
+                      inline((node.c as [number, Attr, Node[]])[2]),
+                      size,
+                    ) * size * leading + 4;
+              }
+              if (node.t === "Para" || node.t === "Plain") {
+                return lines(inline(node.c as Node[]), size) * size * leading +
+                  5;
+              }
+              if (node.t === "CodeBlock") {
+                return Math.max(
+                  90,
+                  ((node.c as [Attr, string])[1].split("\n").length + 1) *
+                    size * leading,
+                );
+              }
+              if (["BulletList", "OrderedList"].includes(node.t)) {
+                return lines(renderList(node), size) * size * leading + 5;
+              }
+              return 90;
+            };
+            return measure(child);
           };
           const placement = componentFrames(
             declaration,
@@ -912,6 +1127,8 @@ export async function projectAst(
             childGroups,
             placement.children,
           );
+          inheritedCardTextStyle = previousTextStyle;
+          inheritedCardCodeStyle = previousCodeStyle;
           const fields = (result.design![slide!.id] ??= {});
           const component = projectComponent(
             childGroups.filter((group) => group.length),
@@ -921,6 +1138,18 @@ export async function projectAst(
             defaults,
             measuredComponents,
           );
+          if (declaration.component === "card") {
+            const background = component.elements.find((element) =>
+              element.id === `${declaration.sourceId}/qb-card-background`
+            )!;
+            for (const [field, value] of Object.entries(cardDefaults)) {
+              if (
+                ["fill", "stroke", "strokeWidth", "radius", "opacity"].includes(
+                  field,
+                ) && !(field in declaration.properties)
+              ) background[field] = value;
+            }
+          }
           for (const id of component.decorativeIds) {
             if (slide!.elements.slice(0, index).some((e) => e.id === id)) {
               throw new Error(`DUPLICATE_ID: ${id}`);
@@ -958,6 +1187,23 @@ export async function projectAst(
           );
         }
         const beforeSlide = slide, beforeCount = slide?.elements.length ?? 0;
+        const priorTextStyle = inheritedTextStyle,
+          priorCodeStyle = inheritedCodeStyle;
+        if (declaration.style) {
+          const named = namedStyle(reusableTheme, declaration.style);
+          if (named.target === "card") {
+            throw new DesignError(
+              "STYLE_TARGET_MISMATCH",
+              "Card styles require .bento-card.",
+            );
+          }
+          if (named.target === "text") {
+            inheritedTextStyle = { ...inheritedTextStyle, ...named.properties };
+          } else {inheritedCodeStyle = {
+              ...inheritedCodeStyle,
+              ...named.properties,
+            };}
+        }
         if (attr[1].includes("bento-chart")) {
           const declaration = parseDesignAttributes(attr);
           if (!source || computed) {
@@ -1006,7 +1252,7 @@ export async function projectAst(
             binding.kind,
             `${attr[0]}/chart`,
             y,
-            contentFrame,
+            remainingFrame(),
           );
           if (!binding.computed) {
             validateAuthoredChart(source, binding.block.id, element);
@@ -1192,6 +1438,8 @@ export async function projectAst(
             await figure(img, isComputed, attr[0], sourceParent);
           }
         } else await walk(children, isComputed, sourceParent, inComponent);
+        inheritedTextStyle = priorTextStyle;
+        inheritedCodeStyle = priorCodeStyle;
         design(
           attr,
           slide && (!beforeSlide || slide === beforeSlide)
@@ -1263,7 +1511,7 @@ export async function projectAst(
           node,
           "pending-table",
           y,
-          contentFrame,
+          remainingFrame(),
         );
         const block = identifiedBlock ?? matchBareTable(source, provisional);
         if (tableSources.has(block.id)) {
@@ -1292,7 +1540,27 @@ export async function projectAst(
         });
         y += Number(element.h) + 20;
       } else if (node.t === "CodeBlock") {
-        const [attr, content] = node.c as [Attr, string];
+        const [rawAttr, content] = node.c as [Attr, string];
+        const attr = recoverThemeAttributes(rawAttr, "code", source, computed);
+        if (parseDesignAttributes(attr).variant) {
+          throw new DesignError(
+            "VARIANT_TARGET_MISMATCH",
+            "bento-variant belongs to a level-2 slide heading.",
+          );
+        }
+        const codeDefaults = {
+          ...inheritedCardCodeStyle,
+          ...roleStyle(reusableTheme, "code"),
+          ...inheritedCodeStyle,
+          ...selectedStyle(attr, "code"),
+        };
+        const explicitCode = parseDesignAttributes(attr).properties;
+        const codeSize = Number(
+            explicitCode.fontSize ?? codeDefaults.fontSize ?? 24,
+          ),
+          codeLineHeight = Number(
+            explicitCode.lineHeight ?? codeDefaults.lineHeight ?? 1.25,
+          );
         let sourceId = attr[0] || sourceMarker;
         if (!sourceId && parentId) {
           if (computed) {
@@ -1312,15 +1580,24 @@ export async function projectAst(
           );
         }
         const height = contentFrame
-          ? Math.max(90, (content.split("\n").length + 1) * 30)
-          : Math.min(470, Math.max(90, (content.split("\n").length + 1) * 30));
+          ? Math.max(
+            90,
+            (content.split("\n").length + 1) * codeSize * codeLineHeight,
+          )
+          : Math.min(
+            470,
+            Math.max(
+              90,
+              (content.split("\n").length + 1) * codeSize * codeLineHeight,
+            ),
+          );
         const element: Element = {
           id: sourceId ?? `qb-code-${++counter}`,
           type: "code",
           content,
-          x: contentFrame?.x ?? 80,
+          x: (contentFrame ?? slideContentFrame)?.x ?? 80,
           y,
-          w: contentFrame?.w ?? 1120,
+          w: (contentFrame ?? slideContentFrame)?.w ?? 1120,
           h: height,
           rotation: 0,
           opacity: 1,
@@ -1330,6 +1607,7 @@ export async function projectAst(
           align: "left",
           valign: "top",
           lineHeight: 1.25,
+          ...codeDefaults,
           ...(languages[0] ? { grammarName: languages[0] } : {}),
         };
         add(element, {
@@ -1430,8 +1708,10 @@ export function validateProjectionOrigins(
   source: SourceDocument,
   projection: Projection,
   sourceInline?: ReadonlyMap<string, SourceInlineProof>,
+  defaults: DesignDefaults = {},
 ): Projection {
   assertSupportedExecutionSource(source);
+  assertReusableDesignSource(source, defaults);
   if (source.diagnostics.length) {
     throw new Error(
       "UNMAPPED_PROVENANCE: resolve original source identity/structure diagnostics first",
@@ -1511,6 +1791,37 @@ export function validateProjectionOrigins(
         continue;
       }
       if (original.designOnly) {
+        if (elementId.startsWith(`${slideId}/qb-theme/`)) {
+          const mappedSlide = originalSlides.get(slideId);
+          const headingId = source.slides.find((candidate) =>
+            candidate.id === mappedSlide
+          )?.headingId;
+          const heading = source.blocks.find((block) =>
+            block.id === headingId && block.kind === "heading" &&
+            block.origin === "authored"
+          );
+          const attributes = heading && originalThemeAttributes(heading);
+          const selected =
+            attributes && parseDesignAttributes(attributes).variant ||
+            defaults.theme?.defaultVariant;
+          const definition = variantFor(defaults.theme, selected);
+          const expected = definition &&
+            variantDecorations(slideId, selected!, definition).find((
+              candidate,
+            ) => candidate.id === elementId);
+          if (
+            !heading || original.origin !== "authored" ||
+            ![slideId, heading.id].includes(original.sourceId ?? "") ||
+            !expected || JSON.stringify(expected) !== JSON.stringify(element)
+          ) {
+            throw new DesignError(
+              "UNMAPPED_THEME_DESIGN",
+              "Theme decoration lacks its exact source heading, selected variant or bounded shape proof.",
+            );
+          }
+          origins[slideId][elementId] = { ...original, sourceId: heading.id };
+          continue;
+        }
         const container = candidates[0];
         if (
           candidates.length !== 1 || container.kind !== "div" ||

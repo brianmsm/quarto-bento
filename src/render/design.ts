@@ -16,6 +16,8 @@ export interface DesignDeclaration {
     | "edge"
     | "milestone";
   chartKind?: "bar" | "line";
+  style?: string;
+  variant?: string;
   layout?: string;
   properties: DesignProperties;
   /** Actual native Bento field -> the exact original QMD attribute key. */
@@ -27,11 +29,37 @@ export interface Frame {
   w: number;
   h: number;
 }
+export interface ReusableStyle {
+  [key: string]: string | number;
+}
+export interface NamedDesignStyle {
+  target: "text" | "code" | "card";
+  properties: ReusableStyle;
+}
+export interface SlideVariant {
+  background?: string;
+  title?: ReusableStyle;
+  titleFrame?: Frame;
+  contentFrame?: Frame;
+  decorations?: ({ id: string } & Frame & {
+    fill: string;
+    stroke?: string;
+    strokeWidth?: number;
+    radius?: number;
+    opacity?: number;
+  })[];
+}
 export interface DesignTheme {
   background: string;
   color: string;
   accent: string;
   fontFamily: string;
+  styles?: Partial<
+    Record<"title" | "heading" | "body" | "code" | "card", ReusableStyle>
+  >;
+  namedStyles?: Record<string, NamedDesignStyle>;
+  variants?: Record<string, SlideVariant>;
+  defaultVariant?: string;
 }
 export interface LayoutDefinition {
   columns: number;
@@ -189,6 +217,17 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
   for (const [key, value] of attr[2]) {
     if (seen.has(key)) throw new DesignError("DUPLICATE_DESIGN_ATTRIBUTE", key);
     seen.add(key);
+    if (key === "bento-style" || key === "bento-variant") {
+      if (!attr[0] || !/^[a-z][a-z0-9-]{0,63}$/.test(value)) {
+        throw new DesignError(
+          "INVALID_DESIGN_REFERENCE",
+          `${key} needs an explicit source ID and safe design name.`,
+        );
+      }
+      if (key === "bento-style") result.style = value;
+      else result.variant = value;
+      continue;
+    }
     if (key === "bento-role") {
       if (result.component || !["label", "value", "detail"].includes(value)) {
         throw new DesignError(
@@ -305,6 +344,8 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
   }
   if (value.layout) attrs.push(["layout", value.layout]);
   if (value.chartKind) attrs.push(["bento-chart-kind", value.chartKind]);
+  if (value.style) attrs.push(["bento-style", value.style]);
+  if (value.variant) attrs.push(["bento-variant", value.variant]);
   return parseDesignAttributes([
     value.sourceId,
     value.component ? [`bento-${value.component}`] : [],
@@ -386,13 +427,29 @@ export function validateDesignDefaults(
     }
   }
   if (clean.theme) {
-    keys(clean.theme, ["background", "color", "accent", "fontFamily"], [
+    keys(clean.theme, [
+      "background",
+      "color",
+      "accent",
+      "fontFamily",
+      "styles",
+      "namedStyles",
+      "variants",
+      "defaultVariant",
+    ], [
       "background",
       "color",
       "accent",
       "fontFamily",
     ]);
-    if (Object.values(clean.theme).some((value) => typeof value !== "string")) {
+    if (
+      [
+        clean.theme.background,
+        clean.theme.color,
+        clean.theme.accent,
+        clean.theme.fontFamily,
+      ].some((value) => typeof value !== "string")
+    ) {
       throw new DesignError(
         "INVALID_DESIGN_DEFAULTS",
         "theme fields must be strings",
@@ -402,6 +459,181 @@ export function validateDesignDefaults(
     validateDesignValue("color", clean.theme.color);
     validateDesignValue("color", clean.theme.accent);
     validateDesignValue("fontFamily", clean.theme.fontFamily);
+    const safeName = /^[a-z][a-z0-9-]{0,63}$/;
+    const styleKeys = (target: "text" | "code" | "card"): string[] =>
+      target === "card"
+        ? [...textFields, ...shapeFields, "opacity"]
+        : [...textFields].filter((field) =>
+          target !== "code" || !["fontWeight", "letterSpacing"].includes(field)
+        );
+    const style = (value: unknown, target: "text" | "code" | "card") => {
+      keys(value, styleKeys(target));
+      for (const [field, property] of Object.entries(value as ReusableStyle)) {
+        if (!["string", "number"].includes(typeof property)) {
+          throw new DesignError(
+            "INVALID_DESIGN_DEFAULTS",
+            "Style values must be literal strings or numbers.",
+          );
+        }
+        const checked = validateDesignValue(field, property);
+        if (typeof checked !== typeof property) {
+          throw new DesignError(
+            "INVALID_DESIGN_DEFAULTS",
+            "Numeric style values must be JSON numbers.",
+          );
+        }
+      }
+    };
+    const registry = (value: unknown, maximum: number) => {
+      keys(value, Object.keys(value && typeof value === "object" ? value : {}));
+      const names = Object.keys(value as object);
+      if (
+        names.length > maximum || names.some((name) => !safeName.test(name))
+      ) {
+        throw new DesignError(
+          "INVALID_DESIGN_DEFAULTS",
+          "Unsafe name or oversized style registry.",
+        );
+      }
+    };
+    if (clean.theme.styles !== undefined) {
+      keys(clean.theme.styles, ["title", "heading", "body", "code", "card"]);
+      for (const [role, value] of Object.entries(clean.theme.styles)) {
+        style(
+          value,
+          role === "card" ? "card" : role === "code" ? "code" : "text",
+        );
+      }
+    }
+    if (clean.theme.namedStyles !== undefined) {
+      registry(clean.theme.namedStyles, 64);
+      for (const value of Object.values(clean.theme.namedStyles)) {
+        keys(value, ["target", "properties"], ["target", "properties"]);
+        if (!["text", "code", "card"].includes(value.target)) {
+          throw new DesignError(
+            "INVALID_DESIGN_DEFAULTS",
+            "Named style target must be text, code or card.",
+          );
+        }
+        style(value.properties, value.target);
+      }
+    }
+    if (clean.theme.variants !== undefined) {
+      registry(clean.theme.variants, 32);
+      for (const value of Object.values(clean.theme.variants)) {
+        keys(value, [
+          "background",
+          "title",
+          "titleFrame",
+          "contentFrame",
+          "decorations",
+        ]);
+        if (value.background !== undefined) {
+          if (typeof value.background !== "string") {
+            throw new DesignError(
+              "INVALID_DESIGN_DEFAULTS",
+              "Variant background must be a color.",
+            );
+          }
+          validateDesignValue("fill", value.background);
+        }
+        if (value.title !== undefined) style(value.title, "text");
+        for (const frame of [value.titleFrame, value.contentFrame]) {
+          if (frame === undefined) continue;
+          keys(frame, ["x", "y", "w", "h"], ["x", "y", "w", "h"]);
+          for (const field of ["x", "y", "w", "h"] as const) {
+            if (typeof frame[field] !== "number") {
+              throw new DesignError(
+                "INVALID_DESIGN_DEFAULTS",
+                "Variant frames require JSON numbers.",
+              );
+            }
+            validateDesignValue(field, frame[field]);
+          }
+          if (
+            frame.x < 0 || frame.y < 0 || frame.x + frame.w > 1280 ||
+            frame.y + frame.h > 720
+          ) {
+            throw new DesignError(
+              "INVALID_DESIGN_DEFAULTS",
+              "Variant frames must fit the 1280 × 720 canvas.",
+            );
+          }
+        }
+        if (value.decorations !== undefined) {
+          if (
+            !Array.isArray(value.decorations) || value.decorations.length > 32
+          ) {
+            throw new DesignError(
+              "INVALID_DESIGN_DEFAULTS",
+              "At most 32 decorative rectangles per variant.",
+            );
+          }
+          const ids = new Set<string>();
+          for (const decoration of value.decorations) {
+            keys(decoration, [
+              "id",
+              "x",
+              "y",
+              "w",
+              "h",
+              "fill",
+              "stroke",
+              "strokeWidth",
+              "radius",
+              "opacity",
+            ], ["id", "x", "y", "w", "h", "fill"]);
+            if (
+              typeof decoration.id !== "string" ||
+              !safeName.test(decoration.id) || ids.has(decoration.id)
+            ) {
+              throw new DesignError(
+                "INVALID_DESIGN_DEFAULTS",
+                "Decorations need unique safe IDs.",
+              );
+            }
+            ids.add(decoration.id);
+            for (const [field, property] of Object.entries(decoration)) {
+              if (field === "id") continue;
+              if (!["string", "number"].includes(typeof property)) {
+                throw new DesignError(
+                  "INVALID_DESIGN_DEFAULTS",
+                  "Decoration properties must be bounded values.",
+                );
+              }
+              const checked = validateDesignValue(field, property);
+              if (typeof checked !== typeof property) {
+                throw new DesignError(
+                  "INVALID_DESIGN_DEFAULTS",
+                  "Decoration numeric fields require JSON numbers.",
+                );
+              }
+            }
+            if (
+              decoration.x < 0 || decoration.y < 0 ||
+              decoration.x + decoration.w > 1280 ||
+              decoration.y + decoration.h > 720
+            ) {
+              throw new DesignError(
+                "INVALID_DESIGN_DEFAULTS",
+                "Decorations must fit the canvas.",
+              );
+            }
+          }
+        }
+      }
+    }
+    if (
+      clean.theme.defaultVariant !== undefined &&
+      (typeof clean.theme.defaultVariant !== "string" ||
+        !safeName.test(clean.theme.defaultVariant) ||
+        !Object.hasOwn(clean.theme.variants ?? {}, clean.theme.defaultVariant))
+    ) {
+      throw new DesignError(
+        "UNKNOWN_VARIANT",
+        "defaultVariant must name a declared variant.",
+      );
+    }
   }
   if (
     clean.layouts &&
@@ -763,8 +995,7 @@ export function applyComponentDesign(
     }
     for (const e of result.elements) {
       if (e.type === "text" || e.type === "code") {
-        e.color = theme.color;
-        if (e.type === "text") e.fontFamily = theme.fontFamily;
+        // Child defaults were resolved before measurement; preserve role/named styles.
         for (const [field, value] of Object.entries(declaration.properties)) {
           if (textFields.has(field)) {
             if (
@@ -815,6 +1046,10 @@ export function applyComponentDesign(
 /** Theme values are pure JSON defaults; native edits remain ordinary sidecar fields. */
 export function designTheme(
   defaults: DesignDefaults = {},
-): DesignTheme & Record<string, Json> {
-  return { ...(validateDesignDefaults(defaults).theme ?? defaultTheme) };
+):
+  & Pick<DesignTheme, "background" | "color" | "accent" | "fontFamily">
+  & Record<string, Json> {
+  const { background, color, accent, fontFamily } =
+    validateDesignDefaults(defaults).theme ?? defaultTheme;
+  return { background, color, accent, fontFamily };
 }
