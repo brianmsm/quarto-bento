@@ -352,3 +352,25 @@ Deno.test("card code styles are measured at the selected size and source fields 
     projected.design?.["code-slide"]?.shown.ownedPaths.includes("fontSize"),
   );
 });
+Deno.test("decorated default themes diagnose implicit introductions without broadening ordinary source mapping", () => {
+  const qmd = "Opening text.\n\n## Next {#next}\n\nLater text.\n";
+  const source = scanSource(qmd);
+  refuses(
+    () => assertReusableDesignSource(source, defaults),
+    "THEME_INTRO_HEADING_REQUIRED",
+  );
+  assertReusableDesignSource(source);
+  const plainDefault = structuredClone(reusableTheme);
+  plainDefault.variants!.content.decorations = [];
+  assertReusableDesignSource(source, { theme: plainDefault });
+  assertReusableDesignSource(
+    scanSource("## Introduction {#introduction}\n\nOpening text.\n"),
+    defaults,
+  );
+  assertReusableDesignSource(
+    scanSource(
+      "---\ntitle: Session\n---\n\n## Introduction {#introduction}\n\nOpening text.\n",
+    ),
+    defaults,
+  );
+});

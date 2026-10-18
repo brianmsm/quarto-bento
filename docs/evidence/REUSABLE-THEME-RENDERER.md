@@ -60,6 +60,13 @@ exact deterministic identity and the complete bounded fresh rectangle. Native
 BentoDoc `theme` receives only its four base properties; the reusable registry
 structures never leak into that native theme.
 
+A default variant with decorations requires the original content to begin under
+a slide heading. Content before the first heading refuses before Quarto executes
+with `THEME_INTRO_HEADING_REQUIRED`, instructing the author to start with, for
+example, `## Introduction {#introduction}`. This does not broaden the existing
+bounded source mapping for an implicit `qb-introduction` slide. Ordinary
+undecorated theme preflight retains its prior behavior.
+
 ## Verification
 
 `tests/reusable_design_test.ts` checks valid/invalid schema data, unknown names,
@@ -75,3 +82,7 @@ role, caption typography plus explicit local color, styled displayed R code,
 computed output from the R producer, zero overflow diagnostics and byte-exact
 unchanged QMD. Local fonts are not installed or downloaded; fallback stacks
 remain explicit.
+
+The themed-introduction regression also invokes `renderProject` on an actual QMD
+containing an R producer with a filesystem marker. It verifies the guard runs
+before that producer, with unchanged QMD and no output/state publication.

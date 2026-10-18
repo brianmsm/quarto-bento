@@ -73,6 +73,22 @@ export function assertReusableDesignSource(
       }
     }
   }
+  const defaultVariant = variantFor(
+    defaults.theme,
+    defaults.theme?.defaultVariant,
+  );
+  if (
+    defaultVariant?.decorations?.length &&
+    source.blocks.some((block) =>
+      block.slideId === undefined &&
+      (block.kind !== "heading" || (block.level ?? 3) > 2)
+    )
+  ) {
+    throw new DesignError(
+      "THEME_INTRO_HEADING_REQUIRED",
+      "This theme adds slide decorations that require an original slide heading. Start the presentation content with an identified level-2 heading, for example ## Introduction {#introduction}, before paragraphs, components or executable chunks.",
+    );
+  }
 }
 /** Only recover selectors from the actual original block, never generated output. */
 export function recoverThemeAttributes(

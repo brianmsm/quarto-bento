@@ -91,3 +91,45 @@ Deno.test("real Quarto projects reusable SPP title bar, section, cards, captions
     await Deno.remove(directory, { recursive: true });
   }
 });
+Deno.test("real themed introduction refuses before executing a producer and leaves source/output untouched", async () => {
+  const { renderProject } = await import("../src/core/project.ts");
+  const directory = await Deno.makeTempDir({ prefix: "qbento-theme-intro-" });
+  try {
+    await Deno.mkdir(`${directory}/.qbento`);
+    await Deno.writeTextFile(
+      `${directory}/.qbento/design.json`,
+      JSON.stringify({
+        schemaVersion: 1,
+        themes: { spp: reusableTheme },
+        activeTheme: "spp",
+      }),
+    );
+    const path = `${directory}/intro.qmd`;
+    const qmd =
+      'Opening content.\n\n```{r}\n#| label: intro-producer\nfile.create("producer-ran")\n1\n```\n\n## Next {#next}\n\nLater text.\n';
+    await Deno.writeTextFile(path, qmd);
+    let failure: unknown;
+    try {
+      await renderProject(path);
+    } catch (error) {
+      failure = error;
+    }
+    assert(
+      String(failure).includes("THEME_INTRO_HEADING_REQUIRED"),
+      String(failure),
+    );
+    assert(await Deno.readTextFile(path) === qmd);
+    for (
+      const name of ["producer-ran", "intro.bento.html", ".qbento/state.json"]
+    ) {
+      try {
+        await Deno.stat(`${directory}/${name}`);
+        throw new Error(`unexpected ${name}`);
+      } catch (error) {
+        assert(error instanceof Deno.errors.NotFound, String(error));
+      }
+    }
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
