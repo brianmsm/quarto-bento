@@ -7,7 +7,7 @@ import {
   validateDesignRegistry,
 } from "../render/registry.ts";
 import { sha256, StateError } from "../state/mod.ts";
-import { withProject } from "./project.ts";
+import { projectPaths, readProject, withProject } from "./project.ts";
 import { syncDirectory, writeDurable } from "./io.ts";
 
 export interface RegistryEditRequest {
@@ -17,17 +17,16 @@ export interface RegistryEditRequest {
   registry: DesignRegistry;
 }
 export async function readProjectRegistry(source: string) {
-  return await withProject(source, async (paths, store) => {
-    const state = await store.load();
-    if (!state) {
-      throw new StateError("NO_BASELINE", "Render the project first.");
-    }
-    return {
-      ...await readDesignRegistry(paths.directory),
-      docId: state.docId,
-      revision: state.revision,
-    };
-  });
+  const state = await readProject(source);
+  const registry = await readDesignRegistry(projectPaths(source).directory);
+  const current = await readProject(source);
+  if (current.docId !== state.docId || current.revision !== state.revision) {
+    throw new StateError(
+      "STALE_REVISION",
+      "The project changed while reading its design. Read it again before continuing.",
+    );
+  }
+  return { ...registry, docId: state.docId, revision: state.revision };
 }
 function requestShape(request: RegistryEditRequest) {
   if (
