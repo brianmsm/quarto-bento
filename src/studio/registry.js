@@ -2,6 +2,7 @@
 export function attachRegistryEditor({ api, getState, showError }) {
   const $ = (id) => document.getElementById(id);
   let snapshot, saving = false, loading = false, dirty = false, serial = 0;
+  let operationLocked = false;
   const note = (text) => {
     $("registry-note").textContent = text;
   };
@@ -22,6 +23,23 @@ export function attachRegistryEditor({ api, getState, showError }) {
     Object.assign(input, options);
     input.oninput = changed;
     node.append(input);
+    return { node, input };
+  }
+  function advancedField(label, value, help) {
+    const node = document.createElement("label"),
+      input = document.createElement("textarea"),
+      hint = document.createElement("small");
+    input.id = "registry-field-" + (++serial);
+    node.htmlFor = input.id;
+    node.append(document.createTextNode(label));
+    input.value = value === undefined ? "" : JSON.stringify(value, null, 2);
+    input.rows = 4;
+    input.spellcheck = false;
+    input.setAttribute("aria-describedby", input.id + "-help");
+    input.oninput = changed;
+    hint.id = input.id + "-help";
+    hint.textContent = help;
+    node.append(input, hint);
     return { node, input };
   }
   function activeOptions(rename) {
@@ -83,6 +101,48 @@ export function attachRegistryEditor({ api, getState, showError }) {
           maxLength: key === "fontFamily" ? 200 : 100,
         });
       }
+      const advanced = document.createElement("details"),
+        summary = document.createElement("summary"),
+        fields = document.createElement("div");
+      advanced.className = "registry-advanced";
+      summary.textContent = "Propiedades avanzadas (JSON)";
+      fields.className = "registry-advanced-fields";
+      fields.append(
+        ...[
+          [
+            "styles",
+            "Estilos (JSON)",
+            "Estilos nativos estructurados del tema.",
+          ],
+          [
+            "namedStyles",
+            "Estilos con nombre (JSON)",
+            "Estilos reutilizables con nombre incluidos en este tema.",
+          ],
+          ["variants", "Variantes (JSON)", "Variantes visuales del tema."],
+        ].map(([key, label, help]) => {
+          const item = advancedField(label, definition[key], help);
+          row.fields[key] = item.input;
+          return item.node;
+        }),
+      );
+      const variant = field(
+        "Variante predeterminada",
+        definition.defaultVariant ?? "",
+        {
+          maxLength: 64,
+          required: false,
+        },
+      );
+      row.fields.defaultVariant = variant.input;
+      variant.node.append(
+        document.createTextNode(
+          "Nombre de la variante que se activa por defecto.",
+        ),
+      );
+      fields.append(variant.node);
+      advanced.append(summary, fields);
+      row.append(advanced);
       let previous = name;
       row.fields.name.addEventListener("input", () => {
         const active = $("registry-active").value === previous
@@ -118,10 +178,13 @@ export function attachRegistryEditor({ api, getState, showError }) {
     dirty = false;
   }
   function controlsDisabled(value) {
-    $("designs").disabled = value;
+    const disabled = value || operationLocked;
+    $("designs").disabled = disabled;
     for (
-      const node of $("registry-form").querySelectorAll("input, select, button")
-    ) node.disabled = value;
+      const node of $("registry-form").querySelectorAll(
+        "input, select, textarea, button",
+      )
+    ) node.disabled = disabled;
   }
   async function load() {
     if (loading || saving) return;
@@ -154,7 +217,7 @@ export function attachRegistryEditor({ api, getState, showError }) {
         if (Object.hasOwn(result, name.value)) {
           throw new Error(`El nombre ${name.value} está repetido.`);
         }
-        result[name.value] = Object.fromEntries(
+        const definition = Object.fromEntries(
           Object.entries(fields).map((
             [key, input],
           ) => [
@@ -162,6 +225,26 @@ export function attachRegistryEditor({ api, getState, showError }) {
             input.type === "number" ? Number(input.value) : input.value,
           ]),
         );
+        if (kind === "themes") {
+          for (const key of ["styles", "namedStyles", "variants"]) {
+            const raw = fields[key].value.trim();
+            if (!raw) {
+              delete definition[key];
+              continue;
+            }
+            try {
+              definition[key] = JSON.parse(raw);
+            } catch {
+              throw new Error(
+                `${key} de ${name.value} debe contener JSON válido.`,
+              );
+            }
+          }
+          if (!fields.defaultVariant.value.trim()) {
+            delete definition.defaultVariant;
+          }
+        }
+        result[name.value] = definition;
       }
       if (Object.keys(result).length) registry[kind] = result;
     }
@@ -237,12 +320,7 @@ export function attachRegistryEditor({ api, getState, showError }) {
     try {
       const registry = serialize();
       saving = true;
-      const controls = [
-        ...$("registry-form").querySelectorAll("input, select, button"),
-      ];
-      controls.forEach((node) => {
-        node.disabled = true;
-      });
+      controlsDisabled(true);
       try {
         const next = await api("design-registry", {
           registry,
@@ -256,10 +334,8 @@ export function attachRegistryEditor({ api, getState, showError }) {
           "Diseños guardados. Recalcular aplicará los valores seleccionados conservando tu diseño guardado y los cambios pendientes.",
         );
       } finally {
-        controls.forEach((node) => {
-          node.disabled = false;
-        });
         saving = false;
+        controlsDisabled(false);
       }
     } catch (error) {
       note(
@@ -280,4 +356,20 @@ export function attachRegistryEditor({ api, getState, showError }) {
       event.returnValue = "";
     }
   });
+  return {
+    isDirty: () => dirty,
+    setOperationLocked: (value) => {
+      operationLocked = Boolean(value);
+      controlsDisabled(loading || saving);
+    },
+    reload: async () => {
+      if (dirty) {
+        throw new Error(
+          "Guarda o descarta el borrador de Diseños y temas antes de recargar el registro.",
+        );
+      }
+      await load();
+      return snapshot;
+    },
+  };
 }
