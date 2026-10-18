@@ -48,6 +48,8 @@ async function client() {
     "attachRegistryEditor",
     "attachGraphRelations",
     "attachComponentEditor",
+    "attachReusableDesigns",
+    "attachDesignAdaptation",
     `${code}\nreturn { connect, refreshDiagnostics };`,
   );
   const callbacks = run(
@@ -69,6 +71,8 @@ async function client() {
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
     () => {},
     () => {},
+    () => {},
+    () => ({}),
     () => {},
   );
   await callbacks.refreshDiagnostics();

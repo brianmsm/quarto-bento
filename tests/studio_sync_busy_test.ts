@@ -99,6 +99,8 @@ async function client() {
     "attachRegistryEditor",
     "attachGraphRelations",
     "attachComponentEditor",
+    "attachReusableDesigns",
+    "attachDesignAdaptation",
     `${
       shipped.replace(/^import [^\n]+\n/gm, "")
     }\nreturn { prepareSyncPreview };`,
@@ -166,6 +168,8 @@ async function client() {
     },
     () => {},
     () => {},
+    () => {},
+    () => ({}),
     () => {},
   );
   return {

@@ -112,6 +112,8 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
     "attachRegistryEditor",
     "attachGraphRelations",
     "attachComponentEditor",
+    "attachReusableDesigns",
+    "attachDesignAdaptation",
     `${source.replace(/^import [^\n]+\n/gm, "")}\nreturn { showChanges };`,
   );
   const callbacks = run(
@@ -146,6 +148,8 @@ Deno.test("shipped Studio client requires a specific checkbox for each source de
     () => ({ save: () => Promise.resolve(), dispose() {}, dirty: false }),
     () => {},
     () => {},
+    () => {},
+    () => ({}),
     () => {},
   );
   await node("review").onclick!();

@@ -56,6 +56,8 @@ async function client(plan: unknown, revision: number) {
     "attachRegistryEditor",
     "attachGraphRelations",
     "attachComponentEditor",
+    "attachReusableDesigns",
+    "attachDesignAdaptation",
     `${code}\nreturn { prepareSyncPreview };`,
   );
   const callbacks = run(
@@ -73,6 +75,8 @@ async function client(plan: unknown, revision: number) {
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
     () => {},
     () => {},
+    () => {},
+    () => ({}),
     () => {},
   );
   await callbacks.prepareSyncPreview();

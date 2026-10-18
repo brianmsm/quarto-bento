@@ -101,6 +101,8 @@ async function client() {
     "attachRegistryEditor",
     "attachGraphRelations",
     "attachComponentEditor",
+    "attachReusableDesigns",
+    "attachDesignAdaptation",
     source.replace(/^import [^\n]+\n/gm, ""),
   );
   run(
@@ -135,6 +137,8 @@ async function client() {
     () => ({ save: async () => {}, dispose() {}, dirty: false }),
     () => {},
     () => {},
+    () => {},
+    () => ({}),
     () => {},
   );
   return {

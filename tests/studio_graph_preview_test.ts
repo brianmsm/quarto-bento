@@ -74,6 +74,8 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
       "attachRegistryEditor",
       "attachGraphRelations",
       "attachComponentEditor",
+      "attachReusableDesigns",
+      "attachDesignAdaptation",
       source.replace(/^import [^\n]+\n/gm, "") +
         "\nreturn { prepareSyncPreview, showPatches };",
     );
@@ -99,6 +101,8 @@ Deno.test("Studio reviews an actual endpoint-only plan with its exact source pat
       () => ({ save: async () => {}, dispose() {}, dirty: false }),
       () => {},
       () => {},
+      () => {},
+      () => ({}),
       () => {},
     );
     await client.prepareSyncPreview();
