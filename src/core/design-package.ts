@@ -1,11 +1,13 @@
 import {
   type DesignRegistry,
   MAX_DESIGN_REGISTRY_BYTES,
+  registryDefaults,
   validateDesignRegistry,
 } from "../render/registry.ts";
 import { assertJson } from "../state/json.ts";
 import { canonical, equal, sha256, StateError } from "../state/mod.ts";
-import { hashSource } from "../source/mod.ts";
+import { hashSource, scanSource } from "../source/mod.ts";
+import { assertReusableDesignSource } from "../render/theme-styles.ts";
 import { readProject } from "./project.ts";
 import { readProjectRegistry, saveProjectRegistry } from "./design-registry.ts";
 
@@ -215,12 +217,17 @@ export async function previewDesignImport(
 ): Promise<DesignImportPlan> {
   const design = validateDesignPackage(value);
   const snapshot = await readProjectRegistry(source);
+  const sourceText = await Deno.readTextFile(source);
+  assertReusableDesignSource(
+    scanSource(sourceText),
+    registryDefaults(design.registry),
+  );
   return {
     version: 1,
     docId: snapshot.docId,
     expectedRevision: snapshot.revision,
     expectedHash: snapshot.hash,
-    sourceHash: hashSource(await Deno.readTextFile(source)),
+    sourceHash: hashSource(sourceText),
     packageHash: await sha256(canonical(design)),
     package: design,
     changes: {

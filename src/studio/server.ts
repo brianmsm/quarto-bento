@@ -1,4 +1,11 @@
 import { loadBentoShell } from "../render/shell.ts";
+import {
+  applyDesignImport,
+  exportDesignPackage,
+  previewDesignImport,
+} from "../core/design-package.ts";
+import { adaptRevealDesign } from "../core/design-adaptation.ts";
+import { previewDesignPackage } from "../core/design-preview.ts";
 import { applyLayout, previewLayout, readLayouts } from "../core/layouts.ts";
 import {
   applyComponentAction,
@@ -96,6 +103,12 @@ export async function startStudio(source: string, port = 0) {
   const layoutsClient = await Deno.readTextFile(
     new URL("./layouts.js", import.meta.url),
   );
+  const designsClient = await Deno.readTextFile(
+    new URL("./designs.js", import.meta.url),
+  );
+  const adaptationClient = await Deno.readTextFile(
+    new URL("./adaptation.js", import.meta.url),
+  );
   const relationsClient = await Deno.readTextFile(
     new URL("./relations.js", import.meta.url),
   );
@@ -183,17 +196,32 @@ export async function startStudio(source: string, port = 0) {
         if (req.method === "GET" && url.pathname === "/registry.js") {
           return respond(registryClient, 200, "text/javascript");
         }
+        if (req.method === "GET" && url.pathname === "/designs.js") {
+          return respond(designsClient, 200, "text/javascript");
+        }
+        if (req.method === "GET" && url.pathname === "/adaptation.js") {
+          return respond(adaptationClient, 200, "text/javascript");
+        }
         if (req.method === "GET" && url.pathname === "/layouts.js") {
           return respond(layoutsClient, 200, "text/javascript");
         }
         if (req.method === "GET" && url.pathname === "/relations.js") {
           return respond(relationsClient, 200, "text/javascript");
         }
-        if (req.method === "GET" && url.pathname.startsWith("/presenter/")) {
+        if (
+          req.method === "GET" &&
+          (url.pathname.startsWith("/presenter/") ||
+            url.pathname.startsWith("/design-preview/"))
+        ) {
           const page = presenters.get(url.pathname);
-          return page
-            ? respond(page, 200, "text/html; charset=utf-8")
-            : respond('{"error":"Presenter snapshot expired"}', 404);
+          if (!page) {
+            return respond('{"error":"Presenter snapshot expired"}', 404);
+          }
+          const preview = respond(page, 200, "text/html; charset=utf-8");
+          if (url.pathname.startsWith("/design-preview/")) {
+            preview.headers.set("Permissions-Policy", "fullscreen=()");
+          }
+          return preview;
         }
         if (req.headers.get("x-qbento-token") !== token) {
           return respond(
@@ -248,6 +276,69 @@ export async function startStudio(source: string, port = 0) {
         }
         if (req.method === "GET" && url.pathname === "/api/design-registry") {
           return respond(JSON.stringify(await readProjectRegistry(source)));
+        }
+        if (
+          req.method === "POST" &&
+          [
+            "/api/design/export",
+            "/api/design/preview",
+            "/api/design/apply",
+            "/api/design/adapt",
+          ].includes(url.pathname)
+        ) {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(
+            req,
+            url.pathname === "/api/design/adapt"
+              ? MAX_STUDIO_BODY_BYTES
+              : 1_048_576,
+          );
+          if (text === null) {
+            return respond('{"error":"Design request too large"}', 413);
+          }
+          const payload = JSON.parse(text);
+          const key = url.pathname === "/api/design/export"
+            ? "name"
+            : url.pathname === "/api/design/preview"
+            ? "package"
+            : url.pathname === "/api/design/apply"
+            ? "plan"
+            : undefined;
+          if (
+            !payload || typeof payload !== "object" || Array.isArray(payload) ||
+            Object.keys(payload).sort().join(",") !== (key ?? "html,mapping")
+          ) {
+            throw new StateError(
+              "INVALID_DESIGN_REQUEST",
+              "Provide exactly the fields required by this design operation.",
+            );
+          }
+          let result: unknown = key === "name"
+            ? await exportDesignPackage(source, payload.name)
+            : key === "package"
+            ? await previewDesignImport(source, payload.package)
+            : key === "plan"
+            ? await applyDesignImport(source, payload.plan)
+            : await adaptRevealDesign(payload.html, payload.mapping);
+          if (key === "package") {
+            // A fixed neutral sample may not fit every valid design. Its failure
+            // must not invalidate the checked plan for the user's own content.
+            const plan = result;
+            try {
+              const sample = await previewDesignPackage(payload.package);
+              const preview = "/design-preview/" + crypto.randomUUID();
+              presenters.set(preview, sample);
+              while (presenters.size > 4) {
+                presenters.delete(presenters.keys().next().value!);
+              }
+              result = { plan, previewUrl: preview };
+            } catch (error) {
+              result = { plan, previewError: String(error) };
+            }
+          }
+          return respond(JSON.stringify(result));
         }
         if (req.method === "POST" && url.pathname === "/api/design-registry") {
           if (req.headers.get("content-type") !== "application/json") {

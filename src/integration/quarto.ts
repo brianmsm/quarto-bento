@@ -1,4 +1,5 @@
 import { readSourceInline } from "../render/source-inline.ts";
+import { assertReusableDesignSource } from "../render/theme-styles.ts";
 import {
   assertCompatibleProducerFilters,
   attachProducerCapture,
@@ -210,6 +211,7 @@ export async function beforeQuartoRender(): Promise<void> {
     ) => [id, hashSource(proof.image!.data!)]),
   );
   const registry = await loadDesignRegistry(dirname(source));
+  assertReusableDesignSource(original, registry.defaults);
   await inspectOutput(source);
   await withProject(source, async (paths, store) => {
     const state = await store.load();

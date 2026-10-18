@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "name": "spp-bifactor",
+  "canvas": ".reveal",
+  "title": "#covariación-general-y-específica > h2",
+  "body": "#covariación-general-y-específica .card-pink > p:not(.card-title)",
+  "accent": "#be2161",
+  "namedStyles": {
+    "pink-card": {
+      "selector": "#covariación-general-y-específica .card-pink",
+      "target": "card"
+    },
+    "teal-card": {
+      "selector": "#covariación-general-y-específica .card-teal",
+      "target": "card"
+    },
+    "caption": {
+      "selector": "#covariación-general-y-específica > .source",
+      "target": "text"
+    }
+  },
+  "variants": {
+    "content": {
+      "selector": "#covariación-general-y-específica",
+      "title": "#covariación-general-y-específica > h2",
+      "titleFrame": {
+        "x": 80,
+        "y": 42,
+        "w": 1120,
+        "h": 72
+      },
+      "contentFrame": {
+        "x": 80,
+        "y": 158,
+        "w": 1120,
+        "h": 482
+      },
+      "decorations": [
+        {
+          "id": "heading-bar",
+          "x": 64,
+          "y": 32,
+          "w": 1152,
+          "h": 84,
+          "fill": "#23373b",
+          "radius": 10
+        }
+      ]
+    },
+    "section": {
+      "selector": "#fundamentos-del-modelo-bifactor",
+      "title": "#fundamentos-del-modelo-bifactor > h2",
+      "titleFrame": {
+        "x": 80,
+        "y": 224,
+        "w": 1120,
+        "h": 140
+      },
+      "contentFrame": {
+        "x": 80,
+        "y": 420,
+        "w": 1120,
+        "h": 210
+      },
+      "decorations": [
+        {
+          "id": "section-bar",
+          "x": 64,
+          "y": 210,
+          "w": 1152,
+          "h": 170,
+          "fill": "#d51c67",
+          "radius": 10
+        }
+      ]
+    }
+  },
+  "defaultVariant": "content",
+  "fontFallback": "Arial, sans-serif"
+}

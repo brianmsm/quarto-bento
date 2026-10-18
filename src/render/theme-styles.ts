@@ -1,4 +1,5 @@
 import {
+  builtinLayouts,
   type DesignDefaults,
   DesignError,
   type DesignTheme,
@@ -36,7 +37,7 @@ export function assertReusableDesignSource(
     )?.[1];
     if (
       !["heading", "div", "code"].includes(block.kind) || !selectorBlock ||
-      !/bento-(?:style|variant)\s*=/.test(selectorBlock)
+      !/bento-(?:style|variant|layout-name)\s*=/.test(selectorBlock)
     ) continue;
     const attr = originalThemeAttributes(block);
     if (!attr || !block.stable) {
@@ -46,6 +47,13 @@ export function assertReusableDesignSource(
       );
     }
     const declaration = parseDesignAttributes(attr);
+    if (
+      declaration.layout &&
+      !Object.hasOwn(defaults.layouts ?? {}, declaration.layout) &&
+      !Object.hasOwn(builtinLayouts, declaration.layout)
+    ) {
+      throw new DesignError("UNKNOWN_LAYOUT", declaration.layout);
+    }
     if (declaration.variant) {
       if (block.kind !== "heading" || block.level !== 2 || block.parentId) {
         throw new DesignError(

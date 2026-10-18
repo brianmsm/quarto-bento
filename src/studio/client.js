@@ -2,6 +2,8 @@ import { attachLayoutEditor } from "/layouts.js";
 import { attachComponentEditor } from "/components.js";
 import { attachGraphRelations } from "/relations.js";
 import { attachRegistryEditor } from "/registry.js";
+import { attachReusableDesigns } from "/designs.js";
+import { attachDesignAdaptation } from "/adaptation.js";
 import { createBentoBridge } from "/bridge.js";
 const $ = (id) => document.getElementById(id);
 let state, bridge, syncPlan, reconcilePlan, busy = false, previewGeneration = 0;
@@ -25,6 +27,7 @@ async function api(path, body) {
     [
       "save",
       "design-registry",
+      "design/apply",
       "sync/apply",
       "reconcile/apply",
       "slides/action",
@@ -851,7 +854,33 @@ globalThis.addEventListener("message", (event) => {
   ) return;
   void layoutEditor.open();
 });
-attachRegistryEditor({ api, getState: () => state, showError });
+const registryEditor = attachRegistryEditor({
+  api,
+  getState: () => state,
+  showError,
+});
+const designsEditor = attachReusableDesigns({
+  api,
+  getState: () => state,
+  showError,
+  registryEditor,
+  openPreview: (url) => {
+    $("design-visual-frame").src = url;
+    $("design-visual-dialog").showModal();
+  },
+  saveBefore: async () => {
+    if (busy || !bridge) throw new Error("Espera a que el editor esté listo.");
+    await bridge.save();
+    if (bridge.dirty) {
+      throw new Error("Hay cambios nuevos sin guardar. Repite la operación.");
+    }
+  },
+});
+attachDesignAdaptation({ api, designsEditor });
+$("design-visual-close").onclick = () => $("design-visual-dialog").close();
+$("design-visual-dialog").onclose = () => {
+  $("design-visual-frame").src = "about:blank";
+};
 attachGraphRelations({
   api,
   getState: () => state,

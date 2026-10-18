@@ -16,6 +16,7 @@ import {
   assertDesignRegistryUnchanged,
   loadDesignRegistry,
 } from "../render/registry.ts";
+import { assertReusableDesignSource } from "../render/theme-styles.ts";
 import { LIST_CODEC_VERSION } from "../render/lists.ts";
 import { INLINE_CODEC_VERSION } from "../render/inline.ts";
 import { readSourceInline } from "../render/source-inline.ts";
@@ -336,6 +337,7 @@ export async function projectProjection(
     mapping = scanSource(text);
   assertSupportedExecutionSource(mapping);
   const registry = await loadDesignRegistry(paths.directory);
+  assertReusableDesignSource(mapping, registry.defaults);
   if (state) assertSourceThemeReferences(state.emitted, state.ownership);
   if (executed?.designHash !== undefined) {
     await assertDesignRegistryUnchanged(paths.directory, executed.designHash);
@@ -394,6 +396,7 @@ export async function projectProjection(
       paths.directory,
     ),
     imageProofs,
+    registry.defaults,
   );
   const generated = prepareIsolatedDocument(
     projected.document,
@@ -462,7 +465,10 @@ export async function projectProjection(
                 : {}),
               blockId: block.id,
               content: block.content,
-              kind: block.kind,
+              kind: origin.designOnly &&
+                  elementId.startsWith(slideId + "/qb-theme/")
+                ? "design-only"
+                : block.kind,
               stable: block.stable,
               ...(block.parentId
                 ? {

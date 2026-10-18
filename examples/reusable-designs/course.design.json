@@ -1,0 +1,163 @@
+{
+  "format": "qbento/design",
+  "version": 1,
+  "name": "SPP classroom adaptation",
+  "registry": {
+    "schemaVersion": 1,
+    "layouts": {
+      "pair": {
+        "columns": 2,
+        "gap": 24,
+        "padding": 0
+      },
+      "trio": {
+        "columns": 3,
+        "gap": 22,
+        "padding": 0
+      }
+    },
+    "themes": {
+      "spp-classroom": {
+        "background": "#f0f1eb",
+        "color": "#243a42",
+        "accent": "#be2161",
+        "fontFamily": "Fira Sans, Arial, sans-serif",
+        "styles": {
+          "title": {
+            "fontSize": 42,
+            "fontWeight": 600,
+            "color": "#f1f1f1"
+          },
+          "heading": {
+            "fontSize": 30,
+            "fontWeight": 700
+          },
+          "body": {
+            "fontSize": 28,
+            "lineHeight": 1.28
+          },
+          "code": {
+            "fontSize": 24,
+            "fontFamily": "monospace"
+          },
+          "card": {
+            "fill": "#ffffff",
+            "stroke": "#d8e1e3",
+            "strokeWidth": 2,
+            "radius": 16
+          }
+        },
+        "namedStyles": {
+          "pink-card": {
+            "target": "card",
+            "properties": {
+              "fill": "#fff7fa",
+              "stroke": "#ebbbd1",
+              "color": "#243a42",
+              "radius": 16,
+              "strokeWidth": 2
+            }
+          },
+          "teal-card": {
+            "target": "card",
+            "properties": {
+              "fill": "#f5fbfb",
+              "stroke": "#9dcdd0",
+              "color": "#243a42",
+              "radius": 16,
+              "strokeWidth": 2
+            }
+          },
+          "question": {
+            "target": "card",
+            "properties": {
+              "fill": "#fdf4f8",
+              "stroke": "#be2161",
+              "strokeWidth": 2,
+              "fontWeight": 600,
+              "radius": 12
+            }
+          },
+          "caption": {
+            "target": "text",
+            "properties": {
+              "fontSize": 22,
+              "color": "#37555b",
+              "lineHeight": 1.3
+            }
+          },
+          "section-subtitle": {
+            "target": "text",
+            "properties": {
+              "fontSize": 30,
+              "align": "center",
+              "color": "#243a42"
+            }
+          }
+        },
+        "variants": {
+          "content": {
+            "titleFrame": {
+              "x": 80,
+              "y": 42,
+              "w": 1120,
+              "h": 72
+            },
+            "contentFrame": {
+              "x": 80,
+              "y": 158,
+              "w": 1120,
+              "h": 482
+            },
+            "decorations": [
+              {
+                "id": "heading-bar",
+                "x": 64,
+                "y": 32,
+                "w": 1152,
+                "h": 84,
+                "fill": "#23373b",
+                "radius": 10
+              }
+            ]
+          },
+          "section": {
+            "background": "#f0f1eb",
+            "title": {
+              "fontSize": 52,
+              "fontWeight": 600,
+              "align": "center",
+              "valign": "middle",
+              "color": "#ffffff"
+            },
+            "titleFrame": {
+              "x": 80,
+              "y": 224,
+              "w": 1120,
+              "h": 140
+            },
+            "contentFrame": {
+              "x": 80,
+              "y": 420,
+              "w": 1120,
+              "h": 210
+            },
+            "decorations": [
+              {
+                "id": "section-bar",
+                "x": 64,
+                "y": 210,
+                "w": 1152,
+                "h": 170,
+                "fill": "#d51c67",
+                "radius": 10
+              }
+            ]
+          }
+        },
+        "defaultVariant": "content"
+      }
+    },
+    "activeTheme": "spp-classroom"
+  }
+}

@@ -133,6 +133,32 @@ Deno.test("Reveal adaptation samples cascade, vars, important, roles, cards and 
   }
 });
 
+Deno.test("Reveal sampling preserves sanitized html and body theme attributes and inline styles", async () => {
+  const reference =
+    `<!doctype html><html data-theme="dark" style="--ink:#123456"><head><style>
+  body.course{font:24px/1.5 Arial,sans-serif;color:var(--ink)}
+  html[data-theme="dark"] .reveal{background:#112233}
+  html[data-theme="dark"] #title{color:#aabbcc;font-size:40px}
+  </style></head><body class="course" style="letter-spacing:2px" onload="throw new Error('must not run')">
+  <div class="reveal"><h2 id="title">Title</h2><p id="body">Body</p></div></body></html>`;
+  const result = await adaptRevealDesign(reference, {
+    version: 1,
+    name: "root-attributes",
+    canvas: ".reveal",
+    title: "#title",
+    body: "body.course",
+    accent: "#aabbcc",
+  });
+  const theme = result.package.registry.themes!["root-attributes"];
+  assert(theme.background === "#112233");
+  assert(theme.styles!.body!.color === "#123456");
+  assert(theme.styles!.body!.fontSize === 24);
+  assert(theme.styles!.body!.letterSpacing === 2);
+  assert(theme.styles!.title!.color === "#aabbcc");
+  assert(theme.styles!.title!.fontSize === 40);
+  assert(result.report.excluded.resourceReferences >= 1);
+});
+
 Deno.test("Quarto embedded percent and base64 CSS retains hierarchy, typography and cascade", async () => {
   const css =
     `:root{--spp-ink:#253b44;--spp-pink:#d51c67}.reveal{font-size:32px;font-family:"Fira Sans",sans-serif;line-height:1.3;color:var(--spp-ink);background:#fafafa}.reveal .slides > section h2{font-size:1.5em;color:white!important;background:var(--spp-ink);font-weight:650}.reveal .slides > section p{font-size:1em}/* </style><script>throw new Error('must remain CSS text')</script> */`;
@@ -291,4 +317,40 @@ Deno.test("Reveal local file reads are regular UTF-8 and bounded", async () => {
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
+});
+
+Deno.test("an explicit fallback keeps unavailable reference fonts usable without installation", async () => {
+  const html =
+    '<style>.reveal{font:32px CourseFace;color:#243a42;background:white}</style><div class="reveal"><h2 id="title">Title</h2><p id="body">Body</p></div>';
+  const selected = {
+    version: 1,
+    name: "fallback",
+    canvas: ".reveal",
+    title: "#title",
+    body: "#body",
+    fontFallback: "Arial, sans-serif",
+  };
+  const result = await adaptRevealDesign(html, selected);
+  assert(
+    result.package.registry.themes!.fallback.fontFamily ===
+      "CourseFace, Arial, sans-serif",
+  );
+  assert(
+    result.report.warnings.some((warning) =>
+      warning.includes("Explicit fallback")
+    ),
+  );
+  assert(result.report.fonts.every((font) => font.embeddedInPackage === false));
+  await rejects(
+    () =>
+      adaptRevealDesign(html, {
+        ...selected,
+        fontFallback: "url(https://example.com/font)",
+      }),
+    "INVALID_DESIGN_VALUE",
+  );
+  await rejects(
+    () => adaptRevealDesign(null as unknown as string, selected),
+    "INVALID_REVEAL_REFERENCE",
+  );
 });

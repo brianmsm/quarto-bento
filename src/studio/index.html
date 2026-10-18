@@ -124,6 +124,36 @@
       padding: 6px;
       min-width: 0;
     }
+    .registry-row textarea,
+    #adaptation-mapping {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 100px;
+      font: 13px ui-monospace, monospace;
+      padding: 8px;
+    }
+    .registry-row label:has(textarea) {
+      grid-column: 1 / -1;
+    }
+    .registry-advanced {
+      grid-column: 1 / -1;
+    }
+    .registry-advanced-fields {
+      display: grid;
+      gap: 12px;
+      padding-top: 12px;
+    }
+    #design-plan {
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    #design-name {
+      max-width: 100%;
+      font: inherit;
+      padding: 6px;
+    }
     #component-fields {
       display: grid;
       gap: 14px;
@@ -262,9 +292,32 @@
       <div id="component-pending"></div>
     </dialog>
     <dialog id="registry-dialog" aria-labelledby="registry-title">
-      <h2 id="registry-title">Layouts y temas del proyecto</h2>
+      <h2 id="registry-title">Diseño de la presentación</h2>
       <p>Guardar diseños actualiza el registro del proyecto; no cambia QMD ni ejecuta cálculos. Recalcular aplica los valores seleccionados y conserva tu diseño guardado y los cambios pendientes.</p>
-      <p>Los layouts se usan desde QMD con <code>bento-layout-name</code>. Renombrar o eliminar un layout no actualiza sus referencias en QMD; revísalas antes de recalcular. <code>two-column</code> sigue disponible como layout integrado.</p>
+      <section aria-labelledby="design-reuse-title">
+        <h3
+          id="design-reuse-title">Reutilizar un diseño entre presentaciones</h3>
+        <p>Exporta el tema, sus estilos y plantillas. Cada presentación conserva su propio contenido, identidad y ajustes. Importar guarda una copia local del diseño; sus futuras actualizaciones requieren otra revisión.</p>
+        <p><label for="design-name">Nombre del diseño</label> <input id="design-name" maxlength="120" value="Mi diseño"> <button id="design-export" type="button">Exportar diseño</button></p>
+        <p><label for="design-file">Paquete de diseño (.json)</label> <input id="design-file" type="file" accept=".json,application/json"></p>
+        <button id="design-preview" type="button"
+          disabled>Revisar importación</button>
+        <div id="design-plan" aria-live="polite"></div>
+        <button id="design-apply" type="button"
+          disabled>Aplicar diseño revisado</button>
+        <p id="design-note"
+          role="status">Importar reemplaza el registro de diseños después de revisar el cambio. Recalcular aplica el resultado a las diapositivas.</p>
+        <details>
+          <summary>Adaptar estilos de una referencia Reveal.js</summary>
+          <p>Elige un HTML autocontenido y especifica muestras mediante selectores CSS únicos. Se leen sus estilos integrados con Chromium local. Los scripts de la referencia y las descargas externas permanecen desactivados. El resultado es un borrador para revisar.</p>
+          <p><label for="adaptation-file">Referencia HTML</label> <input id="adaptation-file" type="file" accept=".html,.htm,text/html"></p>
+          <p><label for="adaptation-mapping">Muestras y plantillas (JSON)</label></p>
+          <textarea id="adaptation-mapping" spellcheck="false"></textarea>
+          <button id="adaptation-sample"
+            type="button">Preparar borrador desde la referencia</button>
+          <pre id="adaptation-report" role="status"></pre>
+        </details>
+      </section>
       <form id="registry-form">
         <h3>Layouts con nombre</h3><div id="registry-layouts"></div><button id="registry-add-layout" type="button">Añadir layout</button>
         <h3>Temas con nombre</h3><div id="registry-themes"></div><button id="registry-add-theme" type="button">Añadir tema</button>
@@ -272,9 +325,20 @@
         <p id="registry-note" role="status" aria-live="polite"></p>
         <button id="registry-save" type="submit">Guardar diseños</button> <button id="registry-reload" type="button">Descartar borrador y recargar registro</button> <button id="registry-close" type="button">Cerrar</button>
       </form>
+      <details>
+        <summary>Referencias de diseño en QMD</summary>
+        <p>Los layouts se usan con <code>bento-layout-name</code>, los estilos con <code>bento-style</code> y las plantillas de diapositiva con <code>bento-variant</code>. Al renombrar o eliminar una definición, revisa sus referencias antes de recalcular.</p>
+      </details>
     </dialog>
     <dialog
       id="presenter-dialog"><button id="presenter-close">Cerrar presentación</button><iframe id="presenter-frame" title="Presenter con gráficos interactivos"></iframe></dialog>
+    <dialog id="design-visual-dialog" aria-labelledby="design-visual-title">
+      <h2 id="design-visual-title">Muestra nativa del diseño</h2>
+      <p>Contenido de ejemplo para revisar estilos y plantillas. Usa las flechas para recorrerlo. La presentación del proyecto sigue intacta.</p>
+      <button id="design-visual-close" type="button">Cerrar muestra</button>
+      <iframe id="design-visual-frame" title="Muestra del diseño en Bento"
+        allow="fullscreen 'none'" style="height:55vh"></iframe>
+    </dialog>
     <script>
     globalThis.qbentoToken = __QBENTO_TOKEN__;
     </script>

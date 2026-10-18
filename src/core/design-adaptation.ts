@@ -27,6 +27,7 @@ export interface RevealDesignMapping {
   title: string;
   body: string;
   accent?: string;
+  fontFallback?: string;
   code?: string;
   namedStyles?: Record<string, NamedSample>;
   variants?: Record<string, VariantSample>;
@@ -83,6 +84,7 @@ export function validateRevealDesignMapping(
     "title",
     "body",
     "accent",
+    "fontFallback",
     "code",
     "namedStyles",
     "variants",
@@ -99,6 +101,12 @@ export function validateRevealDesignMapping(
       invalid("accent must be a literal color.");
     }
     validateDesignValue("color", value.accent);
+  }
+  if (value.fontFallback !== undefined) {
+    if (typeof value.fontFallback !== "string") {
+      invalid("fontFallback must be a plain font stack.");
+    }
+    validateDesignValue("fontFamily", value.fontFallback);
   }
   if (value.namedStyles !== undefined) {
     object(value.namedStyles);
@@ -252,6 +260,13 @@ const sampler = String.raw`async (html, mapping) => {
     }
   }
   // Adopt sanitized nodes into the existing CSP document; never replace its head.
+  for (const [source, target] of [[parsed.documentElement, document.documentElement], [parsed.body, document.body]]) {
+    for (const attr of [...source.attributes]) {
+      if (/^(?:id|class|lang|dir|style|role|title|data-[\w-]+|aria-[\w-]+)$/.test(attr.name)) {
+        target.setAttribute(attr.name, attr.value);
+      }
+    }
+  }
   for (const el of parsed.head.querySelectorAll('style')) document.head.appendChild(document.importNode(el, true));
   document.body.replaceChildren(...[...parsed.body.childNodes].map(node => document.importNode(node, true)));
   const normalize = document.createElement('style');
@@ -283,6 +298,10 @@ const sampler = String.raw`async (html, mapping) => {
   const px = value => { if(!/^-?(?:\d+(?:\.\d*)?|\.\d+)px$/.test(value))throw new Error('UNSUPPORTED_REVEAL_LENGTH: '+value);return parseFloat(value); };
   const text = (el,target) => {
     const css=getComputedStyle(el), props={fontSize:px(css.fontSize),fontFamily:css.fontFamily.replace(/["']/g,''),color:color(css.color)};
+    if(mapping.fontFallback && !/(?:^|,)\s*(?:sans-serif|serif|monospace|system-ui|cursive|fantasy)\s*(?:,|$)/i.test(props.fontFamily)){
+      props.fontFamily += ', ' + mapping.fontFallback;
+      warnings.push('Explicit fallback font stack appended: '+mapping.fontFallback+'. Requested fonts are not installed or embedded by adaptation.');
+    }
     fonts.add(props.fontFamily);
     if(css.lineHeight !== 'normal')props.lineHeight=px(css.lineHeight)/props.fontSize;
     else warnings.push('Normal line-height omitted for '+el.tagName+'; Bento default requires visual review.');
@@ -325,6 +344,12 @@ export async function adaptRevealDesign(
   mapping: unknown,
 ): Promise<{ package: DesignPackage; report: DesignAdaptationReport }> {
   const checked = validateRevealDesignMapping(mapping);
+  if (typeof html !== "string") {
+    throw new DesignError(
+      "INVALID_REVEAL_REFERENCE",
+      "Reference HTML must be a string.",
+    );
+  }
   if (new TextEncoder().encode(html).length > MAX_REVEAL_REFERENCE_BYTES) {
     throw new DesignError(
       "REVEAL_REFERENCE_TOO_LARGE",

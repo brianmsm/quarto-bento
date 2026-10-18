@@ -1,5 +1,5 @@
 import { initializeDesignPackage } from "../src/core/design-initialize.ts";
-import { renderProjectFromAst } from "../src/core/project.ts";
+import { readProject, renderProjectFromAst } from "../src/core/project.ts";
 import { reusableTheme } from "./fixtures/reusable-design.ts";
 import { readDesignRegistry } from "../src/render/registry.ts";
 import { hashSource } from "../src/source/mod.ts";
@@ -53,8 +53,16 @@ Deno.test("new presentation initializes its design before the first render with 
     assert(result.sourceHash === hashSource(f.text));
     assert(equal(result.registry, design().registry));
     assert(/^[a-f0-9]{64}$/.test(result.hash));
-    assert(equal(await names(f.directory + "/.qbento"), ["design.json"]));
+    assert(
+      equal(await names(f.directory + "/.qbento"), [
+        "design.json",
+        "project.json",
+      ]),
+    );
     assert(await Deno.readTextFile(f.source) === f.text);
+    const sibling = f.directory + "/other.qmd";
+    await Deno.writeTextFile(sibling, f.text);
+    await rejects(() => readProject(sibling), "PROJECT_SOURCE_MISMATCH");
     const rendered = await renderProjectFromAst(f.source, {
       sourceHash: hashSource(f.text),
       assetDirectories: [f.directory],
@@ -231,7 +239,12 @@ Deno.test("concurrent initialization has one exclusive winner and no overwrite",
         (loser.reason as { code: string }).code ===
           "DESIGN_INITIALIZATION_EXISTS",
     );
-    assert(equal(await names(f.directory + "/.qbento"), ["design.json"]));
+    assert(
+      equal(await names(f.directory + "/.qbento"), [
+        "design.json",
+        "project.json",
+      ]),
+    );
   } finally {
     await Deno.remove(f.directory, { recursive: true });
   }
@@ -270,7 +283,10 @@ Deno.test("initialization source changes and concurrent output preserve staging 
       );
       assert(changed);
       const artifacts = await names(f.directory + "/.qbento");
-      assert(artifacts.length === 2 && artifacts.includes("design-save.json"));
+      assert(
+        artifacts.length === 3 && artifacts.includes("design-save.json") &&
+          artifacts.includes("project.json"),
+      );
       await rejects(
         () => readDesignRegistry(f.directory),
         "DESIGN_REGISTRY_RECOVERY_REQUIRED",

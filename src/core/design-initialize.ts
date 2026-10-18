@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import {
   assertDesignRegistryUnchanged,
   MAX_DESIGN_REGISTRY_BYTES,
@@ -128,6 +128,13 @@ export async function initializeDesignPackage(source: string, value: unknown) {
   );
   await syncDirectory(paths.stateDir);
   await syncDirectory(paths.directory);
+  await assertOwned();
+  await writeDurable(
+    resolve(paths.stateDir, "project.json"),
+    JSON.stringify({ version: 1, source: basename(paths.source) }, null, 2) +
+      "\n",
+  );
+  await syncDirectory(paths.stateDir);
   await assertSource();
   await assertNoOutput(paths.directory);
   await writeDurable(stage, text);

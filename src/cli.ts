@@ -1,6 +1,21 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --allow-env --allow-net=127.0.0.1
 import { captureProject, readProject, renderProject } from "./core/project.ts";
 import {
+  applyDesignImport,
+  exportDesignPackage,
+  previewDesignImport,
+  readDesignImportPlanFile,
+  readDesignJsonFile,
+  readDesignPackageFile,
+  validateDesignPackage,
+} from "./core/design-package.ts";
+import {
+  adaptRevealDesign,
+  readRevealReferenceFile,
+} from "./core/design-adaptation.ts";
+import { readProjectRegistry } from "./core/design-registry.ts";
+import { initializeDesignPackage } from "./core/design-initialize.ts";
+import {
   applySync,
   previewSelectedSync,
   previewSync,
@@ -33,6 +48,13 @@ quarto-recover         Recover an interrupted ordinary Quarto invocation
 edit                   Start local Bento Studio
 validate <deck.html>   Validate the document envelope and stable IDs
 doctor                 Report available runtime versions
+design show <qmd>       Inspect the current reusable design registry
+design init <qmd> <file> Initialize a new presentation with a local design
+design export <qmd> [name] Export a content-free design package as JSON
+design inspect <file>   Validate and inspect a reusable design package
+design preview <qmd> <file> Preview replacing the local design registry
+design apply <qmd> <plan> Apply an unchanged inspected design plan
+design adapt <html> <mapping> [--package] Sample inline Reveal styles locally
 
 Commands emit JSON. Save, sync and render are separate operations.
 `;
@@ -41,6 +63,56 @@ if (import.meta.main) {
   try {
     let result: unknown;
     switch (command) {
+      case "design": {
+        const [action, target, argument, option] = Deno.args.slice(1);
+        if (action === "show" && target && Deno.args.length === 3) {
+          result = await readProjectRegistry(target);
+        } else if (
+          action === "init" && target && argument && Deno.args.length === 4
+        ) {
+          result = await initializeDesignPackage(
+            target,
+            await readDesignPackageFile(argument),
+          );
+        } else if (
+          action === "export" && target && Deno.args.length <= 4
+        ) {
+          result = await exportDesignPackage(target, argument ?? "My design");
+        } else if (
+          action === "inspect" && target && Deno.args.length === 3
+        ) {
+          result = validateDesignPackage(await readDesignPackageFile(target));
+        } else if (
+          action === "preview" && target && argument && Deno.args.length === 4
+        ) {
+          result = await previewDesignImport(
+            target,
+            await readDesignPackageFile(argument),
+          );
+        } else if (
+          action === "apply" && target && argument && Deno.args.length === 4
+        ) {
+          result = await applyDesignImport(
+            target,
+            await readDesignImportPlanFile(argument),
+          );
+        } else if (
+          action === "adapt" && target && argument &&
+          (Deno.args.length === 4 ||
+            Deno.args.length === 5 && option === "--package")
+        ) {
+          const adapted = await adaptRevealDesign(
+            await readRevealReferenceFile(target),
+            await readDesignJsonFile(argument),
+          );
+          result = option === "--package" ? adapted.package : adapted;
+        } else {
+          throw new Error(
+            "DESIGN_USAGE: Use design show|init|export|inspect|preview|apply|adapt; see qbento help.",
+          );
+        }
+        break;
+      }
       case "render": {
         if (!source) throw new Error("QMD path required");
         const r = await renderProject(source);
@@ -217,7 +289,7 @@ if (import.meta.main) {
       JSON.stringify(
         {
           error: e.code ||
-            (["get", "patch"].includes(command) &&
+            (["get", "patch", "design"].includes(command) &&
               e.message.match(/^([A-Z][A-Z_0-9]+):/)?.[1]) ||
             "QBENTO_ERROR",
           message: e.message,

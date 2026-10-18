@@ -9,11 +9,13 @@ import {
 import { sha256, StateError } from "../state/mod.ts";
 import { projectPaths, readProject, withProject } from "./project.ts";
 import { syncDirectory, writeDurable } from "./io.ts";
+import { hashSource } from "../source/mod.ts";
 
 export interface RegistryEditRequest {
   expectedDocId: string;
   expectedRevision: number;
   expectedHash: string | null;
+  expectedSourceHash?: string;
   registry: DesignRegistry;
 }
 export async function readProjectRegistry(source: string) {
@@ -31,14 +33,18 @@ export async function readProjectRegistry(source: string) {
 function requestShape(request: RegistryEditRequest) {
   if (
     !request || typeof request !== "object" || Array.isArray(request) ||
-    Object.keys(request).sort().join(",") !==
+    Object.keys(request).filter((key) => key !== "expectedSourceHash").sort()
+        .join(",") !==
       "expectedDocId,expectedHash,expectedRevision,registry" ||
     typeof request.expectedDocId !== "string" || !request.expectedDocId ||
     !Number.isSafeInteger(request.expectedRevision) ||
     request.expectedRevision < 0 ||
     !(request.expectedHash === null ||
       typeof request.expectedHash === "string" &&
-        /^[a-f0-9]{64}$/.test(request.expectedHash))
+        /^[a-f0-9]{64}$/.test(request.expectedHash)) ||
+    Object.hasOwn(request, "expectedSourceHash") &&
+      (typeof request.expectedSourceHash !== "string" ||
+        !/^[a-f0-9]{64}$/.test(request.expectedSourceHash))
   ) {
     throw new StateError(
       "INVALID_REGISTRY_EDIT",
@@ -70,6 +76,19 @@ export async function saveProjectRegistry(
     );
   }
   return await withProject(source, async (paths, store) => {
+    const assertSource = async () => {
+      if (
+        request.expectedSourceHash !== undefined &&
+        hashSource(await Deno.readTextFile(paths.source)) !==
+          request.expectedSourceHash
+      ) {
+        throw new StateError(
+          "STALE_SOURCE",
+          "QMD changed after the design preview. Review a fresh plan before applying.",
+        );
+      }
+    };
+    await assertSource();
     const state = await store.load();
     if (!state) {
       throw new StateError("NO_BASELINE", "Render the project first.");
@@ -133,6 +152,7 @@ export async function saveProjectRegistry(
     let moved = false, published = false, marked = false;
 
     try {
+      await assertSource();
       await assertDesignRegistryUnchanged(
         paths.directory,
         request.expectedHash,
@@ -159,6 +179,7 @@ export async function saveProjectRegistry(
         request.expectedHash,
         token,
       );
+      await assertSource();
       if (request.expectedHash !== null) {
         await Deno.rename(target, before);
         moved = true;
@@ -186,6 +207,7 @@ export async function saveProjectRegistry(
       }
       // Atomic create-if-absent publication, unlike rename-overwrite. A writer
       // outside the project lock cannot have its replacement silently removed.
+      await assertSource();
       await Deno.link(stage, target);
       published = true;
       await Deno.remove(stage);

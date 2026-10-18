@@ -1,0 +1,60 @@
+---
+title: Reusable classroom design
+---
+
+## A new lesson {#opening bento-variant="section"}
+
+::: {#subtitle bento-style="section-subtitle"}
+Reuse the design while authoring new content.
+:::
+
+## Two explanations {#explanations}
+
+::::: {#comparison .bento-layout bento-layout-name="pair"}
+
+:::: {#first .bento-card bento-style="pink-card"}
+
+### Shared information
+
+One explanation belongs here.
+
+::::
+
+:::: {#second .bento-card bento-style="teal-card"}
+
+### Additional information
+
+Another explanation belongs here.
+
+::::
+
+:::::
+
+## A question for the group {#question-slide}
+
+::: {#question .bento-card bento-style="question"}
+What would change if the input data changed?
+:::
+
+## Displayed code {#code-slide}
+
+```{#display-code .r}
+values <- c(2, 4, 6)
+mean(values)
+```
+
+::: {#code-caption bento-style="caption"}
+This displayed example remains authored text, separate from executable chunks.
+:::
+
+## An executed figure {#figure-slide}
+
+```{r}
+#| label: course-example
+#| echo: false
+#| fig-width: 7
+#| fig-height: 4
+values <- c(2, 4, 6)
+barplot(values, col = "#118c94", border = NA,
+        names.arg = c("A", "B", "C"), ylab = "Value")
+```

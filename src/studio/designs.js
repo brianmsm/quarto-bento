@@ -5,6 +5,7 @@ export function attachReusableDesigns({
   showError,
   saveBefore,
   registryEditor,
+  openPreview,
 }) {
   const $ = (id) => document.getElementById(id);
   const maxPackageBytes = 262144;
@@ -77,19 +78,13 @@ export function attachReusableDesigns({
     } · Origen: ${entry.origin}`;
     $("design-plan").replaceChildren(heading, details);
     if (entry.report !== undefined) {
-      const title = document.createElement("h4"),
-        pre = document.createElement("pre");
-      title.textContent = "Informe de adaptación";
-      pre.textContent = typeof entry.report === "string"
-        ? entry.report
-        : JSON.stringify(entry.report, null, 2);
-      $("design-plan").append(title, pre);
+      planSection($("design-plan"), "Informe de adaptación", entry.report);
     }
   }
 
   function planSection(container, titleText, value, className) {
-    const section = document.createElement("section"),
-      title = document.createElement("h4"),
+    const section = document.createElement("details"),
+      title = document.createElement("summary"),
       pre = document.createElement("pre");
     title.textContent = titleText;
     pre.textContent = JSON.stringify(value, null, 2);
@@ -109,10 +104,17 @@ export function attachReusableDesigns({
       packageLabel(plan.package, entry.fileName)
     }. Aplicar reemplazará el registro completo de diseños de este proyecto.`;
     operation.textContent =
-      "La operación solo cambia .qbento/design.json. No modifica QMD ni recalcula la presentación.";
+      "La operación cambia las definiciones del diseño. Conserva el contenido y los ajustes guardados; después podrás recalcular la presentación.";
     container.append(heading, description, operation);
 
     const changes = plan.changes;
+    const themeSummary = document.createElement("p");
+    themeSummary.textContent = `Tema activo: ${
+      changes.before.activeTheme ?? "predeterminado"
+    } → ${changes.after.activeTheme ?? "predeterminado"}. El paquete propone ${
+      Object.keys(changes.after.themes ?? {}).length
+    } temas y ${Object.keys(changes.after.layouts ?? {}).length} layouts.`;
+    container.append(themeSummary);
     planSection(container, "Registro actual", changes.before, "before");
     planSection(container, "Registro propuesto", changes.after, "after");
 
@@ -147,6 +149,9 @@ export function attachReusableDesigns({
       ? "Después de aplicar, pulsa Recalcular para usar este diseño en la presentación."
       : "El registro no requiere recalcular la presentación.";
     container.append(consequence);
+    if (entry.report !== undefined) {
+      planSection(container, "Informe de adaptación", entry.report);
+    }
   }
 
   function clearPlan() {
@@ -234,6 +239,20 @@ export function attachReusableDesigns({
       activePlan = plan;
       planSnapshot = bound;
       showPlan(plan, entry);
+      if (typeof response.previewError === "string") {
+        const warning = document.createElement("p");
+        warning.textContent =
+          "No se pudo dibujar la muestra con el contenido de ejemplo. El plan sigue disponible; revisa el diseño con tu contenido al recalcular. " +
+          response.previewError;
+        $("design-plan").prepend(warning);
+      }
+      if (openPreview && typeof response.previewUrl === "string") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Ver muestra del diseño";
+        button.onclick = () => openPreview(response.previewUrl);
+        $("design-plan").prepend(button);
+      }
       note(
         "Revisa el registro completo y las definiciones que se eliminarán. Aplicar no modifica QMD ni ejecuta Recalcular.",
       );
