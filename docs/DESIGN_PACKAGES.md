@@ -58,6 +58,37 @@ slide content, object geometry, provenance, computed output, pending edits or
 project state. A course design can therefore travel between sessions without
 transferring session content or its editing identity.
 
+## Start a new presentation with a shared design
+
+A new QMD can already use the package's `bento-style` and `bento-variant`
+selectors. Install the design before rendering that source for the first time,
+using `initializeDesignPackage(source, package)` from
+`src/core/design-initialize.ts`. Initialization validates the original source
+selectors against the package and exclusively creates a new `.qbento/` directory
+with its `design.json`. It returns the source and registry hashes and
+`renderNeeded: true`. The next explicit render establishes the presentation's
+own identity and project baseline using that design.
+
+Initialization never adopts or replaces an existing `.qbento` path, including an
+empty directory, a symbolic link or recovery files. Existing generated Bento
+HTML and pending publication outputs in the source directory also refuse,
+including a sibling presentation's output. Each presentation should have its own
+directory. Use checked import below for an existing saved project.
+
+QMD, saved state, project identity and generated HTML are not written during
+initialization. An exclusive directory creation and atomic no-clobber
+publication protect concurrent initializers and preserve concurrent files. The
+source hash is checked before publication and completion.
+
+An interrupted initialization retains a `design-save.json` recovery marker and
+any `.design-initialize-…` candidate. Registry loading and rendering refuse
+while that marker exists, rather than proceeding with a missing design. Preserve
+these artifacts and inspect the recorded source hash, candidate path and
+`afterHash`. Restore or finish the verified registry before deliberately
+removing the owned staging file and marker. To abandon an initialization,
+archive the newly created directory for inspection before explicitly starting
+again; never discard an existing project's state or recovery files.
+
 ## Checked import
 
 Render each destination presentation once to establish its own source binding,
