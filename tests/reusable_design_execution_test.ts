@@ -7,10 +7,162 @@ import { scanSource } from "../src/source/mod.ts";
 import { readSourceInline } from "../src/render/source-inline.ts";
 import { reusableTheme } from "./fixtures/reusable-design.ts";
 import { assertReusableDesignSource } from "../src/render/theme-styles.ts";
+import { initializeDesignPackage } from "../src/core/design-initialize.ts";
+import {
+  applyDesignImport,
+  previewDesignImport,
+} from "../src/core/design-package.ts";
+import { renderProject } from "../src/core/project.ts";
 
 function assert(value: unknown, message = "assertion failed"): asserts value {
   if (!value) throw new Error(message);
 }
+async function rejects(action: () => Promise<unknown>, code: string) {
+  try {
+    await action();
+  } catch (error) {
+    assert(String(error).includes(code), String(error));
+    return;
+  }
+  throw new Error(`expected ${code}`);
+}
+
+Deno.test("real Quarto preserves named wrapper heading styles inside and outside cards with explicit source precedence", async () => {
+  const directory = await Deno.makeTempDir({ prefix: "qbento-heading-style-" });
+  try {
+    const source = directory + "/deck.qmd";
+    const qmd = `## Free content {#free}
+
+::: {#caption-wrapper bento-style="caption"}
+### Caption heading {#caption-heading}
+:::
+
+### Ordinary heading {#ordinary-heading}
+
+## Card content {#card-slide}
+
+:::: {#card .bento-card}
+::: {#card-wrapper bento-style="caption"}
+### Card heading {#card-heading color="#993355"}
+:::
+::::
+`;
+    await Deno.writeTextFile(source, qmd);
+    const theme = structuredClone(reusableTheme);
+    theme.namedStyles!.caption.properties.fontWeight = 600;
+    await initializeDesignPackage(source, {
+      format: "qbento/design",
+      version: 1,
+      name: "Heading styles",
+      registry: {
+        schemaVersion: 1,
+        themes: { test: theme },
+        activeTheme: "test",
+      },
+    });
+    const result = await renderProject(source);
+    const [free, card] = result.state.emitted.slides;
+    const caption = free.elements.find((element) =>
+      element.id === "caption-heading"
+    )!;
+    const nested = card.elements.find((element) =>
+      element.id === "card-heading"
+    )!;
+    const ordinary = free.elements.find((element) =>
+      element.id === "ordinary-heading"
+    )!;
+    assert(
+      caption.fontSize === 18 && caption.color === "#777777" &&
+        caption.fontWeight === 600,
+      JSON.stringify(caption),
+    );
+    assert(
+      nested.fontSize === 18 && nested.color === "#993355" &&
+        nested.fontWeight === 600,
+      JSON.stringify(nested),
+    );
+    assert(
+      ordinary.fontSize === 30 && ordinary.color === "#174941" &&
+        ordinary.fontWeight === 400,
+    );
+    assert(await Deno.readTextFile(source) === qmd);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("incompatible wrapper style import refuses without mutation and render preflight stops before executing R", async () => {
+  const directory = await Deno.makeTempDir({ prefix: "qbento-style-import-" });
+  try {
+    const source = directory + "/deck.qmd";
+    const qmd =
+      '## Slide {#slide}\n\n::: {#caption bento-style="caption"}\nA caption.\n:::\n\n## Calculation {#calculation}\n\n```{r}\n#| label: producer\n#| echo: false\nfile.create("producer-ran")\n```\n';
+    await Deno.writeTextFile(source, qmd);
+    const pkg = {
+      format: "qbento/design",
+      version: 1,
+      name: "Import compatibility",
+      registry: {
+        schemaVersion: 1,
+        themes: { test: structuredClone(reusableTheme) },
+        activeTheme: "test",
+      },
+    };
+    await initializeDesignPackage(source, pkg);
+    await renderProject(source);
+    await Deno.remove(directory + "/producer-ran");
+    const paths = [
+      "deck.qmd",
+      ".qbento/design.json",
+      ".qbento/state.json",
+      "deck.bento.html",
+    ];
+    const before = await Promise.all(
+      paths.map((path) => Deno.readTextFile(directory + "/" + path)),
+    );
+    const plan = await previewDesignImport(source, pkg);
+    pkg.registry.themes.test.namedStyles!.caption = {
+      target: "code",
+      properties: { fontSize: 18 },
+    };
+    await rejects(
+      () => previewDesignImport(source, pkg),
+      "STYLE_TARGET_MISMATCH",
+    );
+    await rejects(
+      () => applyDesignImport(source, { ...plan, package: pkg }),
+      "STYLE_TARGET_MISMATCH",
+    );
+    for (const [index, path] of paths.entries()) {
+      assert(
+        await Deno.readTextFile(directory + "/" + path) === before[index],
+        path,
+      );
+    }
+    // Even a manually edited registry must be checked before any producer runs.
+    await Deno.writeTextFile(
+      directory + "/.qbento/design.json",
+      JSON.stringify(pkg.registry),
+    );
+    await rejects(() => renderProject(source), "STYLE_TARGET_MISMATCH");
+    assert(
+      !await Deno.stat(directory + "/producer-ran").then(
+        () => true,
+        () => false,
+      ),
+    );
+    for (const [index, path] of paths.entries()) {
+      if (path !== ".qbento/design.json") {
+        assert(
+          await Deno.readTextFile(directory + "/" + path) === before[index],
+          path,
+        );
+      }
+    }
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
 Deno.test("real Quarto projects reusable SPP title bar, section, cards, captions and displayed code without source churn", async () => {
   const directory = await Deno.makeTempDir({
     prefix: "qbento-reusable-design-",

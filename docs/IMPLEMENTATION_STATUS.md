@@ -48,6 +48,9 @@ passed after updating their injected module dependencies. The broad run passed
 one optional upstream-source comparison omitted. This is combined evidence,
 not a single clean final full-suite run. A separate 124-file portable check
 and real Chromium workflow passed on Deno 2.9.7.
+Subsequent source-review corrections check authored wrapper style targets before
+import/execution and preserve inherited heading styles; their regression
+evidence is recorded [separately](evidence/REUSABLE-DESIGNS.md#subsequent-review-corrections-2026-10-18).
 
 ### Historical execution baseline
 

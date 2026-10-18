@@ -207,6 +207,28 @@ Deno.test("reusable design selectors require known names, source IDs and compati
       undefined,
   );
 });
+Deno.test("source preflight checks named styles against authored content inside plain and nested divs", () => {
+  for (
+    const [content, compatible, incompatible] of [
+      ["A caption.", "caption", "snippet"],
+      ["### A caption heading {#heading}", "caption", "snippet"],
+      ["- First\n- Second", "caption", "snippet"],
+      ["```r\nx <- 1\n```", "snippet", "caption"],
+    ]
+  ) {
+    for (const nested of [false, true]) {
+      const body = nested ? `::: {#inner}\n${content}\n:::` : content;
+      const qmd = (style: string) =>
+        `## Slide {#slide}\n\n:::: {#wrapper bento-style="${style}"}\n${body}\n::::\n`;
+      assertReusableDesignSource(scanSource(qmd(compatible)), defaults);
+      refuses(
+        () =>
+          assertReusableDesignSource(scanSource(qmd(incompatible)), defaults),
+        "STYLE_TARGET_MISMATCH",
+      );
+    }
+  }
+});
 Deno.test("styles apply before component measurement, preserve explicit QMD, and variants reset on following slides", async () => {
   const result = await projection();
   const [content, section, following] = result.document.slides;

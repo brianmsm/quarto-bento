@@ -25,6 +25,30 @@ export function originalThemeAttributes(
     ? undefined
     : originalPandocAttributes(content, originalAttributeTokens(content));
 }
+/** Resolve a single authored object through transparent source wrappers.
+ * Computed/unsupported content still needs the executed projection's check.
+ */
+function authoredStyleTarget(
+  source: SourceDocument,
+  block: SourceBlock,
+): "text" | "code" | undefined {
+  while (block.kind === "div") {
+    const attr = originalThemeAttributes(block);
+    const component = attr && parseDesignAttributes(attr).component;
+    if (component && component !== "code") return undefined;
+    const children = source.blocks.filter((child) =>
+      child.parentId === block.id &&
+      child.span.start >= block.contentSpan.start &&
+      child.span.end <= block.contentSpan.end
+    );
+    if (children.length !== 1) return undefined;
+    block = children[0];
+  }
+  if (block.origin !== "authored") return undefined;
+  if (block.kind === "code") return "code";
+  if (["heading", "paragraph", "list"].includes(block.kind)) return "text";
+  return undefined;
+}
 /** Validate exact source selectors, including attributes a reader may erase. */
 export function assertReusableDesignSource(
   source: SourceDocument,
@@ -65,6 +89,9 @@ export function assertReusableDesignSource(
     }
     if (declaration.style) {
       const named = namedStyle(defaults.theme, declaration.style);
+      const contentTarget = block.kind === "div" && !declaration.component
+        ? authoredStyleTarget(source, block)
+        : undefined;
       if (
         declaration.component === "card"
           ? named.target !== "card"
@@ -72,7 +99,8 @@ export function assertReusableDesignSource(
             named.target === "card" ||
             declaration.component === "code" && named.target !== "code" ||
             block.kind === "heading" && named.target !== "text" ||
-            block.kind === "code" && named.target !== "code"
+            block.kind === "code" && named.target !== "code" ||
+            contentTarget !== undefined && named.target !== contentTarget
       ) {
         throw new DesignError(
           "STYLE_TARGET_MISMATCH",

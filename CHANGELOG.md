@@ -14,6 +14,10 @@
   stylesheet data, without executing reference scripts or loading remote assets.
   Keep the provenance report separate from the reusable package.
 - Add a neutral course example and an explicit SPP/Metropolis reference mapping.
+- Reject incompatible text/code styles on single authored objects inside plain
+  or nested QMD wrappers before design import or computation.
+- Preserve named wrapper styles on headings inside and outside cards, with
+  explicit QMD properties retaining precedence over inherited defaults.
 
 These source additions are not part of the published npm `0.1.1` archive.
 Extended design registries require this newer runtime; older runtimes refuse

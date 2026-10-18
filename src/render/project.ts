@@ -314,6 +314,7 @@ export async function projectAst(
     origin: Origin,
     role: "title" | "heading" | "body" = heading ? "title" : "body",
     specific: ReusableStyle = {},
+    base: ReusableStyle = {},
   ) {
     // A list is one editable object, but its default box needs room for its
     // item/paragraph lines. This is conservative initial layout, not font-ink
@@ -349,6 +350,7 @@ export async function projectAst(
       align: "left",
       valign: "top",
       lineHeight: 1.25,
+      ...base,
       ...inheritedCardTextStyle,
       ...roleStyle(reusableTheme, role),
       ...inheritedTextStyle,
@@ -650,11 +652,10 @@ export async function projectAst(
               ...(computed && parentId ? { producer: parentId } : {}),
             },
             "heading",
+            selectedStyle(attr, "text"),
             {
               fontSize: inComponent ? 32 : 26,
               fontWeight: inComponent ? 700 : 400,
-              ...roleStyle(reusableTheme, "heading"),
-              ...selectedStyle(attr, "text"),
             },
           );
         }

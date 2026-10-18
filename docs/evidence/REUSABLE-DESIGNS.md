@@ -155,3 +155,51 @@ Local detailed logs are under `output/reusable-designs/`:
 `final-portable-design-check.log` and the browser snapshots. These local
 artifacts are excluded from Git; the scoped receipt, screenshots and selected
 JSON reports above are committed.
+
+## Subsequent review corrections (2026-10-18)
+
+Two additional regressions were reproduced after the integrated receipt above:
+
+- A package could change a style used by an authored paragraph wrapper from
+  `text` to `code`. Preview and Apply accepted the incompatible registry; the
+  next render executed R before refusing `STYLE_TARGET_MISMATCH`. Source
+  preflight now follows a single authored object through plain/nested wrappers
+  and checks its text/code target before import or execution. Computed and
+  unsupported shapes still require the executed projection's existing checks.
+- Heading defaults were applied after a named wrapper style, overwriting its
+  font size, color and weight. Heading base values now enter the same cascade
+  before card typography, role defaults and named styles. Explicit QMD fields
+  still take precedence. The correction covers headings inside and outside
+  cards and retains ordinary heading defaults.
+
+Three new regression tests failed against the reviewed source before these
+corrections and passed afterward. They cover authored paragraphs, headings,
+lists and displayed code through plain/nested wrappers, real Quarto heading
+projection, rejected Preview/Apply with byte-identical QMD/registry/state/HTML,
+and a manually incompatible registry refusing before an R filesystem marker
+can be created. These are additional checks, not a revision of the historical
+45-test and broad-suite results above.
+
+The subsequent related regression run passed **94 tests, zero failures** in
+4 minutes 1 second on Linux with Deno 2.9.7 and Quarto 1.10.19:
+
+```sh
+deno test --allow-read --allow-write --allow-env --allow-run \
+  --allow-net=127.0.0.1 \
+  tests/design_package_test.ts tests/design_initialize_test.ts \
+  tests/design_adaptation_test.ts tests/design_studio_client_test.ts \
+  tests/studio_registry_client_test.ts tests/reusable_design_test.ts \
+  tests/reusable_design_execution_test.ts tests/design_registry_read_test.ts \
+  tests/design_workflow_test.ts tests/studio_client_diagnostics_test.ts \
+  tests/studio_element_deletion_client_test.ts tests/studio_graph_preview_test.ts \
+  tests/studio_sync_busy_test.ts tests/studio_sync_review_test.ts \
+  tests/studio_sync_selection_test.ts tests/design_test.ts \
+  tests/design_execution_test.ts tests/components_execution_test.ts \
+  tests/registry_test.ts tests/registry_execution_test.ts \
+  tests/displayed_code_test.ts tests/computed_code_test.ts \
+  tests/computed_code_execution_test.ts
+```
+
+`deno task check`, `deno lint src tests scripts`, source/script and changed-test
+formatting, and Git whitespace checks also passed. This is a targeted regression
+run, not a new full-suite, foreground visual, portable or publication receipt.
