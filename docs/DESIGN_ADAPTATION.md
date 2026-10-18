@@ -14,11 +14,18 @@ or its course files.
 
 `adaptRevealDesign(html, mapping)` in `src/core/design-adaptation.ts` accepts
 HTML text and a versioned mapping. `readRevealReferenceFile(path)` reads a
-regular UTF-8 HTML file up to 16 MiB. No external CSS, images, scripts or
-network resources are loaded. For a reference with linked local CSS, prepare a
-separate copy with the reviewed CSS inlined; the original file remains
-unchanged. The output report explicitly counts excluded linked stylesheets and
-CSS imports.
+regular UTF-8 HTML file up to 16 MiB. Quarto `embed-resources` stylesheet links
+using `data:text/css` are decoded locally and inserted as inert style text in
+their original cascade position. Percent encoding and strict base64 are
+supported, with optional `charset=utf-8` or `charset=us-ascii`; malformed
+encoding, unsupported MIME/charset and invalid UTF-8 fail explicitly. Total
+decoded CSS is bounded at 16 MiB. No external CSS, images, scripts or network
+resources are loaded. For a reference with linked local CSS, prepare a separate
+copy with the reviewed CSS inlined; the original file remains unchanged. The
+output report separately counts excluded external linked stylesheets, CSS
+imports and locally decoded embedded links (`excluded.inlinedDataStylesheets`, a
+processing count rather than lost CSS). CSS imports, including imports inside
+embedded stylesheets, remain blocked.
 
 A mapping identifies one element for each role. Every selector must match
 exactly one element; missing, ambiguous and invalid selectors fail. Use stable
@@ -76,14 +83,14 @@ variant.
 
 ## What is sampled
 
-An installed Chromium resolves the inline CSS cascade, variables and
-`!important` rules at a fixed 1280 × 720 viewport. Reveal canvas/slides
-dimensions are normalized to that size and animations/transitions disabled. The
-helper captures supported text color, family, font size, numeric weight,
-line-height ratio, letter spacing and alignment. Code uses the supported code
-subset. Cards additionally capture uniform borders, uniform pixel corner radii,
-fill and opacity. Effective canvas and variant backgrounds are composed through
-their ancestors over white.
+An installed Chromium resolves the inline and decoded embedded CSS cascade,
+variables and `!important` rules at a fixed 1280 × 720 viewport. Reveal
+canvas/slides dimensions are normalized to that size and animations/transitions
+disabled. The helper captures supported text color, family, font size, numeric
+weight, line-height ratio, letter spacing and alignment. Code uses the supported
+code subset. Cards additionally capture uniform borders, uniform pixel corner
+radii, fill and opacity. Effective canvas and variant backgrounds are composed
+through their ancestors over white.
 
 The package contains only validated native design data: no selectors, HTML, CSS,
 scripts, reference paths, source text or presentation state. The separate report

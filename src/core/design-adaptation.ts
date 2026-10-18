@@ -45,6 +45,7 @@ export interface DesignAdaptationReport {
   excluded: {
     scripts: number;
     externalStylesheets: number;
+    inlinedDataStylesheets: number;
     cssImports: number;
     activeElements: number;
     resourceReferences: number;
@@ -203,12 +204,42 @@ export async function readRevealReferenceFile(path: string): Promise<string> {
 const sampler = String.raw`async (html, mapping) => {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const excluded = {scripts: parsed.querySelectorAll('script').length,
-    externalStylesheets: parsed.querySelectorAll('link[rel~="stylesheet"]').length,
+    externalStylesheets: 0, inlinedDataStylesheets: 0,
     cssImports: 0, activeElements: 0, resourceReferences: 0};
-  const warnings = ['Only inline CSS and style attributes are sampled. External stylesheets, scripts, images and frames are excluded.',
+  const warnings = ['Only inline CSS, embedded data:text/css stylesheets and style attributes are sampled. External stylesheets, scripts, images and frames are excluded.',
     'No slide layout, semantic content or QMD conversion is performed. Explicit template geometry must be reviewed in native Bento.',
     'Fonts are not embedded in the design package; the sampled family must be available on each machine. Font metrics may differ.',
     'Reveal JavaScript is disabled. The canvas is normalized to 1280 by 720; responsive, runtime and presentation-state styles may differ.'];
+  // Quarto embed-resources writes stylesheets as data:text/css links. Decode
+  // those bytes locally and replace the node in place, preserving cascade order.
+  // Never ask the browser to load the data URL or any referenced CSS imports.
+  let cssBytes = [...parsed.querySelectorAll('style')].reduce((n,el)=>n+new TextEncoder().encode(el.textContent).length,0);
+  cssBytes += [...parsed.querySelectorAll('[style]')].reduce((n,el)=>n+new TextEncoder().encode(el.getAttribute('style')).length,0);
+  for(const link of parsed.querySelectorAll('link[rel~="stylesheet"]')) {
+    const href=(link.getAttribute('href')||'').trim();
+    if(!/^data:/i.test(href)){excluded.externalStylesheets++;continue;}
+    const match=href.match(/^data:text\/css(?:;charset=(utf-8|us-ascii))?(;base64)?,([\s\S]*)$/i);
+    if(!match)throw new Error('INVALID_EMBEDDED_REVEAL_CSS: expected UTF-8 text/css data URL');
+    let css;
+    try {
+      if(match[2]){
+        if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(match[3]))throw new Error('Malformed base64');
+        const bytes=Uint8Array.from(atob(match[3]),c=>c.charCodeAt(0));
+        if(match[1]?.toLowerCase()==='us-ascii' && bytes.some(byte=>byte>127))throw new Error('Non-ASCII data');
+        css=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+      } else {
+        css=decodeURIComponent(match[3]);
+        if(match[1]?.toLowerCase()==='us-ascii' && /[^\x00-\x7f]/.test(css))throw new Error('Non-ASCII data');
+      }
+    } catch {throw new Error('INVALID_EMBEDDED_REVEAL_CSS: invalid percent/base64 encoding or UTF-8');}
+    cssBytes+=new TextEncoder().encode(css).length;
+    if(cssBytes>16777216)throw new Error('REVEAL_CSS_TOO_LARGE: decoded CSS exceeds 16 MiB');
+    const style=parsed.createElement('style');style.textContent=css;
+    if(link.hasAttribute('media'))style.setAttribute('media',link.getAttribute('media'));
+    if(link.hasAttribute('disabled'))style.setAttribute('media','not all');
+    link.replaceWith(style);excluded.inlinedDataStylesheets++;
+  }
+  if(cssBytes>16777216)throw new Error('REVEAL_CSS_TOO_LARGE: decoded CSS exceeds 16 MiB');
   excluded.cssImports = [...parsed.querySelectorAll('style')].reduce((n, el) => n + (el.textContent.match(/@import\b/gi) || []).length, 0);
   for (const el of parsed.querySelectorAll('script,base,meta,link,iframe,frame,frameset,object,embed,img,picture,source,video,audio,track,input,button,select,textarea,form,template,svg,math')) {
     excluded.activeElements++; el.remove();

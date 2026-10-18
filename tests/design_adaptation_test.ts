@@ -133,6 +133,67 @@ Deno.test("Reveal adaptation samples cascade, vars, important, roles, cards and 
   }
 });
 
+Deno.test("Quarto embedded percent and base64 CSS retains hierarchy, typography and cascade", async () => {
+  const css =
+    `:root{--spp-ink:#253b44;--spp-pink:#d51c67}.reveal{font-size:32px;font-family:"Fira Sans",sans-serif;line-height:1.3;color:var(--spp-ink);background:#fafafa}.reveal .slides > section h2{font-size:1.5em;color:white!important;background:var(--spp-ink);font-weight:650}.reveal .slides > section p{font-size:1em}/* </style><script>throw new Error('must remain CSS text')</script> */`;
+  const override = `.reveal .slides > section p{color:#116f76!important}`;
+  const reference =
+    `<!doctype html><html><head><link rel="stylesheet" href="data:text/css,${
+      encodeURIComponent(css)
+    }"><link rel="stylesheet" href="data:text/css;charset=utf-8;base64,${
+      btoa(override)
+    }"></head><body><div class="reveal"><div class="slides"><section id="intro"><h2>Title</h2><p>Body text</p></section></div></div></body></html>`;
+  const result = await adaptRevealDesign(reference, {
+    version: 1,
+    name: "quarto-embedded",
+    canvas: ".reveal",
+    title: "#intro h2",
+    body: "#intro p",
+    accent: "#d51c67",
+  });
+  const theme = result.package.registry.themes!["quarto-embedded"];
+  assert(theme.fontFamily === "Fira Sans, sans-serif");
+  assert(
+    theme.styles!.body!.fontSize === 32,
+    "Embedded CSS must replace the browser's 16px fallback",
+  );
+  assert(theme.styles!.title!.fontSize === 48);
+  assert(theme.styles!.title!.color === "#ffffff");
+  assert(theme.styles!.body!.color === "#116f76");
+  assert(theme.background === "#fafafa");
+  assert(result.report.excluded.inlinedDataStylesheets === 2);
+  assert(result.report.excluded.externalStylesheets === 0);
+  assert(
+    result.report.excluded.scripts === 0,
+    "Decoded CSS must not be reparsed as HTML",
+  );
+});
+
+Deno.test("Malformed, wrong-MIME and non-UTF8 embedded CSS fail explicitly", async () => {
+  for (
+    const href of [
+      "data:text/css,%GG",
+      "data:text/css;base64,!!!",
+      "data:text/css;base64,/w==",
+      "data:text/javascript,alert(1)",
+      "data:text/css;charset=latin1,a{}",
+      "data:text/css;charset=us-ascii,%C3%B1{}",
+    ]
+  ) {
+    await rejects(
+      () =>
+        adaptRevealDesign(
+          fixture.replace(
+            "</head>",
+            `<link rel="stylesheet" href="${href}"></head>`,
+          ),
+          mapping,
+        ),
+      "INVALID_EMBEDDED_REVEAL_CSS",
+    );
+  }
+});
+
 Deno.test("Reveal adaptation refuses missing, ambiguous and invalid selectors", async () => {
   await rejects(
     () => adaptRevealDesign(fixture, { ...mapping, title: ".missing" }),
@@ -161,7 +222,11 @@ Deno.test("Reveal reference is inert: script, event handlers, external CSS and f
     const url = `http://127.0.0.1:${server.addr.port}`;
     const malicious = fixture.replace(
       "</head>",
-      `<link rel="stylesheet" href="${url}/external.css"><style>@import url('${url}/import.css');#body{background-image:url('${url}/background.png')}</style><script>fetch('${url}/script');document.querySelector('#title').style.setProperty('color','red','important')</script></head>`,
+      `<link rel="stylesheet" href="${url}/external.css"><link rel="stylesheet" href="data:text/css,${
+        encodeURIComponent(
+          `@import url('${url}/embedded-import.css');#body{background-image:url('${url}/embedded-background.png')}`,
+        )
+      }"><style>@import url('${url}/import.css');#body{background-image:url('${url}/background.png')}</style><script>fetch('${url}/script');document.querySelector('#title').style.setProperty('color','red','important')</script></head>`,
     )
       .replace(
         '<p id="body">',
@@ -178,7 +243,8 @@ Deno.test("Reveal reference is inert: script, event handlers, external CSS and f
     );
     assert(result.report.excluded.scripts === 1);
     assert(result.report.excluded.externalStylesheets === 1);
-    assert(result.report.excluded.cssImports === 1);
+    assert(result.report.excluded.cssImports === 2);
+    assert(result.report.excluded.inlinedDataStylesheets === 1);
     assert(result.report.excluded.activeElements >= 4);
     assert(
       result.report.warnings.some((warning) =>
