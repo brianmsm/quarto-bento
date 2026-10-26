@@ -17,6 +17,11 @@ import {
   imageNativeIdentities,
 } from "./images.ts";
 import { readSourceInline } from "./source-inline.ts";
+import {
+  executionFrames,
+  executionLayout,
+  executionUnits,
+} from "./execution-layout.ts";
 import { hashSource } from "../source/mod.ts";
 import { producerOutputChildren, producerReceipt } from "./producer-capture.ts";
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
@@ -212,6 +217,7 @@ export async function projectAst(
   let inheritedCardCodeStyle: ReusableStyle = {};
   const activeSlots = new Set<string>();
   const slotCardStyles = new Map<string, ReusableStyle>();
+  let explicitCardStyle: ReusableStyle = {};
   const remainingFrame = () =>
     contentFrame ??
       (slideContentFrame
@@ -273,6 +279,8 @@ export async function projectAst(
   // A producer may emit code through several transparent execution wrappers.
   // Count across those wrappers while keeping different slides/producers apart.
   const computedCodeIndexes = new Map<string, number>();
+  const computedImageIndexes = new Map<string, number>();
+  const computedImageCounts = new Map<string, number>();
   // Only the authenticated execution boundary may admit a weak table producer.
   let verifiedTableProducer: string | undefined;
   function startSlide(
@@ -369,6 +377,7 @@ export async function projectAst(
       ...inheritedTextStyle,
       ...(heading ? slideVariant?.title : {}),
       ...specific,
+      ...explicitCardStyle,
     }, origin);
     if (!heading) y += h + 20;
   }
@@ -550,7 +559,14 @@ export async function projectAst(
     producerId = parentId,
   ) {
     const [attr, , target] = node.c as [Attr, Node[], [string, string]];
-    const id = attr[0] || parentId || `qb-image-${++counter}`;
+    const imageKey = JSON.stringify([slide?.id, producerId]);
+    const imageIndex = (computedImageIndexes.get(imageKey) ?? 0) + 1;
+    if (computed) computedImageIndexes.set(imageKey, imageIndex);
+    const id = attr[0] ||
+      (computed && producerId && (computedImageCounts.get(producerId) ?? 0) > 1
+        ? `${producerId}/image:${imageIndex}`
+        : parentId) ||
+      `qb-image-${++counter}`;
     add({
       id,
       type: "image",
@@ -569,6 +585,55 @@ export async function projectAst(
     });
     y += 420;
   }
+  const executionHeight = (node: Node, width: number): number => {
+    if (images([node]).length) return -1;
+    if (node.t === "RawBlock") {
+      return /class=["']plotly html-widget/.test(
+          String((node.c as unknown[])[1]),
+        )
+        ? -1
+        : 0;
+    }
+    if (node.t === "Table") {
+      return Number(
+        projectTable(node, "measurement", 0, { x: 0, y: 0, w: width, h: 720 })
+          .h,
+      );
+    }
+    if (node.t === "Div") {
+      const children = (node.c as [Attr, Node[]])[1].filter((child) =>
+        child.t !== "RawBlock" ||
+        /class=["']plotly html-widget/.test(String((child.c as unknown[])[1]))
+      );
+      const heights = children.map((child) => executionHeight(child, width));
+      return heights.includes(-1)
+        ? -1
+        : heights.reduce((sum, value) => sum + value, 0) +
+          Math.max(0, heights.length - 1) * 20;
+    }
+    const code = node.t === "CodeBlock";
+    const style = {
+      fontSize: code ? 24 : 26,
+      lineHeight: 1.25,
+      ...(code ? inheritedCardCodeStyle : inheritedCardTextStyle),
+      ...roleStyle(reusableTheme, code ? "code" : "body", slideVariant),
+      ...(code ? inheritedCodeStyle : inheritedTextStyle),
+      ...explicitCardStyle,
+    };
+    const size = Number(style.fontSize), leading = Number(style.lineHeight);
+    const content = code
+      ? (node.c as [Attr, string])[1]
+      : inline(node.c as Node[]).replace(/<[^>]*>/g, "");
+    const count = content.split("\n").reduce(
+      (sum, line) =>
+        sum + (code ? 1 : Math.max(
+          1,
+          Math.ceil(Array.from(line).length * size * .65 / width),
+        )),
+      0,
+    );
+    return Math.max(90, (count + (code ? 1 : 0)) * size * leading);
+  };
   async function walk(
     nodes: Node[],
     computed = false,
@@ -1054,7 +1119,25 @@ export async function projectAst(
             );
           }
           const previousTextStyle = inheritedCardTextStyle,
-            previousCodeStyle = inheritedCardCodeStyle;
+            previousCodeStyle = inheritedCardCodeStyle,
+            previousExplicitCardStyle = explicitCardStyle;
+          explicitCardStyle = {
+            ...explicitCardStyle,
+            ...Object.fromEntries(
+              Object.entries(declaration.properties).filter(([field]) =>
+                [
+                  "fontSize",
+                  "fontFamily",
+                  "fontWeight",
+                  "lineHeight",
+                  "letterSpacing",
+                  "color",
+                  "align",
+                  "valign",
+                ].includes(field)
+              ),
+            ),
+          };
           const cardText = textProperties(cardDefaults);
           inheritedCardTextStyle = { ...inheritedCardTextStyle, ...cardText };
           inheritedCardCodeStyle = {
@@ -1103,6 +1186,12 @@ export async function projectAst(
             );
           };
           const rowHeight = (child: Node): number => {
+            if (
+              child.t === "Div" &&
+              (child.c as [Attr, Node[]])[0][1].includes("qbento-execution")
+            ) {
+              return executionHeight(child, frameWidth);
+            }
             if (
               child.t === "Div" &&
               (child.c as [Attr, Node[]])[0][1].includes("bento-kpi")
@@ -1314,6 +1403,7 @@ export async function projectAst(
           );
           inheritedCardTextStyle = previousTextStyle;
           inheritedCardCodeStyle = previousCodeStyle;
+          explicitCardStyle = previousExplicitCardStyle;
           const fields = (result.design![slide!.id] ??= {});
           const component = projectComponent(
             childGroups.filter((group) => group.length),
@@ -1487,8 +1577,107 @@ export async function projectAst(
           }
           const previousProducer = verifiedTableProducer;
           verifiedTableProducer = proof.id;
+          computedImageCounts.set(proof.id, images(children).length);
           try {
-            await walk(children, true, proof.id, inComponent);
+            const layout = executionLayout(producer);
+            const units = executionUnits(children);
+            if (
+              inComponent || layout.explicit ||
+              images(children).length && units.length > 1
+            ) {
+              if (layout.location === "slide" && inComponent) {
+                throw new DesignError(
+                  "EXECUTION_LAYOUT",
+                  "Place output-location: slide chunks outside cards and layouts; continuation slides cannot split a component.",
+                );
+              }
+              const frame = contentFrame ?? remainingFrame() ??
+                { x: 80, y, w: 1120, h: Math.max(.01, 670 - y) };
+              if (layout.location === "slide") {
+                const codes = units.filter((unit) => unit.code),
+                  outputs = units.filter((unit) => !unit.code);
+                const codeFrames = executionFrames(
+                  codes,
+                  { ...layout, location: "default", columns: 1 },
+                  frame,
+                  executionHeight,
+                );
+                for (const [index, unit] of codes.entries()) {
+                  y = codeFrames[index].y;
+                  await walk(
+                    [unit.node],
+                    true,
+                    proof.id,
+                    inComponent,
+                    undefined,
+                    [codeFrames[index]],
+                  );
+                }
+                if (!outputs.length) {
+                  contentFrame = previousFrame;
+                  continue;
+                }
+                const originalSlide = slide!, originalY = y;
+                const originalContentFrame = slideContentFrame,
+                  originalVariant = slideVariant;
+                const continuation = `qb-output-${
+                  hashSource(proof.id).slice(0, 24)
+                }`;
+                slide = {
+                  id: continuation,
+                  background: originalSlide.background,
+                  transition: "fade",
+                  notes: "",
+                  elements: [],
+                };
+                document.slides.push(slide);
+                result.origins[continuation] = {};
+                contentFrame = undefined;
+                slideContentFrame = undefined;
+                slideVariant = undefined;
+                y = 52;
+                const outputFrame = remainingFrame() ??
+                  { x: 80, y: 166, w: 1120, h: 504 };
+                const outputFrames = executionFrames(
+                  outputs,
+                  { ...layout, location: "default" },
+                  outputFrame,
+                  executionHeight,
+                );
+                for (const [index, unit] of outputs.entries()) {
+                  y = outputFrames[index].y;
+                  await walk([unit.node], true, proof.id, false, undefined, [
+                    outputFrames[index],
+                  ]);
+                }
+                slide = originalSlide;
+                slideContentFrame = originalContentFrame;
+                slideVariant = originalVariant;
+                y = originalY;
+              } else {
+                const frames = executionFrames(
+                  units,
+                  layout,
+                  frame,
+                  executionHeight,
+                );
+                for (const [index, unit] of units.entries()) {
+                  y = frames[index].y;
+                  await walk(
+                    [unit.node],
+                    true,
+                    proof.id,
+                    inComponent,
+                    undefined,
+                    [frames[index]],
+                  );
+                }
+                y = Math.max(
+                  frame.y,
+                  ...frames.map((slot) => slot.y + slot.h),
+                ) + 20;
+              }
+            } else await walk(children, true, proof.id, inComponent);
           } finally {
             verifiedTableProducer = previousProducer;
           }
@@ -1738,6 +1927,7 @@ export async function projectAst(
           ...roleStyle(reusableTheme, "code", slideVariant),
           ...inheritedCodeStyle,
           ...selectedStyle(attr, "code"),
+          ...explicitCardStyle,
         };
         const explicitCode = parseDesignAttributes(attr).properties;
         const codeSize = Number(
@@ -1908,6 +2098,26 @@ export function assertSupportedExecutionSource(source: SourceDocument): void {
   }
   sourceGraphs(source);
   for (const block of source.blocks.filter((b) => b.kind === "chunk")) {
+    if (executionLayout(block).location === "slide") {
+      let parent = block.parentId;
+      while (parent) {
+        const ancestor = source.blocks.find((candidate) =>
+          candidate.id === parent
+        );
+        if (!ancestor) break;
+        if (
+          [".bento-card", ".bento-layout"].includes(
+            sourceComponentClass(ancestor.raw) ?? "",
+          )
+        ) {
+          throw new DesignError(
+            "EXECUTION_LAYOUT",
+            "Place output-location: slide chunks outside cards and layouts; continuation slides cannot split a component.",
+          );
+        }
+        parent = ancestor.parentId;
+      }
+    }
     if (
       /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
         .test(block.raw)
@@ -1948,7 +2158,18 @@ export function validateProjectionOrigins(
   // reviewed sync pins them. Establish each slide from its exact original
   // heading before considering any unlabelled paragraph beneath it.
   const originalSlides = new Map<string, string>();
+  const continuationProducers = new Map<string, string>();
   for (const slide of projection.document.slides) {
+    const continuation = source.blocks.find((block) =>
+      block.kind === "chunk" && block.slideId &&
+      executionLayout(block).location === "slide" &&
+      slide.id === `qb-output-${hashSource(block.id).slice(0, 24)}`
+    );
+    if (continuation) {
+      originalSlides.set(slide.id, continuation.slideId!);
+      continuationProducers.set(slide.id, continuation.id);
+      continue;
+    }
     const exact = source.slides.filter((candidate) =>
       candidate.id === slide.id && candidate.stable
     );
@@ -1981,6 +2202,15 @@ export function validateProjectionOrigins(
       if (!element) {
         throw new Error(
           "UNMAPPED_PROVENANCE: source origin has no projected element",
+        );
+      }
+      if (
+        continuationProducers.has(slideId) &&
+        (original.origin !== "computed" ||
+          original.producer !== continuationProducers.get(slideId))
+      ) {
+        throw new Error(
+          "UNMAPPED_PROVENANCE: continuation slides contain only results of their exact original producer.",
         );
       }
       let candidates = original.sourceId
