@@ -290,6 +290,7 @@ export async function assertCompatibleProducerFilters(
       );
     }
   }
+  return inspection;
 }
 
 /** Existing bounded rich/widget adapters may look through exactly one verified

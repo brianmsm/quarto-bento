@@ -13,6 +13,38 @@ import {
   attachProducerCapture,
   prepareProducerCapture,
 } from "./producer-capture.ts";
+
+/** Match the installed format's SVG default without replacing authored options. */
+function figureFormatArguments(
+  inspected: {
+    project?: { config?: Record<string, unknown> };
+    fileInformation?: Record<string, { metadata?: Record<string, unknown> }>;
+  } | undefined,
+): string[] {
+  if (!inspected) return [];
+  const declared = (value: Record<string, unknown> | undefined): boolean => {
+    if (!value || typeof value !== "object") return false;
+    // External metadata has its own precedence; leave its device choice intact.
+    if (
+      value["fig-format"] !== undefined ||
+      value["metadata-file"] !== undefined ||
+      value["metadata-files"] !== undefined
+    ) return true;
+    const execute = value.execute as Record<string, unknown> | undefined;
+    if (execute?.["fig-format"] !== undefined) return true;
+    const formats = value.format as Record<string, unknown> | undefined;
+    return declared(formats?.html as Record<string, unknown> | undefined) ||
+      declared(formats?.["qbento-html"] as Record<string, unknown> | undefined);
+  };
+  if (
+    declared(inspected.project?.config) ||
+    Object.values(inspected.fileInformation ?? {}).some((file) =>
+      declared(file.metadata)
+    )
+  ) return [];
+  return ["-M", "fig-format:svg"];
+}
+
 async function assertPrivateBuild(buildRoot: string): Promise<void> {
   const pending = [buildRoot];
   let entries = 0;
@@ -76,7 +108,8 @@ export async function executeQuarto(
   } catch (e) {
     if (!(e instanceof Deno.errors.NotFound)) throw e;
   }
-  await assertCompatibleProducerFilters(source);
+  const inspection = await assertCompatibleProducerFilters(source);
+  const figureFormat = figureFormatArguments(inspection);
   const capture = await prepareProducerCapture(source);
   try {
     const filter = fileURLToPath(new URL("./capture.lua", import.meta.url));
@@ -91,6 +124,7 @@ export async function executeQuarto(
         filter,
         "-M",
         "theme:none",
+        ...figureFormat,
         "--output",
         "quarto-intermediate.html",
         "--output-dir",
