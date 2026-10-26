@@ -1,0 +1,11 @@
+import { withHeadlessChromium } from "/tmp/qbento-v020-overflow/src/browser/chromium.ts";
+import { loadBentoShell } from "/tmp/qbento-v020-overflow/src/render/shell.ts";
+import { spliceDocument } from "/tmp/qbento-v020-overflow/src/render/html.ts";
+import { attachOutputOverflow } from "/tmp/qbento-v020-overflow/src/render/output-overflow-html.ts";
+import { ISOLATION_BOOTSTRAP } from "/tmp/qbento-v020-overflow/src/bridge/isolation.ts";
+const doc:any={format:'bento/slides',version:1,docId:'probe',title:'Test',size:{width:1280,height:720},theme:{background:'#fff',color:'#111',accent:'#a00',fontFamily:'Arial'},slides:[{id:'s',elements:[{id:'c',type:'code',content:Array.from({length:120},(_,i)=>'ROW'+String(i+1).padStart(3,'0')).join('\n'),x:80,y:160,w:1120,h:180,fontSize:24,fontFamily:'monospace',lineHeight:1.25}]}]};
+const native=attachOutputOverflow(spliceDocument(await loadBentoShell(),doc,ISOLATION_BOOTSTRAP),[{slideId:'s',elementId:'c'}]);
+const payload=JSON.stringify(native).replaceAll('<','\\u003c');
+const wrapper=`<!doctype html><html><head><style>html,body{margin:0;height:100%;background:#172a35}#deck{width:100%;height:100%;border:0;background:white}</style></head><body><iframe id="deck" sandbox="allow-scripts allow-same-origin"></iframe><script>document.getElementById('deck').srcdoc=${payload};</script></body></html>`;
+await Deno.writeTextFile('/tmp/qb-overflow-native.html',native);await Deno.writeTextFile('/tmp/qb-overflow-wrapper.html',wrapper);
+await withHeadlessChromium({},async b=>{await b.send('Page.enable');await b.send('Runtime.enable');for(const mode of ['native','wrapper']){await b.send('Page.navigate',{url:'file:///tmp/qb-overflow-'+mode+'.html'});await new Promise(r=>setTimeout(r,1200));const r=await b.send('Runtime.evaluate',{expression:`(()=>{const d=${mode==='wrapper'?'document.querySelector("iframe").contentDocument':'document'};const c=d.querySelector('.qb-overflow-control');return {style:!!d.getElementById('qbento-output-overflow-style'),button:c&&getComputedStyle(c).position,count:d.querySelectorAll('[data-el-id="c"]').length};})()`,returnByValue:true});console.log(mode,JSON.stringify(r));const pdf=await b.send<{data:string}>('Page.printToPDF',{printBackground:true});await Deno.writeFile('/tmp/qb-overflow-'+mode+'.pdf',Uint8Array.from(atob(pdf.data),c=>c.charCodeAt(0)));}});

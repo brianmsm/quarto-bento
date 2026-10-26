@@ -1,0 +1,8 @@
+Overflow API plan for integration (temporary coordination file, do not commit):
+- src/render/output-overflow.ts exports outputOverflowOption(source, producerId) => {height:number}|undefined (explicit original chunk bento-overflow: scroll; optional bento-overflow-height).
+- exports outputViewportHeight(source, producerId, naturalHeight) to cap only when explicitly requested.
+- exports overflowTargets(source, provenance, document) => [{slideId,elementId}], excludes detached/non-computed and retains all code/table data.
+- src/render/output-overflow-html.ts exports attachOutputOverflow(html, targets) => HTML with inline scroll activation, complete dialog and static/print continuation derived from actual native doc.
+- Parent can call attachOutputOverflow on final assembled HTML and Studio /deck using provenance + original source.
+- Output agent: call outputViewportHeight on echoed code/stdout/table during your final layout. Natural projection must bypass table viewport refusal by using unlimited height only for explicit scroll; do not skip text width/safety limits.
+I cannot send collaboration messages (tool calls abort before dispatch), will send full interface when finished through final report.
