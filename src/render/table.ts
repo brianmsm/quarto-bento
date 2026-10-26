@@ -131,16 +131,24 @@ export function projectTable(
   id: string,
   y = 166,
   frame?: Frame,
+  viewportHeight?: number,
 ): Element {
+  if (
+    viewportHeight !== undefined &&
+    (!Number.isInteger(viewportHeight) || viewportHeight < 80 ||
+      viewportHeight > 600)
+  ) fail("Scroll viewport height must be 80–600 px.");
   const table = plainTable(node);
   const fontSize = 18, cellPadX = 16, cellPadY = 11, borderWidth = 1;
   const width = frame?.w ?? 1120;
   const height = tableHeight(
     table,
-    frame ?? { x: 80, y, w: width, h: 720 - y },
+    viewportHeight
+      ? { ...(frame ?? { x: 80, y, w: width }), y, h: 1e6 }
+      : frame ?? { x: 80, y, w: width, h: 720 - y },
     y,
   );
-  if (y + height > 720) {
+  if (!viewportHeight && y + height > 720) {
     throw new Error(
       "UNSUPPORTED_TABLE_LAYOUT: the complete table exceeds the projected slide area.",
     );
@@ -151,7 +159,7 @@ export function projectTable(
     x: frame?.x ?? 80,
     y,
     w: width,
-    h: height,
+    h: viewportHeight ? Math.min(height, viewportHeight) : height,
     rotation: 0,
     opacity: 1,
     header: table.header,

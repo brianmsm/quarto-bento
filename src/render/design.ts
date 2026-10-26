@@ -297,7 +297,13 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
       result.bindings[native] = key;
     } else if (
       (key.startsWith("bento-") || result.component) &&
-      !["bento-title-id", "bento-element-id", "bento-image-id"].includes(key)
+      ![
+        "bento-title-id",
+        "bento-element-id",
+        "bento-image-id",
+        "bento-overflow",
+        "bento-overflow-height",
+      ].includes(key)
     ) {
       throw new DesignError("UNSUPPORTED_DESIGN_ATTRIBUTE", key);
     }

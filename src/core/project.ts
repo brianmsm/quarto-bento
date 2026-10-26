@@ -8,6 +8,11 @@ import { retainedComponentFrames } from "./component-frames.ts";
 import { kpiReadabilityDiagnostics } from "../render/kpi.ts";
 import { refreshOverflowDiagnostics } from "../render/diagnostics.ts";
 import { textOverflowDiagnostics } from "../render/text-overflow.ts";
+import {
+  outputOverflowDiagnostics,
+  outputOverflowTargets,
+} from "../render/output-overflow.ts";
+import { attachOutputOverflow } from "../render/output-overflow-html.ts";
 import { assertGraphTypography } from "../render/graphs.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
@@ -598,11 +603,19 @@ async function render(source: string, executed?: ExecutedRender) {
       composed.document as unknown as RenderDoc,
     );
     const shell = await loadBentoShell();
-    const assembled = spliceDocument(
-      shell,
+    const overflowTargets = outputOverflowTargets(
+      projected.mapping,
+      state.provenance,
       composed.document as unknown as RenderDoc,
-      ISOLATION_BOOTSTRAP,
-      OFFLINE_CSP,
+    );
+    const assembled = attachOutputOverflow(
+      spliceDocument(
+        shell,
+        composed.document as unknown as RenderDoc,
+        ISOLATION_BOOTSTRAP,
+        OFFLINE_CSP,
+      ),
+      overflowTargets,
     );
     const { html, receipt } = await preparePublication(
       composed.document,
@@ -725,9 +738,12 @@ async function render(source: string, executed?: ExecutedRender) {
     return {
       output: paths.output,
       state,
-      diagnostics: refreshOverflowDiagnostics(
-        composed.document as unknown as RenderDoc,
-        [...projected.diagnostics, ...kpiDiagnostics, ...textDiagnostics],
+      diagnostics: outputOverflowDiagnostics(
+        refreshOverflowDiagnostics(
+          composed.document as unknown as RenderDoc,
+          [...projected.diagnostics, ...kpiDiagnostics, ...textDiagnostics],
+        ),
+        overflowTargets,
       ),
       ...(widgetPublication
         ? {
@@ -832,11 +848,18 @@ export async function readProjectDiagnostics(
   const { pendingComponentDiagnostics } = await import(
     "./component-actions.ts"
   );
-  return refreshOverflowDiagnostics(state.emitted as unknown as RenderDoc, [
-    ...designDiagnostics,
-    ...pendingComponentDiagnostics(state),
-    ...await textOverflowDiagnostics(state.emitted as unknown as RenderDoc),
-  ]);
+  return outputOverflowDiagnostics(
+    refreshOverflowDiagnostics(state.emitted as unknown as RenderDoc, [
+      ...designDiagnostics,
+      ...pendingComponentDiagnostics(state),
+      ...await textOverflowDiagnostics(state.emitted as unknown as RenderDoc),
+    ]),
+    outputOverflowTargets(
+      mapping,
+      state.provenance,
+      state.emitted as unknown as RenderDoc,
+    ),
+  );
 }
 
 export async function readProjectPresenter(

@@ -34,6 +34,9 @@ import {
   type SlideActionRequest,
 } from "../core/slide-actions.ts";
 import { spliceDocument } from "../render/html.ts";
+import { attachOutputOverflow } from "../render/output-overflow-html.ts";
+import { outputOverflowTargets } from "../render/output-overflow.ts";
+import { scanSource } from "../source/mod.ts";
 import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
 import { type BentoDoc, StateError } from "../state/mod.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
@@ -166,18 +169,25 @@ export async function startStudio(source: string, port = 0) {
         if (req.method === "GET" && url.pathname === "/deck") {
           const state = await readProject(source);
           return respond(
-            spliceDocument(
-              shell,
-              state.emitted as unknown as RenderDoc,
-              managedBoot +
-                "\nObject.defineProperty(globalThis, '__qbentoSnapshot', { value: Object.freeze(" +
-                JSON.stringify({
-                  docId: state.docId,
-                  revision: state.revision,
-                  pending: state.pending.length,
-                }).replaceAll("<", "\\u003c") +
-                ") });",
-              OFFLINE_CSP,
+            attachOutputOverflow(
+              spliceDocument(
+                shell,
+                state.emitted as unknown as RenderDoc,
+                managedBoot +
+                  "\nObject.defineProperty(globalThis, '__qbentoSnapshot', { value: Object.freeze(" +
+                  JSON.stringify({
+                    docId: state.docId,
+                    revision: state.revision,
+                    pending: state.pending.length,
+                  }).replaceAll("<", "\\u003c") +
+                  ") });",
+                OFFLINE_CSP,
+              ),
+              outputOverflowTargets(
+                scanSource(await Deno.readTextFile(source)),
+                state.provenance,
+                state.emitted as unknown as RenderDoc,
+              ),
             ),
             200,
             "text/html; charset=utf-8",

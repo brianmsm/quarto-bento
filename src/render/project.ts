@@ -27,6 +27,10 @@ import { producerOutputChildren, producerReceipt } from "./producer-capture.ts";
 import { type KpiAppearance, projectKpi } from "./kpi.ts";
 import { kpiSource, kpiSourceAttributes } from "../source/kpi.ts";
 import { refreshOverflowDiagnostics } from "./diagnostics.ts";
+import {
+  outputOverflowOption,
+  outputViewportHeight,
+} from "./output-overflow.ts";
 import { projectGraph, validateGraphOrigin } from "./graphs.ts";
 import { sourceGraphs } from "../source/graphs.ts";
 import {
@@ -743,6 +747,23 @@ export async function projectAst(
       } else if (node.t === "Div") {
         const [rawAttr, children] = node.c as [Attr, Node[]];
         const attr = recoverThemeAttributes(rawAttr, "div", source, computed);
+        const overflowMetadata = attr[2].filter(([key]) =>
+          ["bento-overflow", "bento-overflow-height"].includes(key)
+        );
+        if (overflowMetadata.length) {
+          const option = computed && outputOverflowOption(source, parentId);
+          if (
+            !option ||
+            overflowMetadata.some(([key, value]) =>
+              value !==
+                (key === "bento-overflow" ? "scroll" : String(option.height))
+            )
+          ) {
+            throw new Error(
+              "UNMAPPED_OUTPUT_OVERFLOW: expected original producer options",
+            );
+          }
+        }
         if (parseDesignAttributes(attr).variant) {
           throw new DesignError(
             "VARIANT_TARGET_MISMATCH",
@@ -1886,6 +1907,7 @@ export async function projectAst(
           "pending-table",
           y,
           remainingFrame(),
+          computed ? outputOverflowOption(source, parentId)?.height : undefined,
         );
         const block = identifiedBlock ?? matchBareTable(source, provisional);
         if (tableSources.has(block.id)) {
@@ -1954,7 +1976,7 @@ export async function projectAst(
             "UNSUPPORTED_CODE_CLASSES: displayed code supports one language class plus native visual attributes",
           );
         }
-        const height = contentFrame
+        const naturalHeight = contentFrame
           ? Math.max(
             90,
             (content.split("\n").length + 1) * codeSize * codeLineHeight,
@@ -1966,6 +1988,9 @@ export async function projectAst(
               (content.split("\n").length + 1) * codeSize * codeLineHeight,
             ),
           );
+        const height = computed
+          ? outputViewportHeight(source, parentId, naturalHeight)
+          : naturalHeight;
         const element: Element = {
           id: sourceId ?? `qb-code-${++counter}`,
           type: "code",
@@ -2118,6 +2143,7 @@ export function assertSupportedExecutionSource(source: SourceDocument): void {
         parent = ancestor.parentId;
       }
     }
+    outputOverflowOption(source, block.id);
     if (
       /(?:#\|\s*results\s*:\s*|results\s*=\s*)["']?asis\b|\b(?:knitr::)?asis_output\s*\(/i
         .test(block.raw)
