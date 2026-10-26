@@ -1,4 +1,6 @@
 import { producerOutputChildren } from "../render/producer-capture.ts";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { originalThemeAttributes } from "../render/theme-styles.ts";
 import { canonical } from "../state/json.ts";
 /** Bounded, data-only adapter for executed R Plotly htmlwidgets. */
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
@@ -15,6 +17,7 @@ export interface PlotlyCandidate {
     slideId: string;
     chunkHash: string;
     outputHash: string;
+    external?: { path: string; sha256: string };
   };
   spec: { data: ObjectValue[]; layout: ObjectValue; config: ObjectValue };
   specHash: string;
@@ -66,6 +69,16 @@ function plainText(value: unknown, label: string) {
     fail(`${label} requires plain text (HTML and MathJax are not bundled)`);
   }
 }
+function labelText(value: unknown, label: string) {
+  if (typeof value !== "string") fail(`${label} requires text`);
+  plainText(
+    (value as string).replace(
+      /<\/?(?:b|i|em|strong|sup|sub|extra)>|<br\s*\/?>/gi,
+      "",
+    ),
+    label,
+  );
+}
 function font(value: unknown) {
   const v = object(value, "font");
   keys(v, "family size color", "font");
@@ -73,14 +86,14 @@ function font(value: unknown) {
 }
 function title(value: unknown) {
   if (Array.isArray(value) && value.length === 0) return;
-  if (typeof value === "string") return plainText(value, "title");
+  if (typeof value === "string") return labelText(value, "title");
   const v = object(value, "title");
   keys(
     v,
     "text font standoff x y xanchor yanchor xref yref pad automargin",
     "title",
   );
-  if (v.text !== undefined) plainText(v.text, "title.text");
+  if (v.text !== undefined) labelText(v.text, "title.text");
   if (v.font) font(v.font);
 }
 function axis(value: unknown) {
@@ -103,11 +116,11 @@ function trace(value: unknown): ObjectValue {
   const v = object(value, "trace");
   keys(
     v,
-    "type x y mode name marker line error_x error_y xaxis yaxis frame text textposition textfont hovertext hoverinfo hovertemplate opacity visible showlegend legendgroup orientation width base offset fill fillcolor connectgaps cliponaxis",
+    "type x y z mode name marker line error_x error_y error_z xaxis yaxis scene frame text textposition textfont hovertext hoverinfo hovertemplate opacity visible showlegend legendgroup orientation width base offset fill fillcolor connectgaps cliponaxis",
     "trace",
   );
-  if (!["scatter", "bar"].includes(v.type as string)) {
-    fail("only SVG scatter and bar traces are supported");
+  if (!["scatter", "bar", "scatter3d"].includes(v.type as string)) {
+    fail("only scatter, bar and scatter3d traces are supported");
   }
   if (v.frame !== undefined && v.frame !== null) {
     fail("animated frames need a separate adapter");
@@ -120,9 +133,29 @@ function trace(value: unknown): ObjectValue {
     !Array.isArray(v.x) || !Array.isArray(v.y) || v.x.length !== v.y.length ||
     !v.x.length
   ) fail("x and y must be equal nonempty arrays");
-  for (const key of ["x", "y"]) {
+  if (v.type === "scatter3d") {
+    if (
+      !Array.isArray(v.z) || v.z.length !== v.x.length ||
+      (v.scene !== undefined && v.scene !== "scene")
+    ) fail("scatter3d requires matching z values and one scene");
+    if (
+      v.mode !== undefined &&
+      ![
+        "markers",
+        "lines",
+        "lines+markers",
+        "text",
+        "markers+text",
+        "lines+text",
+        "lines+markers+text",
+      ].includes(String(v.mode))
+    ) fail("unsupported scatter3d mode");
+  } else if (
+    v.z !== undefined || v.scene !== undefined || v.error_z !== undefined
+  ) fail("3D fields require scatter3d");
+  for (const key of v.type === "scatter3d" ? ["x", "y", "z"] : ["x", "y"]) {
     for (const item of v[key] as unknown[]) {
-      if (typeof item === "string") plainText(item, key);
+      if (typeof item === "string") labelText(item, key);
       else if (typeof item !== "number" && item !== null) {
         fail(`${key} values must be numeric, plain strings or null`);
       }
@@ -132,7 +165,7 @@ function trace(value: unknown): ObjectValue {
     if (v[key] !== undefined) {
       for (
         const item of Array.isArray(v[key]) ? v[key] as unknown[] : [v[key]]
-      ) plainText(item, key);
+      ) labelText(item, key);
     }
   }
   if (v.textfont) font(v.textfont);
@@ -150,7 +183,7 @@ function trace(value: unknown): ObjectValue {
       keys(object(m.line, "marker.line"), "color width", "marker.line");
     }
   }
-  for (const key of ["error_x", "error_y"]) {
+  for (const key of ["error_x", "error_y", "error_z"]) {
     if (v[key]) {
       keys(
         object(v[key], key),
@@ -193,7 +226,7 @@ export function parsePlotlyPayload(payload: string): PlotlyCandidate["spec"] {
   const layout = structuredClone(object(x.layout, "layout"));
   keys(
     layout,
-    "title xaxis yaxis margin hovermode showlegend legend font paper_bgcolor plot_bgcolor barmode bargap bargroupgap dragmode",
+    "title xaxis yaxis scene margin hovermode hoverlabel showlegend legend font paper_bgcolor plot_bgcolor barmode bargap bargroupgap dragmode width height",
     "layout",
   );
   if (layout.title !== undefined) title(layout.title);
@@ -203,6 +236,63 @@ export function parsePlotlyPayload(payload: string): PlotlyCandidate["spec"] {
       const a = layout[key] as ObjectValue;
       if (Array.isArray(a.title) && a.title.length === 0) delete a.title;
     }
+  }
+  if (layout.scene) {
+    if (!data.some((trace) => trace.type === "scatter3d")) {
+      fail("scene requires scatter3d data");
+    }
+    const scene = object(layout.scene, "scene");
+    keys(
+      scene,
+      "xaxis yaxis zaxis camera aspectmode aspectratio bgcolor dragmode domain uirevision",
+      "scene",
+    );
+    for (const key of ["xaxis", "yaxis", "zaxis"]) {
+      if (scene[key]) axis(scene[key]);
+    }
+    if (
+      scene.aspectmode !== undefined &&
+      !["auto", "cube", "data", "manual"].includes(String(scene.aspectmode))
+    ) fail("unsupported scene aspect mode");
+    const vector = (value: unknown) => {
+      const v = object(value, "scene vector");
+      keys(v, "x y z", "scene vector");
+      if (
+        Object.values(v).some((n) =>
+          typeof n !== "number" || !Number.isFinite(n)
+        )
+      ) fail("scene vectors require finite numbers");
+    };
+    if (scene.aspectratio) vector(scene.aspectratio);
+    if (scene.domain) {
+      keys(object(scene.domain, "scene.domain"), "x y", "scene.domain");
+    }
+    if (scene.camera) {
+      const camera = object(scene.camera, "scene.camera");
+      keys(camera, "eye center up projection", "scene.camera");
+      for (const key of ["eye", "center", "up"]) {
+        if (camera[key]) vector(camera[key]);
+      }
+      if (camera.projection) {
+        const projection = object(camera.projection, "camera.projection");
+        keys(projection, "type", "camera.projection");
+        if (
+          !["perspective", "orthographic"].includes(String(projection.type))
+        ) fail("unsupported camera projection");
+      }
+    }
+  }
+  if (layout.hoverlabel) {
+    const label = object(layout.hoverlabel, "hoverlabel");
+    keys(label, "align bgcolor bordercolor font namelength", "hoverlabel");
+    if (label.font) font(label.font);
+  }
+  for (const key of ["width", "height"]) {
+    if (
+      layout[key] !== undefined &&
+      (typeof layout[key] !== "number" || Number(layout[key]) < 100 ||
+        Number(layout[key]) > 1600)
+    ) fail("invalid layout dimensions");
   }
   if (layout.font) font(layout.font);
   if (layout.margin) {
@@ -218,9 +308,17 @@ export function parsePlotlyPayload(payload: string): PlotlyCandidate["spec"] {
   const config = structuredClone(object(x.config, "config"));
   keys(
     config,
-    "modeBarButtonsToAdd showSendToCloud displayModeBar displaylogo scrollZoom doubleClick",
+    "modeBarButtonsToAdd showSendToCloud displayModeBar displaylogo scrollZoom doubleClick toImageButtonOptions",
     "config",
   );
+  if (config.toImageButtonOptions) {
+    keys(
+      object(config.toImageButtonOptions, "toImageButtonOptions"),
+      "format filename width height scale",
+      "toImageButtonOptions",
+    );
+    delete config.toImageButtonOptions;
+  }
   if (config.showSendToCloud !== false) fail("cloud links must be disabled");
   if (
     config.modeBarButtonsToAdd !== undefined &&
@@ -284,6 +382,9 @@ export function collectPlotlyCandidates(
     }
     if (nodes.length !== 1) fail(`ambiguous executed wrapper ${wrapper.id}`);
     const children = source.blocks.filter((b) => b.parentId === wrapper.id);
+    if (children.length && children.every((child) => child.kind === "div")) {
+      continue;
+    }
     if (
       children.length !== 1 || children[0].kind !== "chunk" ||
       !children[0].stable || !children[0].slideId
@@ -296,32 +397,31 @@ export function collectPlotlyCandidates(
     if (/results\s*[:=]\s*["']?asis|asis_output\s*\(/i.test(chunk.raw)) {
       fail("explicit asis output cannot establish widget provenance");
     }
-    let current = producerOutputChildren(
+    const current = producerOutputChildren(
       ast,
       (nodes[0].c as [unknown, Node[]])[1],
       source.hash,
       chunk.id,
     );
-    for (const className of ["cell", "cell-output-display"]) {
-      if (current.length !== 1 || current[0].t !== "Div") {
-        fail(
-          "widget output requires one cell and one display block; hide echoed source and messages",
-        );
+    const outputs: string[] = [];
+    const visitOutput = (nodes: Node[]) => {
+      for (const node of nodes) {
+        if (node.t === "Div") visitOutput((node.c as [unknown, Node[]])[1]);
+        else if (node.t === "RawBlock") {
+          const [format, html] = node.c as [string, string];
+          if (format === "html" && html.includes("plotly html-widget")) {
+            outputs.push(html);
+          }
+        }
       }
-      const [attrs, nested] = current[0].c as [
-        [string, string[], unknown[]],
-        Node[],
-      ];
-      if (attrs[1].length !== 1 || attrs[1][0] !== className) {
-        fail("unsupported widget output container");
-      }
-      current = nested;
+    };
+    visitOutput(current);
+    if (outputs.length !== 1) {
+      fail(
+        "one Plotly display output is required per identified producer wrapper",
+      );
     }
-    if (current.length !== 1 || current[0].t !== "RawBlock") {
-      fail("expected one widget HTML output");
-    }
-    const [format, html] = current[0].c as [string, string];
-    if (format !== "html") fail("widget requires HTML output");
+    const html = outputs[0];
     const matched = html.match(
       /^<div class="plotly html-widget html-fill-item" id="(htmlwidget-[a-f0-9]+)" style="width:100%;height:(\d+)px;"><\/div>\s*<script type="application\/json" data-for="\1">([\s\S]*)<\/script>\s*$/,
     );
@@ -351,4 +451,97 @@ export function collectPlotlyCandidates(
     });
   }
   return result;
+}
+
+/** Original source references an exported R htmlwidget; its executable scripts are never reused. */
+export async function collectExternalPlotlyCandidates(
+  source: SourceDocument,
+  root: string,
+): Promise<PlotlyCandidate[]> {
+  if (hashSource(source.text) !== source.hash) fail("source snapshot is stale");
+  source = scanSource(source.text);
+  const result: PlotlyCandidate[] = [];
+  for (const wrapper of source.blocks.filter((block) => block.kind === "div")) {
+    const attr = originalThemeAttributes(wrapper);
+    const paths = attr?.[2].filter(([key]) => key === "widget-src") ?? [];
+    if (!paths.length) continue;
+    if (
+      paths.length !== 1 || !wrapper.stable || !wrapper.slideId ||
+      source.blocks.some((block) => block.parentId === wrapper.id)
+    ) {
+      fail(
+        "external widget needs an empty identified original div under a slide",
+      );
+    }
+    const path = paths[0][1];
+    const file = await readExternalWidget(root, path);
+    const matches = [
+      ...file.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi),
+    ].filter((match) =>
+      /\btype=["']application\/json["']/i.test(match[1]) &&
+      /\bdata-for=["']htmlwidget-[a-z0-9]+["']/i.test(match[1])
+    );
+    if (matches.length !== 1) {
+      fail(
+        "external HTML must contain exactly one identified R htmlwidget payload",
+      );
+    }
+    const id = /\bdata-for=["']([^"']+)["']/i.exec(matches[0][1])![1];
+    if (
+      !new RegExp(
+        `<div[^>]*class=["'][^"']*\\bplotly\\b[^"']*html-widget[^"']*["'][^>]*id=["']${id}["']|<div[^>]*id=["']${id}["'][^>]*class=["'][^"']*\\bplotly\\b[^"']*html-widget[^"']*["']`,
+        "i",
+      ).test(file)
+    ) fail("external HTML lacks its matching Plotly widget container");
+    const spec = parsePlotlyPayload(matches[0][2]);
+    const height = Number(spec.layout.height ?? 500),
+      width = Number(spec.layout.width ?? 800);
+    result.push({
+      version: 1,
+      kind: "plotly",
+      source: {
+        sourceHash: source.hash,
+        sourceId: wrapper.id,
+        producerId: "",
+        slideId: wrapper.slideId,
+        chunkHash: hashSource(wrapper.raw),
+        outputHash: hashSource(file),
+        external: { path, sha256: hashSource(file) },
+      },
+      spec,
+      specHash: hashSource(canonical(spec)),
+      width,
+      height,
+    });
+  }
+  return result;
+}
+export async function readExternalWidget(
+  root: string,
+  path: string,
+): Promise<string> {
+  if (
+    !path || isAbsolute(path) || /^[a-z][a-z0-9+.-]*:/i.test(path) ||
+    path.includes("\\") || path.includes("\0") || !/\.html?$/i.test(path)
+  ) fail("widget-src requires a local relative HTML file");
+  const actualRoot = await Deno.realPath(root),
+    file = resolve(actualRoot, path),
+    rel = relative(actualRoot, file);
+  if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) {
+    fail("widget artifact is outside its source project");
+  }
+  for (let current = file; current !== actualRoot; current = dirname(current)) {
+    const stat = await Deno.lstat(current);
+    if (
+      stat.isSymlink ||
+      (current === file
+        ? !stat.isFile || stat.nlink !== 1 || stat.size > 16_000_000
+        : !stat.isDirectory)
+    ) {
+      fail(
+        "widget artifact must be a regular local HTML file without linked paths and at most 16 MB",
+      );
+    }
+  }
+  return await Deno.readTextFile(file);
 }

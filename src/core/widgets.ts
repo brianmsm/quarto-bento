@@ -10,7 +10,11 @@ import {
 } from "../state/mod.ts";
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
 import { type Ast } from "../render/types.ts";
-import { collectPlotlyCandidates } from "../widgets/plotly.ts";
+import {
+  collectExternalPlotlyCandidates,
+  collectPlotlyCandidates,
+  readExternalWidget,
+} from "../widgets/plotly.ts";
 import {
   createPlotlyPresenter,
   createPlotlyReceipt,
@@ -83,8 +87,12 @@ export interface PreparedWidgets {
 export async function prepareWidgets(
   ast: Ast,
   source: SourceDocument,
+  root: string,
 ): Promise<PreparedWidgets> {
-  const candidates = collectPlotlyCandidates(ast, source),
+  const candidates = [
+      ...collectPlotlyCandidates(ast, source),
+      ...await collectExternalPlotlyCandidates(source, root),
+    ],
     projections = new Map<string, WidgetProjection>();
   if (!candidates.length) return { bundles: [], projections };
   if (candidates.length > 8) {
@@ -277,6 +285,13 @@ export async function projectPresenter(
       source,
       expectedReceipt: entry.receipt as unknown as PlotlyReceipt,
     };
+    const external = context.expectedReceipt.source.external;
+    if (
+      external &&
+      hashSource(
+          await readExternalWidget(dirname(sourcePath), external.path),
+        ) !== external.sha256
+    ) fail("External widget artifact changed; render before presenting it.");
     const bundle = await loadPlotlyBundle(await checkedRead(dir, entry.file), {
       ...context,
       runtime,

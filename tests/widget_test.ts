@@ -255,3 +255,37 @@ Deno.test("Computed widget projection requires current original QMD and an exter
     })
   );
 });
+
+Deno.test("Plotly3D validates scene camera coordinates and safe rich labels without allowing hooks", () => {
+  const value = raw();
+  Object.assign(value.x.data[0], {
+    type: "scatter3d",
+    z: [3, 4, 5],
+    text: ["<b>Item</b><br>Value", "Two", "Three"],
+  });
+  Object.assign(value.x.layout, {
+    scene: {
+      xaxis: { title: "PC1" },
+      yaxis: { title: "PC2" },
+      zaxis: { title: "PC3" },
+      aspectmode: "data",
+      camera: { eye: { x: 1.4, y: 1.4, z: 1.1 } },
+    },
+  });
+  const parsed = parsePlotlyPayload(JSON.stringify(value));
+  ok(parsed.data[0].type === "scatter3d" && Array.isArray(parsed.data[0].z));
+  for (
+    const change of [
+      { z: [1] },
+      { scene: "scene2" },
+      { text: ["<b onclick='alert(1)'>bad</b>"] },
+      { type: "surface" },
+    ]
+  ) {
+    const unsafe = structuredClone(value);
+    Object.assign(unsafe.x.data[0], change);
+    refuses(() => parsePlotlyPayload(JSON.stringify(unsafe)));
+  }
+  Object.assign(value.x.layout, { scene: { camera: { eye: { x: "bad" } } } });
+  refuses(() => parsePlotlyPayload(JSON.stringify(value)));
+});

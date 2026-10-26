@@ -45,6 +45,8 @@ export interface Origin {
   richTable?: Json;
   /** Exact authored local image/caption pair and input-asset digest. */
   image?: Json;
+  /** Original local widget artifact and its independently checked static projection. */
+  widget?: Json;
 }
 export interface Projection {
   document: BentoDoc;

@@ -29,7 +29,10 @@ import {
   type RichTableSnapshot,
 } from "../rich/table.ts";
 import { richTableElement, verifyRichTableSnapshot } from "../rich/project.ts";
-import { collectPlotlyCandidates } from "../widgets/plotly.ts";
+import {
+  collectExternalPlotlyCandidates,
+  collectPlotlyCandidates,
+} from "../widgets/plotly.ts";
 import {
   assertCompatibleComponentSource,
   projectComponent,
@@ -161,7 +164,13 @@ export async function projectAst(
   const consumedWidgets = new Set<string>();
   const expectedWidgets = new Map(
     widgets.size && source
-      ? collectPlotlyCandidates(ast, source).map((c) => [c.source.sourceId, c])
+      ? [
+        ...collectPlotlyCandidates(ast, source),
+        ...await collectExternalPlotlyCandidates(
+          source,
+          authoredImageRoot ?? assetRoots.at(-1)!,
+        ),
+      ].map((c) => [c.source.sourceId, c])
       : [],
   );
   for (const [id, widget] of widgets) {
@@ -876,23 +885,34 @@ export async function projectAst(
         const widget = widgets.get(attr[0]);
         if (widget) {
           if (
-            inComponent || computed || !slide || slide.id !== widget.slideId ||
+            computed || !slide || slide.id !== widget.slideId ||
             consumedWidgets.has(attr[0]) || attr[2].some(([key]) =>
               key === "bento-element-id"
             )
           ) {
             throw new Error(
-              "WIDGET_PROJECTION_MISMATCH: use a single identified widget wrapper outside components under its original slide",
+              "WIDGET_PROJECTION_MISMATCH: widget wrapper moved outside its original source context",
             );
           }
-          const element = structuredClone(widget.element);
-          element.y = y;
-          element.h = Math.min(Number(element.h), Math.max(100, 670 - y));
-          add(element, widget.origin);
-          design(attr, [element]);
-          y += Number(element.h) + 20;
-          consumedWidgets.add(attr[0]);
-          continue;
+          const candidate = expectedWidgets.get(attr[0])!;
+          if (candidate.source.external) {
+            const element = structuredClone(widget.element);
+            const frame = contentFrame ?? remainingFrame();
+            element.x = frame?.x ?? element.x;
+            element.y = y;
+            element.w = frame?.w ?? element.w;
+            element.h = Math.min(
+              Number(element.h),
+              frame?.h ?? Math.max(100, 670 - y),
+            );
+            add(element, widget.origin);
+            design(attr, [element]);
+            y += Number(element.h) + 20;
+            consumedWidgets.add(attr[0]);
+            if (groups) groups.push(slide!.elements.slice(groupStart));
+            contentFrame = previousFrame;
+            continue;
+          }
         }
 
         const declaration = parseDesignAttributes(attr);
@@ -1138,7 +1158,15 @@ export async function projectAst(
             };
             const measuredTable = tableHeight(child);
             if (measuredTable !== undefined) return measuredTable;
-            if (images([child]).length) return -1;
+            const containsWidget = (node: Node): boolean =>
+              node.t === "RawBlock"
+                ? [...widgets.values()].some((widget) =>
+                  widget.outputHash ===
+                    hashSource((node.c as [string, string])[1])
+                )
+                : node.t === "Div" &&
+                  (node.c as [Attr, Node[]])[1].some(containsWidget);
+            if (containsWidget(child) || images([child]).length) return -1;
             const measure = (
               node: Node,
               wrappers: ReusableStyle = {},
@@ -1776,6 +1804,36 @@ export async function projectAst(
         y += height + 20;
       } else if (node.t === "RawBlock") {
         const [format, raw] = node.c as [string, string];
+        const matchingWidget = [...widgets].find(([id, widget]) =>
+          !expectedWidgets.get(id)?.source.external &&
+          widget.outputHash === hashSource(raw)
+        );
+        if (matchingWidget) {
+          const [id, widget] = matchingWidget,
+            candidate = expectedWidgets.get(id)!;
+          if (
+            format !== "html" || !computed ||
+            parentId !== candidate.source.producerId ||
+            slide?.id !== widget.slideId || consumedWidgets.has(id)
+          ) {
+            throw new Error(
+              "WIDGET_PROJECTION_MISMATCH: widget display differs from its original producer context",
+            );
+          }
+          const element = structuredClone(widget.element),
+            frame = remainingFrame();
+          element.x = frame?.x ?? element.x;
+          element.y = y;
+          element.w = frame?.w ?? element.w;
+          element.h = Math.min(
+            Number(element.h),
+            frame?.h ?? Math.max(100, 670 - y),
+          );
+          add(element, widget.origin);
+          y += Number(element.h) + 20;
+          consumedWidgets.add(id);
+          continue;
+        }
         const marker = format === "html"
           ? raw.match(/^\s*<!--\s*qb:([^\s]+)\s*-->\s*$/)
           : null;
@@ -2025,6 +2083,30 @@ export function validateProjectionOrigins(
             "UNMAPPED_CHART_SOURCE: chart identity, group, slide or producer differs from original source",
           );
         }
+      }
+      if (original.widget) {
+        const metadata = original.widget as Record<string, Json>,
+          block = candidates.length === 1 ? candidates[0] : undefined;
+        const attrs = block && originalThemeAttributes(block);
+        if (
+          original.origin !== "authored" || !block?.stable ||
+          block.kind !== "div" ||
+          block.slideId !== originalSlides.get(slideId) ||
+          source.blocks.some((b) => b.parentId === block.id) ||
+          attrs?.[2].find(([key]) => key === "widget-src")?.[1] !==
+            metadata.path ||
+          metadata.sourceHash !== source.hash ||
+          typeof metadata.sha256 !== "string" ||
+          !/^[a-f0-9]{64}$/.test(metadata.sha256) || element.type !== "image" ||
+          metadata.imageHash !== hashSource(String(element.src))
+        ) {
+          throw new Error(
+            "UNMAPPED_PROVENANCE: external widget lacks its original file reference and static projection",
+          );
+        }
+        origins[slideId][elementId] = original;
+        used.add(block.id);
+        continue;
       }
       if (original.origin === "computed") {
         const producer = original.producer ??

@@ -377,7 +377,7 @@ export async function projectProjection(
     );
   }
   await assertDesignRegistryUnchanged(paths.directory, registry.hash);
-  const widgets = await prepareWidgets(ast, mapping);
+  const widgets = await prepareWidgets(ast, mapping, paths.directory);
   const richTables = await prepareRichTables(ast, mapping);
   const kpiAppearances = retainedKpiAppearances(state, mapping);
   const projected = validateProjectionOrigins(
@@ -449,6 +449,7 @@ export async function projectProjection(
           hash: mapping.hash,
           ...(origin.graph ? { graph: origin.graph } : {}),
           ...(origin.image ? { image: origin.image } : {}),
+          ...(origin.widget ? { widget: origin.widget } : {}),
           ...(origin.richTable ? { richTable: origin.richTable } : {}),
           ...(declaration ? { design } : {}),
           ...(block

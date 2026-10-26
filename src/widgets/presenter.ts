@@ -1,3 +1,4 @@
+import { originalThemeAttributes } from "../render/theme-styles.ts";
 import { canonical } from "../state/json.ts";
 import type { Element, Origin } from "../render/types.ts";
 import { scanSource, type SourceDocument } from "../source/mod.ts";
@@ -19,7 +20,12 @@ export interface PlotlyBundle {
   version: 1;
   candidate: PlotlyCandidate;
   runtime: typeof PLOTLY_RUNTIME;
-  fallback: { mime: "image/svg+xml"; svg: string; sha256: string };
+  fallback: {
+    mime: "image/svg+xml" | "image/png";
+    svg: string;
+    png?: string;
+    sha256: string;
+  };
 }
 /** Store separately in the trusted generation receipt, never load from the bundle. */
 export interface PlotlyReceipt {
@@ -131,6 +137,55 @@ export function verifyStaticSvg(svg: string): void {
     }
   }
 }
+export function isPlotly3d(candidate: PlotlyCandidate): boolean {
+  return candidate.spec.data.some((trace) => trace.type === "scatter3d");
+}
+export function verifyStaticPng(png: string): void {
+  if (png.length > 12_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(png)) {
+    fail("invalid PNG snapshot encoding");
+  }
+  let bytes: Uint8Array;
+  try {
+    bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+  } catch {
+    return fail("invalid PNG snapshot encoding");
+  }
+  const view = new DataView(bytes.buffer);
+  if (
+    bytes.length < 57 ||
+    bytes.slice(0, 8).join() !== "137,80,78,71,13,10,26,10" ||
+    view.getUint32(8) !== 13 ||
+    String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR" ||
+    view.getUint32(16) < 1 || view.getUint32(16) > 3200 ||
+    view.getUint32(20) < 1 || view.getUint32(20) > 3200 ||
+    String.fromCharCode(...bytes.slice(-8, -4)) !== "IEND"
+  ) fail("invalid PNG snapshot");
+}
+function fallbackPayload(bundle: PlotlyBundle): string {
+  if (bundle.fallback.mime === "image/png") {
+    if (
+      !isPlotly3d(bundle.candidate) || bundle.fallback.svg !== "" ||
+      !bundle.fallback.png
+    ) fail("PNG fallback requires a 3D widget");
+    verifyStaticPng(bundle.fallback.png);
+    return bundle.fallback.png;
+  }
+  if (
+    bundle.fallback.mime !== "image/svg+xml" ||
+    bundle.fallback.png !== undefined || isPlotly3d(bundle.candidate)
+  ) fail("invalid widget fallback format");
+  verifyStaticSvg(bundle.fallback.svg);
+  return bundle.fallback.svg;
+}
+export function plotlyFallbackData(bundle: PlotlyBundle): string {
+  const payload = fallbackPayload(bundle);
+  if (bundle.fallback.sha256 !== hashSource(payload)) {
+    fail("widget fallback changed");
+  }
+  return `data:${bundle.fallback.mime};base64,${
+    bundle.fallback.mime === "image/png" ? payload : encode(payload)
+  }`;
+}
 function verifyCandidate(candidate: PlotlyCandidate) {
   if (
     candidate.version !== 1 || candidate.kind !== "plotly" ||
@@ -167,12 +222,15 @@ export function createPlotlyBundle(
   svg: string,
 ): PlotlyBundle {
   verifyCandidate(candidate);
-  verifyStaticSvg(svg);
+  if (isPlotly3d(candidate)) verifyStaticPng(svg);
+  else verifyStaticSvg(svg);
   return {
     version: 1,
     candidate: structuredClone(candidate),
     runtime: PLOTLY_RUNTIME,
-    fallback: { mime: "image/svg+xml", svg, sha256: hashSource(svg) },
+    fallback: isPlotly3d(candidate)
+      ? { mime: "image/png", svg: "", png: svg, sha256: hashSource(svg) }
+      : { mime: "image/svg+xml", svg, sha256: hashSource(svg) },
   };
 }
 function innerPage(
@@ -180,6 +238,8 @@ function innerPage(
   runtime: PlotlyRuntime,
   nonce: string,
   exportSvg: boolean,
+  inline = false,
+  capture = false,
 ) {
   const csp =
     `default-src 'none'; script-src 'nonce-${nonce}' data:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'`;
@@ -189,20 +249,49 @@ const spec=${
   }, width=${candidate.width}, height=${candidate.height};
 window.PlotlyConfig={MathJaxConfig:'local'};
 const chart=document.getElementById('chart');
-const report=value=>parent.postMessage({qbentoWidget:${
-    json(nonce)
-  },...value},'*');
+const report=value=>${
+    capture
+      ? "document.getElementById('qb-widget-result').textContent=JSON.stringify(value)"
+      : `parent.postMessage({qbentoWidget:${json(nonce)},...value},'*')`
+  };
+document.addEventListener('keydown',event=>{if(${inline}&&event.key==='Escape'){event.preventDefault();event.stopPropagation();parent.postMessage({qbentoWidgetEscape:true},'*');}});
 const layout={...spec.layout,width,height};
-Plotly.newPlot(chart,spec.data,layout,spec.config).then(async()=>{
+Promise.resolve().then(()=>{
+if(${isPlotly3d(candidate)}) {
+ const gl=document.createElement('canvas').getContext('webgl2')||document.createElement('canvas').getContext('webgl');
+ if(!gl)throw new Error('WebGL no está disponible; se conserva la versión estática');
+}
+return Plotly.newPlot(chart,spec.data,layout,spec.config);}).then(async()=>{
   if(${exportSvg}){
-    const uri=await Plotly.toImage(chart,{format:'svg',width,height});
-    if(!uri.startsWith('data:image/svg+xml,'))throw new Error('Expected an SVG data URI');
-    report({svg:decodeURIComponent(uri.slice(uri.indexOf(',')+1)),ready:true});
-  }else report({ready:true});
-}).catch(error=>report({error:String(error)}));`;
+    const format=${json(isPlotly3d(candidate) ? "png" : "svg")};
+    const uri=await Plotly.toImage(chart,{format,width:width*(format==='png'?2:1),height:height*(format==='png'?2:1)});
+    if(format==='png'){
+      if(!uri.startsWith('data:image/png;base64,'))throw new Error('Expected a PNG data URI');
+      report({png:uri.slice(uri.indexOf(',')+1),ready:true});
+    }else{
+      if(!uri.startsWith('data:image/svg+xml,'))throw new Error('Expected an SVG data URI');
+      report({svg:decodeURIComponent(uri.slice(uri.indexOf(',')+1)),ready:true});
+    }
+  }else {
+    if(${inline}){
+      const resize=()=>Plotly.relayout(chart,{width:Math.max(100,innerWidth),height:Math.max(100,innerHeight)});
+      new ResizeObserver(resize).observe(document.documentElement);resize();
+      parent.postMessage({qbentoWidgetReady:true},'*');
+    }
+    report({ready:true});
+  }
+}).catch(error=>{if(${inline})parent.postMessage({qbentoWidgetError:String(error)},'*');report({error:String(error)});});`;
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${
     html(csp)
-  }"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}#chart{width:${candidate.width}px;height:${candidate.height}px}</style></head><body><div id="chart"></div><script nonce="${nonce}" src="data:text/javascript;base64,${
+  }"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}${
+    capture ? ".modebar{display:none!important}" : ""
+  }#chart{width:${inline ? "100vw" : candidate.width + "px"};height:${
+    inline ? "100vh" : candidate.height + "px"
+  }}</style></head><body><div id="chart"></div>${
+    capture
+      ? '<script id="qb-widget-result" type="application/json">{}</script>'
+      : ""
+  }<script nonce="${nonce}" src="data:text/javascript;base64,${
     encode(runtime.javascript)
   }"></script><script nonce="${nonce}">${script}</script></body></html>`;
 }
@@ -219,8 +308,8 @@ async function page(
     `default-src 'none'; script-src 'nonce-${nonce}' data:; style-src 'unsafe-inline'; img-src data:; frame-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'`;
   const child = innerPage(candidate, runtime, nonce, !bundle);
   const fallback = bundle
-    ? `<img id="fallback" alt="Gráfico calculado; versión estática" width="${candidate.width}" height="${candidate.height}" src="data:image/svg+xml;base64,${
-      encode(bundle.fallback.svg)
+    ? `<img id="fallback" alt="Gráfico calculado; versión estática" width="${candidate.width}" height="${candidate.height}" src="${
+      plotlyFallbackData(bundle)
     }">`
     : "";
   const controls = bundle
@@ -233,7 +322,7 @@ window.addEventListener('message',event=>{
     json(nonce)
   })return;
  if(event.data.error){status.textContent='No se pudo representar el widget: '+event.data.error;result.textContent=JSON.stringify({error:event.data.error});return;}
- if(event.data.ready){status.textContent='Listo · recursos incluidos · sin conexión';result.textContent=JSON.stringify({ready:true,svg:event.data.svg});const button=document.getElementById('activate');if(button)button.disabled=false;}
+ if(event.data.ready){status.textContent='Listo · recursos incluidos · sin conexión';result.textContent=JSON.stringify({ready:true,svg:event.data.svg,png:event.data.png});const button=document.getElementById('activate');if(button)button.disabled=false;}
 });
 const button=document.getElementById('activate');if(button)button.addEventListener('click',()=>{const active=iframe.hidden;iframe.hidden=!active;document.getElementById('fallback').hidden=active;button.textContent=active?'Mostrar versión estática':'Activar gráfico interactivo';});
 iframe.srcdoc=${json(child)};`;
@@ -245,17 +334,40 @@ iframe.srcdoc=${json(child)};`;
     html(runtime.license)
   }</pre></details></main><script nonce="${nonce}">${script}</script></body></html>`;
 }
-export const createPlotlySnapshotPage = (
+export async function createPlotlySnapshotPage(
   candidate: PlotlyCandidate,
   runtime: PlotlyRuntime,
-): Promise<string> => page(candidate, runtime);
+): Promise<string> {
+  if (!isPlotly3d(candidate)) return page(candidate, runtime);
+  verifyCandidate(candidate);
+  await verifyPlotlyRuntime(runtime);
+  return innerPage(
+    candidate,
+    runtime,
+    crypto.randomUUID().replaceAll("-", ""),
+    false,
+    false,
+    true,
+  );
+}
+/** Trusted isolated view used at the native element's actual saved geometry. */
+export async function createPlotlyInlineView(
+  bundle: PlotlyBundle,
+  runtime: PlotlyRuntime,
+  context: PlotlyContext,
+): Promise<string> {
+  verifyBundleContext(bundle, context);
+  await verifyPlotlyRuntime(runtime);
+  const nonce = crypto.randomUUID().replaceAll("-", "");
+  return innerPage(bundle.candidate, runtime, nonce, false, true);
+}
 /** Call only for a newly captured bundle, before its generation is published. */
 export function createPlotlyReceipt(bundle: PlotlyBundle): PlotlyReceipt {
   verifyCandidate(bundle.candidate);
-  verifyStaticSvg(bundle.fallback.svg);
+  fallbackPayload(bundle);
   if (
     bundle.version !== 1 ||
-    bundle.fallback.sha256 !== hashSource(bundle.fallback.svg) ||
+    bundle.fallback.sha256 !== hashSource(fallbackPayload(bundle)) ||
     canonical(bundle.runtime) !== canonical(PLOTLY_RUNTIME)
   ) fail("invalid freshly captured widget bundle");
   return {
@@ -290,6 +402,18 @@ function verifyBundleContext(
   const children = wrapper
     ? source.blocks.filter((b) => b.parentId === wrapper.id)
     : [];
+  if (receipt.source.external) {
+    const attributes = wrapper && originalThemeAttributes(wrapper);
+    if (
+      !wrapper?.stable || wrapper.slideId !== receipt.source.slideId ||
+      children.length || receipt.source.producerId !== "" ||
+      hashSource(wrapper.raw) !== receipt.source.chunkHash ||
+      attributes?.[2].find(([key]) => key === "widget-src")?.[1] !==
+        receipt.source.external.path ||
+      receipt.source.outputHash !== receipt.source.external.sha256
+    ) fail("external widget no longer matches original source");
+    return;
+  }
   if (
     children.length !== 1 || children[0].kind !== "chunk" ||
     !children[0].stable || children[0].id !== receipt.source.producerId ||
@@ -327,9 +451,9 @@ export function createPlotlyPresenter(
   verifyBundleContext(bundle, context);
   if (
     bundle.version !== 1 || bundle.runtime.sha256 !== PLOTLY_RUNTIME.sha256 ||
-    bundle.fallback.sha256 !== hashSource(bundle.fallback.svg)
+    bundle.fallback.sha256 !== hashSource(fallbackPayload(bundle))
   ) fail("widget bundle integrity mismatch");
-  verifyStaticSvg(bundle.fallback.svg);
+  fallbackPayload(bundle);
   return page(bundle.candidate, runtime, bundle);
 }
 
@@ -339,11 +463,11 @@ export function plotlyStaticElement(
   context: PlotlyContext,
 ): { element: Element; origin: Origin } {
   verifyBundleContext(bundle, context);
-  if (bundle.fallback.sha256 !== hashSource(bundle.fallback.svg)) {
+  if (bundle.fallback.sha256 !== hashSource(fallbackPayload(bundle))) {
     fail("widget fallback changed");
   }
   verifyCandidate(bundle.candidate);
-  verifyStaticSvg(bundle.fallback.svg);
+  fallbackPayload(bundle);
   const c = bundle.candidate;
   return {
     element: {
@@ -355,13 +479,23 @@ export function plotlyStaticElement(
       h: Math.min(480, c.height),
       rotation: 0,
       opacity: 1,
-      src: `data:image/svg+xml;base64,${encode(bundle.fallback.svg)}`,
+      src: plotlyFallbackData(bundle),
       fit: "contain",
     },
-    origin: {
-      origin: "computed",
-      sourceId: c.source.sourceId,
-      producer: c.source.producerId,
-    },
+    origin: c.source.external
+      ? {
+        origin: "authored",
+        sourceId: c.source.sourceId,
+        widget: {
+          ...c.source.external,
+          sourceHash: c.source.sourceHash,
+          imageHash: hashSource(plotlyFallbackData(bundle)),
+        },
+      }
+      : {
+        origin: "computed",
+        sourceId: c.source.sourceId,
+        producer: c.source.producerId,
+      },
   };
 }

@@ -1,8 +1,10 @@
 /** Optional local Chromium exporter; requires a compatible browser already installed. */
+import { withHeadlessChromium } from "../browser/chromium.ts";
 import { pathToFileURL } from "node:url";
 import {
   createPlotlyBundle,
   createPlotlySnapshotPage,
+  isPlotly3d,
   type PlotlyBundle,
   type PlotlyRuntime,
   verifyStaticSvg,
@@ -19,6 +21,50 @@ export async function snapshotPlotly(
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Deno.writeTextFile(`${dir}/snapshot.html`, page);
+    if (isPlotly3d(candidate)) {
+      const png = await withHeadlessChromium(options, async (browser) => {
+        await browser.send("Emulation.setDeviceMetricsOverride", {
+          width: candidate.width,
+          height: candidate.height,
+          deviceScaleFactor: 2,
+          mobile: false,
+        });
+        await browser.send("Page.navigate", {
+          url: pathToFileURL(`${dir}/snapshot.html`).href,
+        });
+        const ready = await browser.send<
+          { result: { value?: { ready?: boolean; error?: string } } }
+        >("Runtime.evaluate", {
+          expression:
+            `new Promise(resolve=>{const poll=()=>{const result=JSON.parse(document.getElementById('qb-widget-result')?.textContent||'{}');if(result.ready||result.error)requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(result)));else setTimeout(poll,25);};poll();})`,
+          awaitPromise: true,
+          returnByValue: true,
+        });
+        if (ready.result.value?.ready !== true) {
+          fail(
+            `Chromium did not render the3D widget: ${
+              ready.result.value?.error ?? "unknown error"
+            }`,
+          );
+        }
+        const screenshot = await browser.send<{ data: string }>(
+          "Page.captureScreenshot",
+          {
+            format: "png",
+            clip: {
+              x: 0,
+              y: 0,
+              width: candidate.width,
+              height: candidate.height,
+              scale: 1,
+            },
+            captureBeyondViewport: false,
+          },
+        );
+        return screenshot.data;
+      });
+      return createPlotlyBundle(candidate, png);
+    }
     child = new Deno.Command(options.chromium ?? "chromium", {
       args: [
         "--headless",
@@ -62,16 +108,21 @@ export async function snapshotPlotly(
     );
     if (!matched) fail("Chromium did not emit an export result");
     const result = JSON.parse(matched![1]);
-    if (result.ready !== true || typeof result.svg !== "string") {
+    if (
+      result.ready !== true ||
+      typeof result[isPlotly3d(candidate) ? "png" : "svg"] !== "string"
+    ) {
       fail(
-        `Chromium did not finish SVG export${
+        `Chromium did not finish static export${
           result.error ? `: ${result.error}` : ""
         }`,
       );
     }
     return createPlotlyBundle(
       candidate,
-      canonicalPlotlySvg(result.svg, candidate.specHash),
+      isPlotly3d(candidate)
+        ? result.png
+        : canonicalPlotlySvg(result.svg, candidate.specHash),
     );
   } finally {
     if (timer !== undefined) clearTimeout(timer);
