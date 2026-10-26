@@ -287,7 +287,9 @@ return Plotly.newPlot(chart,spec.data,layout,spec.config);}).then(async()=>{
     capture ? ".modebar{display:none!important}" : ""
   }#chart{width:${inline ? "100vw" : candidate.width + "px"};height:${
     inline ? "100vh" : candidate.height + "px"
-  }}</style></head><body><div id="chart"></div>${
+  }}</style></head><body><script id="qbento-plotly-license" type="application/json">${
+    json({ version: PLOTLY_RUNTIME.version, license: runtime.license })
+  }</script><div id="chart"></div>${
     capture
       ? '<script id="qb-widget-result" type="application/json">{}</script>'
       : ""
