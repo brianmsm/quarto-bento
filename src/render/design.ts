@@ -18,6 +18,7 @@ export interface DesignDeclaration {
   chartKind?: "bar" | "line";
   style?: string;
   variant?: string;
+  slot?: string;
   layout?: string;
   properties: DesignProperties;
   /** Actual native Bento field -> the exact original QMD attribute key. */
@@ -36,7 +37,18 @@ export interface NamedDesignStyle {
   target: "text" | "code" | "card";
   properties: ReusableStyle;
 }
+export interface VariantSlot {
+  frame: Frame;
+  style?: string;
+  layout?: "rows" | "columns";
+  gap?: number;
+}
+export type RoleStyles = Partial<
+  Record<"title" | "heading" | "body" | "code" | "card", ReusableStyle>
+>;
 export interface SlideVariant {
+  styles?: RoleStyles;
+  slots?: Record<string, VariantSlot>;
   background?: string;
   title?: ReusableStyle;
   titleFrame?: Frame;
@@ -54,9 +66,7 @@ export interface DesignTheme {
   color: string;
   accent: string;
   fontFamily: string;
-  styles?: Partial<
-    Record<"title" | "heading" | "body" | "code" | "card", ReusableStyle>
-  >;
+  styles?: RoleStyles;
   namedStyles?: Record<string, NamedDesignStyle>;
   variants?: Record<string, SlideVariant>;
   defaultVariant?: string;
@@ -217,7 +227,7 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
   for (const [key, value] of attr[2]) {
     if (seen.has(key)) throw new DesignError("DUPLICATE_DESIGN_ATTRIBUTE", key);
     seen.add(key);
-    if (key === "bento-style" || key === "bento-variant") {
+    if (["bento-style", "bento-variant", "bento-slot"].includes(key)) {
       if (!attr[0] || !/^[a-z][a-z0-9-]{0,63}$/.test(value)) {
         throw new DesignError(
           "INVALID_DESIGN_REFERENCE",
@@ -225,6 +235,7 @@ export function parseDesignAttributes(attr: PandocAttr): DesignDeclaration {
         );
       }
       if (key === "bento-style") result.style = value;
+      else if (key === "bento-slot") result.slot = value;
       else result.variant = value;
       continue;
     }
@@ -346,6 +357,7 @@ function checkedDeclaration(value: DesignDeclaration): DesignDeclaration {
   if (value.chartKind) attrs.push(["bento-chart-kind", value.chartKind]);
   if (value.style) attrs.push(["bento-style", value.style]);
   if (value.variant) attrs.push(["bento-variant", value.variant]);
+  if (value.slot) attrs.push(["bento-slot", value.slot]);
   return parseDesignAttributes([
     value.sourceId,
     value.component ? [`bento-${value.component}`] : [],
@@ -496,15 +508,16 @@ export function validateDesignDefaults(
         );
       }
     };
-    if (clean.theme.styles !== undefined) {
-      keys(clean.theme.styles, ["title", "heading", "body", "code", "card"]);
-      for (const [role, value] of Object.entries(clean.theme.styles)) {
+    const roleStyles = (styles: RoleStyles) => {
+      keys(styles, ["title", "heading", "body", "code", "card"]);
+      for (const [role, value] of Object.entries(styles)) {
         style(
           value,
           role === "card" ? "card" : role === "code" ? "code" : "text",
         );
       }
-    }
+    };
+    if (clean.theme.styles !== undefined) roleStyles(clean.theme.styles);
     if (clean.theme.namedStyles !== undefined) {
       registry(clean.theme.namedStyles, 64);
       for (const value of Object.values(clean.theme.namedStyles)) {
@@ -523,6 +536,8 @@ export function validateDesignDefaults(
       for (const value of Object.values(clean.theme.variants)) {
         keys(value, [
           "background",
+          "styles",
+          "slots",
           "title",
           "titleFrame",
           "contentFrame",
@@ -538,8 +553,7 @@ export function validateDesignDefaults(
           validateDesignValue("fill", value.background);
         }
         if (value.title !== undefined) style(value.title, "text");
-        for (const frame of [value.titleFrame, value.contentFrame]) {
-          if (frame === undefined) continue;
+        const validateFrame = (frame: Frame) => {
           keys(frame, ["x", "y", "w", "h"], ["x", "y", "w", "h"]);
           for (const field of ["x", "y", "w", "h"] as const) {
             if (typeof frame[field] !== "number") {
@@ -558,6 +572,46 @@ export function validateDesignDefaults(
               "INVALID_DESIGN_DEFAULTS",
               "Variant frames must fit the 1280 × 720 canvas.",
             );
+          }
+        };
+        for (const frame of [value.titleFrame, value.contentFrame]) {
+          if (frame !== undefined) validateFrame(frame);
+        }
+        if (value.styles !== undefined) roleStyles(value.styles);
+        if (value.slots !== undefined) {
+          registry(value.slots, 32);
+          for (const slot of Object.values(value.slots)) {
+            keys(slot, ["frame", "style", "layout", "gap"], ["frame"]);
+            validateFrame(slot.frame);
+            if (
+              slot.style !== undefined &&
+              (typeof slot.style !== "string" ||
+                !Object.hasOwn(clean.theme.namedStyles ?? {}, slot.style))
+            ) {
+              throw new DesignError(
+                "UNKNOWN_STYLE",
+                "Slot style must name a declared style.",
+              );
+            }
+            if (
+              slot.layout !== undefined &&
+              !["rows", "columns"].includes(slot.layout)
+            ) {
+              throw new DesignError(
+                "INVALID_DESIGN_DEFAULTS",
+                "Slot layout must be rows or columns.",
+              );
+            }
+            if (
+              slot.gap !== undefined &&
+              (!slot.layout || typeof slot.gap !== "number" ||
+                !Number.isFinite(slot.gap) || slot.gap < 0 || slot.gap > 720)
+            ) {
+              throw new DesignError(
+                "INVALID_DESIGN_DEFAULTS",
+                "Slot gap needs a layout and a number from 0 to 720.",
+              );
+            }
           }
         }
         if (value.decorations !== undefined) {

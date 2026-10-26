@@ -4,6 +4,8 @@ import {
   originalThemeAttributes,
   recoverThemeAttributes,
   roleStyle,
+  slotFor,
+  slotFrames,
   textProperties,
   variantDecorations,
   variantFor,
@@ -199,6 +201,8 @@ export async function projectAst(
   let inheritedCodeStyle: ReusableStyle = {};
   let inheritedCardTextStyle: ReusableStyle = {};
   let inheritedCardCodeStyle: ReusableStyle = {};
+  const activeSlots = new Set<string>();
+  const slotCardStyles = new Map<string, ReusableStyle>();
   const remainingFrame = () =>
     contentFrame ??
       (slideContentFrame
@@ -352,7 +356,7 @@ export async function projectAst(
       lineHeight: 1.25,
       ...base,
       ...inheritedCardTextStyle,
-      ...roleStyle(reusableTheme, role),
+      ...roleStyle(reusableTheme, role, slideVariant),
       ...inheritedTextStyle,
       ...(heading ? slideVariant?.title : {}),
       ...specific,
@@ -671,6 +675,108 @@ export async function projectAst(
             "bento-variant belongs to a level-2 slide heading.",
           );
         }
+        const slotName = parseDesignAttributes(attr).slot;
+        if (slotName && !activeSlots.has(attr[0])) {
+          if (!source || computed || !slide) {
+            throw new DesignError(
+              "SLOT_TARGET_MISMATCH",
+              "Slots require an original source div under a slide.",
+            );
+          }
+          const slot = slotFor(slideVariant, slotName);
+          const beforeY = y, beforeCount = slide.elements.length;
+          const priorText = inheritedTextStyle,
+            priorCode = inheritedCodeStyle;
+          const style = slot.style
+            ? namedStyle(reusableTheme, slot.style)
+            : undefined;
+          if (style?.target === "text") {
+            inheritedTextStyle = { ...inheritedTextStyle, ...style.properties };
+          }
+          if (style?.target === "code") {
+            inheritedCodeStyle = { ...inheritedCodeStyle, ...style.properties };
+          }
+          if (style?.target === "card") {
+            slotCardStyles.set(attr[0], style.properties);
+          }
+          contentFrame = slot.frame;
+          y = slot.frame.y;
+          activeSlots.add(attr[0]);
+          try {
+            if (slot.layout) {
+              const semantic = children.filter((child) =>
+                child.t !== "RawBlock"
+              );
+              const originalChildren = source.blocks.filter((block) =>
+                block.parentId === attr[0]
+              );
+              if (
+                semantic.length < 1 || semantic.length > 6 ||
+                semantic.some((child, index) =>
+                  child.t !== "Div" ||
+                  (child.c as [Attr, Node[]])[0][0] !==
+                    originalChildren[index]?.id
+                ) || semantic.length !== originalChildren.length
+              ) {
+                throw new DesignError(
+                  "SLOT_LAYOUT_CHILDREN",
+                  "Slot rows/columns require identified direct divs.",
+                );
+              }
+              for (
+                const [index, frame] of slotFrames(slot, semantic.length)
+                  .entries()
+              ) {
+                contentFrame = frame;
+                y = frame.y;
+                const childStart = slide.elements.length;
+                await walk([semantic[index]], false, attr[0], true);
+                if (
+                  slide.elements.slice(childStart).some((element) =>
+                    Number(element.x) < frame.x - .01 ||
+                    Number(element.y) < frame.y - .01 ||
+                    Number(element.x) + Number(element.w) >
+                      frame.x + frame.w + .01 ||
+                    Number(element.y) + Number(element.h) >
+                      frame.y + frame.h + .01
+                  )
+                ) {
+                  throw new DesignError(
+                    "SLOT_CONTENT_OVERFLOW",
+                    "Content must fit its row or column; enlarge the frame or split the content.",
+                  );
+                }
+              }
+              design(attr, slide.elements.slice(beforeCount));
+            } else await walk([node], computed, parentId, inComponent);
+            const placed = slide.elements.slice(beforeCount);
+            if (
+              !placed.length ||
+              placed.some((element) =>
+                Number(element.x) < slot.frame.x - .01 ||
+                Number(element.y) < slot.frame.y - .01 ||
+                Number(element.x) + Number(element.w) >
+                  slot.frame.x + slot.frame.w + .01 ||
+                Number(element.y) + Number(element.h) >
+                  slot.frame.y + slot.frame.h + .01
+              )
+            ) {
+              throw new DesignError(
+                "SLOT_CONTENT_OVERFLOW",
+                "Content must fit its selected slot; enlarge the frame or split the content.",
+              );
+            }
+            if (groups) groups.push(placed);
+          } finally {
+            activeSlots.delete(attr[0]);
+            inheritedTextStyle = priorText;
+            inheritedCodeStyle = priorCode;
+            slotCardStyles.delete(attr[0]);
+            contentFrame = previousFrame;
+            y = beforeY;
+          }
+          continue;
+        }
         const chartAncestor = chartAncestors.get(attr[0]);
         if (
           chartAncestor && (chartAncestor.parentId !== parentId ||
@@ -916,7 +1022,8 @@ export async function projectAst(
           }
           const cardDefaults = declaration.component === "card"
             ? {
-              ...roleStyle(reusableTheme, "card"),
+              ...roleStyle(reusableTheme, "card", slideVariant),
+              ...slotCardStyles.get(attr[0]),
               ...selectedStyle(attr, "card"),
             }
             : {};
@@ -1085,7 +1192,7 @@ export async function projectAst(
                 ...(role === "code"
                   ? inheritedCardCodeStyle
                   : inheritedCardTextStyle),
-                ...roleStyle(reusableTheme, role),
+                ...roleStyle(reusableTheme, role, slideVariant),
                 ...(role === "code" ? inheritedCodeStyle : inheritedTextStyle),
                 ...wrappers,
                 ...selected,
@@ -1600,7 +1707,7 @@ export async function projectAst(
         }
         const codeDefaults = {
           ...inheritedCardCodeStyle,
-          ...roleStyle(reusableTheme, "code"),
+          ...roleStyle(reusableTheme, "code", slideVariant),
           ...inheritedCodeStyle,
           ...selectedStyle(attr, "code"),
         };

@@ -3,11 +3,13 @@ import {
   type DesignDefaults,
   DesignError,
   type DesignTheme,
+  type Frame,
   type PandocAttr,
   parseDesignAttributes,
   type ReusableStyle,
   type SlideVariant,
   validateDesignDefaults,
+  type VariantSlot,
 } from "./design.ts";
 import {
   originalAttributeTokens,
@@ -16,7 +18,7 @@ import {
 import type { SourceBlock, SourceDocument } from "../source/mod.ts";
 import type { Element } from "./types.ts";
 
-const references = ["bento-style", "bento-variant"];
+const references = ["bento-style", "bento-variant", "bento-slot"];
 export function originalThemeAttributes(
   block: SourceBlock,
 ): PandocAttr | undefined {
@@ -61,13 +63,14 @@ export function assertReusableDesignSource(
   defaults: DesignDefaults = {},
 ): void {
   validateDesignDefaults(defaults);
+  const usedSlots = new Set<string>();
   for (const block of source.blocks) {
     const selectorBlock = /\{([^{}]*)\}[ \t]*$/.exec(
       block.raw.split(/\r?\n/)[0],
     )?.[1];
     if (
       !["heading", "div", "code"].includes(block.kind) || !selectorBlock ||
-      !/bento-(?:style|variant|layout-name)\s*=/.test(selectorBlock)
+      !/bento-(?:style|variant|slot|layout-name)\s*=/.test(selectorBlock)
     ) continue;
     const attr = originalThemeAttributes(block);
     if (!attr || !block.stable) {
@@ -106,6 +109,70 @@ export function assertReusableDesignSource(
         );
       }
       variantFor(defaults.theme, declaration.variant);
+    }
+    if (declaration.slot) {
+      if (
+        block.kind !== "div" || block.parentId || !block.slideId ||
+        attr[1].includes("notes")
+      ) {
+        throw new DesignError(
+          "SLOT_TARGET_MISMATCH",
+          "bento-slot belongs to an identified top-level source div under a slide heading.",
+        );
+      }
+      const headingId = source.slides.find((slide) =>
+        slide.id === block.slideId
+      )?.headingId;
+      const heading = source.blocks.find((candidate) =>
+        candidate.id === headingId
+      );
+      const headingAttr = heading && originalThemeAttributes(heading);
+      const variant = variantFor(
+        defaults.theme,
+        headingAttr && parseDesignAttributes(headingAttr).variant ||
+          defaults.theme?.defaultVariant,
+      );
+      const slot = slotFor(variant, declaration.slot);
+      const key = JSON.stringify([block.slideId, declaration.slot]);
+      if (usedSlots.has(key)) {
+        throw new DesignError(
+          "DUPLICATE_SLOT",
+          "Select a slot once per slide; place repeated content inside its rows or columns.",
+        );
+      }
+      usedSlots.add(key);
+      const children = sourceChildren(source, block);
+      if (
+        slot.layout &&
+        (declaration.component || children.length < 1 || children.length > 6 ||
+          children.some((child) => child.kind !== "div" || !child.stable))
+      ) {
+        throw new DesignError(
+          "SLOT_LAYOUT_CHILDREN",
+          "A row/column slot needs one to six identified direct div children and no component class.",
+        );
+      }
+      if (slot.style) {
+        const style = namedStyle(defaults.theme, slot.style);
+        const targets = slot.layout
+          ? children.map((child) => authoredStyleTarget(source, child))
+          : [
+            declaration.component === "card"
+              ? "card"
+              : authoredStyleTarget(source, block),
+          ];
+        if (
+          targets.some((target) =>
+            target === undefined || target !== style.target
+          )
+        ) {
+          throw new DesignError(
+            "STYLE_TARGET_MISMATCH",
+            "Slot style must match every original content target.",
+          );
+        }
+      }
+      if (slot.layout) slotFrames(slot, children.length);
     }
     if (declaration.style) {
       const named = namedStyle(defaults.theme, declaration.style);
@@ -201,8 +268,9 @@ export function namedStyle(
 export function roleStyle(
   theme: DesignTheme | undefined,
   role: "title" | "heading" | "body" | "code" | "card",
+  variant?: SlideVariant,
 ): ReusableStyle {
-  return theme?.styles?.[role] ?? {};
+  return { ...theme?.styles?.[role], ...variant?.styles?.[role] };
 }
 export function textProperties(properties: ReusableStyle): ReusableStyle {
   return Object.fromEntries(
@@ -237,5 +305,33 @@ export function variantDecorations(
     strokeWidth: 0,
     radius: 0,
     ...properties,
+  }));
+}
+
+export function slotFor(
+  variant: SlideVariant | undefined,
+  name: string,
+): VariantSlot {
+  const slot = variant?.slots && Object.hasOwn(variant.slots, name)
+    ? variant.slots[name]
+    : undefined;
+  if (!slot) throw new DesignError("UNKNOWN_SLOT", name);
+  return slot;
+}
+export function slotFrames(slot: VariantSlot, count: number): Frame[] {
+  const gap = slot.gap ?? 16, frame = slot.frame;
+  const horizontal = slot.layout === "columns";
+  const size = ((horizontal ? frame.w : frame.h) - gap * (count - 1)) / count;
+  if (size <= 0) {
+    throw new DesignError(
+      "SLOT_OVERFLOW",
+      "Slot gap exceeds the available frame.",
+    );
+  }
+  return Array.from({ length: count }, (_, index) => ({
+    x: frame.x + (horizontal ? index * (size + gap) : 0),
+    y: frame.y + (horizontal ? 0 : index * (size + gap)),
+    w: horizontal ? size : frame.w,
+    h: horizontal ? frame.h : size,
   }));
 }
