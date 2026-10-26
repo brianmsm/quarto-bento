@@ -107,16 +107,50 @@ Deno.test("native inline widgets follow edited geometry, isolate interaction, an
             JSON.stringify(condition)
           })})()`,
         );
-      await browser.send("Page.navigate", { url: pathToFileURL(path).href });
+      await browser.send("Page.enable");
+      const navigate = async (url: string) => {
+        const offset = browser.events.length;
+        let complete = false;
+        const navigation = browser.send("Page.navigate", { url }).finally(
+          () => {
+            complete = true;
+          },
+        );
+        for (let i = 0; i < 200 && !complete; i++) {
+          if (
+            browser.events.slice(offset).some((event) =>
+              event.method === "Page.javascriptDialogOpening"
+            )
+          ) {
+            await browser.send("Page.handleJavaScriptDialog", { accept: true });
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        return await navigation;
+      };
+      await navigate(pathToFileURL(path).href);
       await wait("!!document.querySelector('.qbento-widget-layer button')");
       assert(
         await evaluate(
           "document.querySelector('.qbento-widget-layer iframe').hidden",
         ),
       );
-      await evaluate(
-        "document.querySelector('.qbento-widget-layer button').click()",
+      const point = await evaluate<{ x: number; y: number }>(
+        "(()=>{const r=document.querySelector('.qbento-widget-layer button').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()",
       );
+      await browser.send("Input.dispatchMouseEvent", {
+        type: "mousePressed",
+        ...point,
+        button: "left",
+        clickCount: 1,
+      });
+      await browser.send("Input.dispatchMouseEvent", {
+        type: "mouseReleased",
+        ...point,
+        button: "left",
+        clickCount: 1,
+      });
       await wait(
         "!document.querySelector('.qbento-widget-layer iframe').hidden",
       );
@@ -145,8 +179,14 @@ Deno.test("native inline widgets follow edited geometry, isolate interaction, an
       ).then((hidden) =>
         assert(!hidden, "foreign frames cannot stop interaction")
       );
-      await evaluate(
-        "(()=>{const frame=document.querySelector('.qbento-widget-layer iframe');window.dispatchEvent(new MessageEvent('message',{origin:'null',source:frame.contentWindow,data:{qbentoWidgetEscape:true}}));})()",
+      await browser.send("Input.dispatchKeyEvent", {
+        type: "keyDown",
+        key: "Escape",
+        code: "Escape",
+        windowsVirtualKeyCode: 27,
+      });
+      await wait(
+        "document.querySelector('.qbento-widget-layer iframe').hidden",
       );
       assert(
         await evaluate(
@@ -169,6 +209,20 @@ Deno.test("native inline widgets follow edited geometry, isolate interaction, an
         "!document.querySelector('.qbento-widget-layer iframe').hidden",
       );
       assert(await aligned(), "widget follows native geometry after rerender");
+      await browser.send("Emulation.setDeviceMetricsOverride", {
+        width: 1100,
+        height: 800,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      assert(await aligned(), "widget follows viewport scaling");
+      await browser.send("Emulation.setEmulatedMedia", { media: "print" });
+      assert(
+        await evaluate(
+          "getComputedStyle(document.querySelector('.qbento-widget-layer')).display==='none'",
+        ),
+      );
+      await browser.send("Emulation.setEmulatedMedia", { media: "screen" });
       const saved = await evaluate<string>("bento.serialize()");
       assert(saved.includes("__qbentoInlineWidgets"));
       assert(
@@ -176,15 +230,29 @@ Deno.test("native inline widgets follow edited geometry, isolate interaction, an
         "native Save excludes transient overlays",
       );
       await Deno.writeTextFile(directory + "/saved.html", saved);
-      await browser.send("Page.navigate", {
-        url: pathToFileURL(directory + "/saved.html").href,
-      });
+      await navigate(pathToFileURL(directory + "/saved.html").href);
       await wait("!!document.querySelector('.qbento-widget-layer button')");
       assert(await evaluate("bento.doc.slides[0].elements[0].x===230"));
       await evaluate(
         "(()=>{const doc=structuredClone(bento.doc);doc.slides[0].elements[0].src='data:image/svg+xml;base64,'+btoa('<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>');bento.loadDoc(JSON.stringify(doc));})()",
       );
       await wait("!document.querySelector('.qbento-widget-layer')");
+      const readonly = structuredClone(document);
+      readonly.readonly = true;
+      await Deno.writeTextFile(
+        directory + "/present.html",
+        spliceDocument(
+          await loadBentoShell(),
+          readonly as unknown as RenderDoc,
+          ISOLATION_BOOTSTRAP + inlineWidgetBootstrap(readonly, [widget]),
+          INLINE_WIDGET_CSP,
+        ),
+      );
+      await navigate(pathToFileURL(directory + "/present.html").href);
+      await wait(
+        "!!document.querySelector('.qbento-widget-layer iframe:not([hidden])')",
+      );
+      assert(await aligned(), "readonly presentation activates in place");
     });
   } finally {
     await Deno.remove(directory, { recursive: true });
