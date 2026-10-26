@@ -1,8 +1,8 @@
 import { basename, resolve } from "node:path";
 import {
   assertDesignRegistryUnchanged,
-  MAX_DESIGN_REGISTRY_BYTES,
   registryDefaults,
+  serializeDesignRegistry,
 } from "../render/registry.ts";
 import { assertReusableDesignSource } from "../render/theme-styles.ts";
 import { hashSource, scanSource } from "../source/mod.ts";
@@ -48,13 +48,7 @@ async function assertNoOutput(directory: string) {
 export async function initializeDesignPackage(source: string, value: unknown) {
   const design = validateDesignPackage(value);
   const registry = design.registry;
-  const text = JSON.stringify(registry, null, 2) + "\n";
-  if (new TextEncoder().encode(text).length > MAX_DESIGN_REGISTRY_BYTES) {
-    throw new StateError(
-      "DESIGN_REGISTRY_TOO_LARGE",
-      "Initialized registry exceeds 256 KiB.",
-    );
-  }
+  const text = serializeDesignRegistry(registry);
   const paths = projectPaths(source);
   const original = await sourceSnapshot(paths.source);
   assertReusableDesignSource(

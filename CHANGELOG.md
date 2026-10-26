@@ -24,6 +24,11 @@
   allocating the remaining card space to computed figures.
 - Export compact design JSON in CLI and Studio, counting its final newline in
   byte limits so large valid exports remain readable by the bounded importers.
+- Preserve list items, paragraphs, nesting and indentation when measuring card
+  rows before allocating space to computed figures.
+- Use compact registry storage when indentation alone would exceed 256 KiB,
+  allowing valid exported packages to initialize and import unchanged while
+  retaining readable formatting for smaller registries.
 
 These source additions are not part of the published npm `0.1.1` archive.
 Extended design registries require this newer runtime; older runtimes refuse

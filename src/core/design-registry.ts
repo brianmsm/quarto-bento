@@ -4,6 +4,7 @@ import {
   type DesignRegistry,
   MAX_DESIGN_REGISTRY_BYTES,
   readDesignRegistry,
+  serializeDesignRegistry,
   validateDesignRegistry,
 } from "../render/registry.ts";
 import { sha256, StateError } from "../state/mod.ts";
@@ -68,13 +69,7 @@ export async function saveProjectRegistry(
 ) {
   requestShape(request);
   const registry = validateDesignRegistry(request.registry);
-  const text = JSON.stringify(registry, null, 2) + "\n";
-  if (new TextEncoder().encode(text).length > MAX_DESIGN_REGISTRY_BYTES) {
-    throw new StateError(
-      "DESIGN_REGISTRY_TOO_LARGE",
-      "Registry exceeds 256 KiB.",
-    );
-  }
+  const text = serializeDesignRegistry(registry);
   return await withProject(source, async (paths, store) => {
     const assertSource = async () => {
       if (

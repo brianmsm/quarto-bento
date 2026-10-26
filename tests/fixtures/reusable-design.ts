@@ -2,9 +2,9 @@ import type { DesignTheme } from "../../src/render/design.ts";
 import type { DesignPackage } from "../../src/core/design-package.ts";
 
 /** A valid saved registry whose indented package exceeds the file read limit. */
-export function largeDesignPackage(): DesignPackage {
+export function largeDesignPackage(themeCount = 14): DesignPackage {
   const themes: Record<string, DesignTheme> = {};
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < themeCount; i++) {
     const namedStyles: NonNullable<DesignTheme["namedStyles"]> = {};
     for (let j = 0; j < 64; j++) {
       namedStyles[`style-${j}`] = {

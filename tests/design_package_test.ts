@@ -496,6 +496,57 @@ Deno.test("large design CLI export and preview files can be read and applied unc
   }
 });
 
+Deno.test("compact exported registries apply within the byte limit even when indentation would exceed it", async () => {
+  const origin = await fixture(), target = await fixture();
+  try {
+    const pkg = largeDesignPackage(15);
+    const registryPath = origin.directory + "/.qbento/design.json";
+    await Deno.writeTextFile(registryPath, JSON.stringify(pkg.registry) + "\n");
+    const exported = await exportDesignPackage(origin.source, pkg.name);
+    const packagePath = origin.directory + "/export.json";
+    await Deno.writeTextFile(packagePath, JSON.stringify(exported) + "\n");
+    const checked = await readDesignPackageFile(packagePath);
+    assert(
+      new TextEncoder().encode(JSON.stringify(checked.registry, null, 2))
+        .length > MAX_DESIGN_REGISTRY_BYTES,
+    );
+    const before = await files(target.directory);
+    const plan = await previewDesignImport(target.source, checked);
+    assert(equal(before, await files(target.directory)), "Preview wrote files");
+    await applyDesignImport(target.source, plan);
+    assert(
+      equal((await readProjectRegistry(target.source)).registry, pkg.registry),
+    );
+    assert(
+      (await Deno.stat(target.directory + "/.qbento/design.json")).size <=
+        MAX_DESIGN_REGISTRY_BYTES,
+    );
+    for (const path of ["deck.qmd", ".qbento/state.json", "deck.bento.html"]) {
+      assert(
+        hashSource(await Deno.readTextFile(target.directory + "/" + path)) ===
+          before[path],
+        path,
+      );
+    }
+    const saved = await readProjectRegistry(target.source);
+    const after = await files(target.directory);
+    await rejects(() =>
+      saveProjectRegistry(target.source, {
+        expectedDocId: saved.docId,
+        expectedRevision: saved.revision,
+        expectedHash: saved.hash,
+        registry: largeDesignPackage(29).registry,
+      }), "DESIGN_REGISTRY_TOO_LARGE");
+    assert(
+      equal(after, await files(target.directory)),
+      "Oversized save wrote files",
+    );
+  } finally {
+    await Deno.remove(origin.directory, { recursive: true });
+    await Deno.remove(target.directory, { recursive: true });
+  }
+});
+
 Deno.test("design preview and export perform no writes, including for an unrendered destination", async () => {
   const f = await fixture();
   const empty = await Deno.makeTempDir();

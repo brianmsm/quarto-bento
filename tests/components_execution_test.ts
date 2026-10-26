@@ -14,6 +14,78 @@ function assert(v: unknown, message = "assertion failed"): asserts v {
   if (!v) throw new Error(message);
 }
 
+Deno.test("card lists preserve item paragraph and nesting bounds before allocating computed figures", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-card-lists-" });
+  try {
+    const source = dir + "/deck.qmd";
+    const cases = [
+      ["bullets", "- First\n- Second", ""],
+      ["ordered", "1. First\n2. Second\n3. Third", ""],
+      ["nested", "- Parent\n  - Child\n  - Another child\n- Second parent", ""],
+      [
+        "loose",
+        "- First paragraph.\n\n  Second paragraph in the same item.\n\n- Another item.",
+        "",
+      ],
+      [
+        "wrapped",
+        "- First entry with enough words to wrap within this narrow card.\n- Second entry also wraps across several lines in the card.",
+        ' w="470"',
+      ],
+      ["styled", "- First\n- Second", ' font-size="38" line-height="1.5"'],
+    ];
+    const qmd = cases.map(([id, list, attributes]) =>
+      `## ${id} {#${id}}
+
+:::: {#${id}-card .bento-card${attributes}}
+
+::: {#${id}-list}
+${list}
+:::
+
+\`\`\`{r}
+#| label: fig-${id}
+#| echo: false
+#| dev: svg
+plot(c(1, 2, 3))
+\`\`\`
+
+::::
+`
+    ).join("\n");
+    await Deno.writeTextFile(source, qmd);
+    const result = await renderProject(source);
+    assert(
+      !result.diagnostics.some((d) =>
+        ["TEXT_OVERFLOW", "TEXT_MEASUREMENT_UNAVAILABLE", "OVERFLOW"].includes(
+          d.code,
+        )
+      ),
+      JSON.stringify(result.diagnostics),
+    );
+    for (const slide of result.state.emitted.slides) {
+      const list = slide.elements.find((e) =>
+        /^<(ul|ol)>/.test(String(e.html))
+      )!;
+      const figure = slide.elements.find((e) => e.type === "image")!;
+      const card = slide.elements.find((e) => e.type === "shape")!;
+      assert(!!list && !!figure && !!card, slide.id);
+      assert(
+        Number(figure.y) >= Number(list.y) + Number(list.h) + 16,
+        slide.id,
+      );
+      assert(
+        Number(figure.y) + Number(figure.h) <=
+          Number(card.y) + Number(card.h) - 24,
+        slide.id,
+      );
+    }
+    assert(await Deno.readTextFile(source) === qmd);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("integrated native charts refuse undersized component placement", async () => {
   const dir = await Deno.makeTempDir({ prefix: "qbento-component-native-" });
   try {

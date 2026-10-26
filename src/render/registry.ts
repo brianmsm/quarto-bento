@@ -17,6 +17,21 @@ export interface DesignRegistry {
 const names = /^[a-z][a-z0-9-]{0,63}$/;
 export const MAX_DESIGN_REGISTRY_BYTES = 262144;
 const maximumBytes = MAX_DESIGN_REGISTRY_BYTES;
+
+/** Keep ordinary registries readable without making whitespace block reuse. */
+export function serializeDesignRegistry(registry: DesignRegistry): string {
+  const compact = JSON.stringify(registry) + "\n";
+  const bytes = (text: string) => new TextEncoder().encode(text).length;
+  if (bytes(compact) > MAX_DESIGN_REGISTRY_BYTES) {
+    throw new DesignError(
+      "DESIGN_REGISTRY_TOO_LARGE",
+      "Registry exceeds 256 KiB.",
+    );
+  }
+  const readable = JSON.stringify(registry, null, 2) + "\n";
+  return bytes(readable) <= MAX_DESIGN_REGISTRY_BYTES ? readable : compact;
+}
+
 function object(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new DesignError("INVALID_DESIGN_REGISTRY", "Expected a JSON object.");

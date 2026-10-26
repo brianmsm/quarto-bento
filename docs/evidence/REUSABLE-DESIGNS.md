@@ -249,3 +249,66 @@ Local logs are retained under `output/reusable-designs/review-fixes-20261019/`:
 `before.log`, `targeted.log` and `regressions.log`. No npm publication, global
 installation change, portable rebuild, hosted result or other-platform result is
 implied by these corrections.
+
+## Card-list and registry-size corrections (2026-10-19)
+
+Review of `1b7e265..e48f8bc` reproduced two further defects. Ordinary two-item
+lists in cards were measured as one concatenated line: their height fell from
+90 px at the 0.1.1 runtime baseline to 37.5 px, with 36.8 px of overflow measured
+by the native Chromium renderer. Separately, a valid exported package of
+139,858 bytes passed inspection and import preview but failed initialization
+and Apply because its indented registry grew to 273,151 bytes.
+
+The list correction preserves item and paragraph boundaries, nested list
+indentation, and collapsed vertical margins in card row estimates. The pinned
+Bento shell's actual CSS was inspected: list indentation is 1.35em, item margins
+are 0.12em, and native list paragraphs retain browser 1em margins. Existing
+native content diagnostics remain authoritative for font-dependent overflow;
+the initial layout estimate is not a universal glyph-metric guarantee.
+
+Initialization and registry Apply now share bounded serialization. Ordinary
+registries retain their readable indentation; large registries use compact JSON
+when whitespace alone would exceed 256 KiB. The final newline counts toward
+the unchanged limit. Checksums and transaction history use the exact written
+bytes, and genuinely oversized compact registries refuse before writing.
+
+Three new regression tests failed against `e48f8bc` for the reproduced reasons,
+then passed after the corrections (**3 passed, zero failures**, 14 seconds).
+The list test uses real Quarto/R execution and native Chromium content bounds
+for bullet, ordered, nested, loose/multiple-paragraph, narrow wrapped and
+explicitly styled lists followed by computed figures. None of the six slides
+reports text overflow or unavailable text measurement, the figures remain
+inside their card frames, and QMD is byte-identical.
+
+The package tests export/read a valid large registry, inspect and apply its plan
+without altering QMD/state/generated HTML, initialize and render a separate
+project with that registry, and reject a genuinely oversized save without any
+filesystem changes. This is Linux-local evidence with Deno 2.9.7, Quarto 1.10.19
+and the unchanged pinned Bento shell. No npm/global update, portable rebuild,
+foreground visual, hosted or other-platform result is implied.
+
+The related regression command below passed **101 tests, zero failures**, in
+6 minutes 25 seconds, with process exit 0. Type checking (`deno task check`),
+lint (`deno lint src tests scripts`, 228 files), source/script and changed-test
+formatting, and Git whitespace checks passed. This is a clean run of the
+selected regression files, not a full-repository test-suite result.
+
+Detailed local logs are under
+`output/reviews/2026-10-19-post-0.1.1/fixes/`: `before.log`, `targeted.log` and
+`regressions.log`. The original review is retained beside them.
+
+Related regression command:
+
+```sh
+deno test --allow-read --allow-write --allow-env --allow-run \
+  --allow-net=127.0.0.1 \
+  tests/design_package_test.ts tests/design_initialize_test.ts \
+  tests/design_adaptation_test.ts tests/design_registry_read_test.ts \
+  tests/design_studio_client_test.ts tests/studio_registry_client_test.ts \
+  tests/reusable_design_test.ts tests/design_workflow_test.ts \
+  tests/reusable_design_execution_test.ts tests/components_execution_test.ts \
+  tests/lists_test.ts tests/text_overflow_test.ts \
+  tests/text_overflow_execution_test.ts tests/registry_test.ts \
+  tests/registry_execution_test.ts tests/studio_registry_test.ts \
+  tests/design_test.ts tests/design_execution_test.ts
+```

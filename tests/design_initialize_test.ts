@@ -1,7 +1,13 @@
 import { initializeDesignPackage } from "../src/core/design-initialize.ts";
 import { readProject, renderProjectFromAst } from "../src/core/project.ts";
-import { reusableTheme } from "./fixtures/reusable-design.ts";
-import { readDesignRegistry } from "../src/render/registry.ts";
+import {
+  largeDesignPackage,
+  reusableTheme,
+} from "./fixtures/reusable-design.ts";
+import {
+  MAX_DESIGN_REGISTRY_BYTES,
+  readDesignRegistry,
+} from "../src/render/registry.ts";
 import { hashSource } from "../src/source/mod.ts";
 import { equal } from "../src/state/mod.ts";
 
@@ -44,6 +50,44 @@ async function fixture() {
   await Deno.writeTextFile(source, text);
   return { directory, source, text };
 }
+
+Deno.test("compact exported registries initialize within the byte limit even when indentation would exceed it", async () => {
+  const directory = await Deno.makeTempDir({
+    prefix: "qbento-large-design-init-",
+  });
+  try {
+    const source = directory + "/deck.qmd", text = "## Slide {#slide}\n";
+    await Deno.writeTextFile(source, text);
+    const pkg = largeDesignPackage(15);
+    assert(
+      new TextEncoder().encode(JSON.stringify(pkg.registry, null, 2)).length >
+        MAX_DESIGN_REGISTRY_BYTES,
+    );
+    const initialized = await initializeDesignPackage(source, pkg);
+    const loaded = await readDesignRegistry(directory);
+    assert(equal(loaded.registry, pkg.registry));
+    assert(loaded.hash === initialized.hash);
+    assert(
+      (await Deno.stat(directory + "/.qbento/design.json")).size <=
+        MAX_DESIGN_REGISTRY_BYTES,
+    );
+    const rendered = await renderProjectFromAst(source, {
+      sourceHash: hashSource(text),
+      assetDirectories: [directory],
+      ast: {
+        meta: {},
+        blocks: [{
+          t: "Header",
+          c: [2, ["slide", [], []], [{ t: "Str", c: "Slide" }]],
+        }],
+      },
+    });
+    assert(rendered.state.emitted.slides[0].elements[0].color === "#111111");
+    assert(await Deno.readTextFile(source) === text);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
 
 Deno.test("new presentation initializes its design before the first render with named style and variant selectors", async () => {
   const f = await fixture();

@@ -951,7 +951,11 @@ export async function projectAst(
           // Measure simple text/code rows at their final width; images receive
           // the remaining space. No layout rectangle is fitted a second time.
           const frameWidth = Number(declaration.properties.w ?? base.w) - 48;
-          const lines = (html: string, size: number): number => {
+          const lines = (
+            html: string,
+            size: number,
+            width = frameWidth,
+          ): number => {
             const plain = html.replace(/<br\s*\/?>/gi, "\n").replace(
               /<[^>]*>/g,
               "",
@@ -965,7 +969,7 @@ export async function projectAst(
                       (width, ch) =>
                         width + (ch.codePointAt(0)! > 255 ? size : size * .65),
                       0,
-                    ) / frameWidth,
+                    ) / Math.max(1, width),
                   ),
                 ),
               0,
@@ -1108,7 +1112,49 @@ export async function projectAst(
                 );
               }
               if (["BulletList", "OrderedList"].includes(node.t)) {
-                return lines(renderList(node), size) * size * leading + 5;
+                renderList(node); // Validate the supported native list grammar.
+                type Bounds = { height: number; top: number; bottom: number };
+                const stack = (rows: Bounds[]): Bounds => ({
+                  height: rows.reduce(
+                    (height, row, index) =>
+                      height + row.height +
+                      (index ? Math.max(rows[index - 1].bottom, row.top) : 0),
+                    0,
+                  ),
+                  top: rows[0].top,
+                  bottom: rows.at(-1)!.bottom,
+                });
+                const listBounds = (list: Node, width: number): Bounds => {
+                  const items = list.t === "BulletList"
+                    ? list.c as Node[][]
+                    : (list.c as [unknown, Node[][]])[1];
+                  // Pinned Bento uses 1.35em list indentation, 0.12em item
+                  // margins and the browser's 1em paragraph margins. Preserve
+                  // each block and collapse adjacent vertical margins; never
+                  // flatten separate items/paragraphs into one text line.
+                  const innerWidth = width - 1.35 * size;
+                  return stack(items.map((blocks) => {
+                    const item = stack(blocks.map((block): Bounds => {
+                      if (["BulletList", "OrderedList"].includes(block.t)) {
+                        return listBounds(block, innerWidth);
+                      }
+                      return {
+                        height:
+                          lines(inline(block.c as Node[]), size, innerWidth) *
+                          size * leading,
+                        top: block.t === "Para" ? size : 0,
+                        bottom: block.t === "Para" ? size : 0,
+                      };
+                    }));
+                    return {
+                      ...item,
+                      top: Math.max(item.top, .12 * size),
+                      bottom: Math.max(item.bottom, .12 * size),
+                    };
+                  }));
+                };
+                const bounds = listBounds(node, frameWidth);
+                return bounds.height + bounds.top + bounds.bottom + 5;
               }
               return 90;
             };

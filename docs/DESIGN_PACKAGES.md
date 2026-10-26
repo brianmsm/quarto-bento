@@ -151,7 +151,10 @@ links. CLI design results (including exported packages and saved import plans)
 and Studio package downloads use compact JSON with a final newline. The size
 check includes that newline; indentation must not make an otherwise valid export
 exceed its reader's byte limit. Review views still format the parsed JSON for
-inspection.
+inspection. Initialization and registry saves retain indented JSON when it fits,
+and otherwise store compact JSON within the same 256 KiB limit. Formatting
+therefore cannot prevent an accepted package from being stored. Registries whose
+compact JSON exceeds the limit still refuse before writing project files.
 
 These operations need no Quarto execution or cloud connection. Their import
 receipt reports `renderNeeded: true`; execution remains a separate explicit

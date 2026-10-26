@@ -57,6 +57,11 @@ space, and keep exported design JSON within the bounded readers' byte limits.
 The related regression run passed 99 tests with zero failures. Its checks are
 recorded in the same receipt under
 [the follow-up corrections](evidence/REUSABLE-DESIGNS.md#follow-up-review-corrections-2026-10-19).
+Further review corrects card-list measurement and allows large valid registries
+to initialize and import using compact storage when indentation exceeds the
+unchanged 256 KiB limit. The selected regression run passed 101 tests with zero
+failures; the three new cases first reproduced the defects on `e48f8bc`.
+See [the list and registry-size receipt](evidence/REUSABLE-DESIGNS.md#card-list-and-registry-size-corrections-2026-10-19).
 
 ### Historical execution baseline
 

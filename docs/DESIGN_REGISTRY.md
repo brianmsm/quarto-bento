@@ -113,6 +113,8 @@ resources or semantic template content is accepted. Other fields and unknown
 schema versions refuse. When themes are declared, choose
 `activeTheme` explicitly; JSON key order never selects a theme. The fixed file
 is limited to 256 KiB and must be a regular file, without symbolic/hard links.
+Saves keep indented JSON when it fits that limit and fall back to compact JSON
+when only the indentation would exceed it; both representations remain valid.
 Changing, adding or removing it during a checked render aborts publication with
 `DESIGN_REGISTRY_CHANGED`, including changes made by an executed producer.
 
