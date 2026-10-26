@@ -234,6 +234,45 @@ Deno.test("chart extraction rejects extra output rich content images and multipl
     "INVALID_CHART_KIND",
   );
 });
+Deno.test("native chart palette and font persist without retaining computed series or axis limits", async () => {
+  const target = { slideId: "slide", elementId: "chart/chart" };
+  const document = {
+    docId: "doc",
+    slides: [{ id: "slide", elements: [native()] }],
+  };
+  const provenance = { [targetKey(target)]: { origin: "computed" as const } };
+  const edited = structuredClone(document);
+  const visual = option(edited.slides[0].elements[0]);
+  visual.color = ["#123456", "#be2161"];
+  (visual.textStyle as Record<string, unknown>).fontFamily = "Fira Sans";
+  const saved = captureEdits(createState(document, provenance), edited);
+  eq(saved.pending, []);
+  eq(saved.overrides[0].fields.length, 2);
+  const fresh = structuredClone(document);
+  const computed = option(fresh.slides[0].elements[0]);
+  computed.series = [{ type: "bar", name: "New", data: [20, 40] }];
+  computed.yAxis = { type: "value", min: 0, max: 40 };
+  const merged = compose(saved, fresh);
+  const result = option(merged.document.slides[0].elements[0]);
+  eq(result.color, visual.color);
+  eq((result.textStyle as Record<string, unknown>).fontFamily, "Fira Sans");
+  eq(result.series, computed.series);
+  eq(result.yAxis, computed.yAxis);
+  const changedData = structuredClone(merged.document);
+  option(changedData.slides[0].elements[0]).series = [{
+    type: "bar",
+    name: "New",
+    data: [999, 40],
+  }];
+  const conflict = captureEdits(merged.state, changedData);
+  eq(conflict.pending[0].origin, "computed");
+  await refuses(() => compose(conflict, fresh), "MERGE_CONFLICT");
+  const owned = createState(document, provenance, {
+    [targetKey(target)]: ["option/color"],
+  });
+  eq(captureEdits(owned, edited).pending.length, 1);
+});
+
 Deno.test("chart option preset and native table linkage are semantic and cannot freeze recomputed data", async () => {
   const document = {
     docId: "doc",
@@ -349,6 +388,9 @@ Deno.test({
       element.x = 180;
       element.w = 1080;
       element.h = 480;
+      option(element).color = ["#be2161", "#243a42"];
+      (option(element).textStyle as Record<string, unknown>).fontFamily =
+        "serif";
       const saved = await saveProject(path, edited, first.state.revision);
       eq(saved.pending.length, 0);
       await Deno.writeTextFile(csv, "Group,N\nGamma,-3.5\nBeta,1.25\n");
@@ -359,6 +401,11 @@ Deno.test({
       eq(next.x, 180);
       eq(next.w, 1080);
       eq(next.h, 480);
+      eq(option(next).color, ["#be2161", "#243a42"]);
+      eq(
+        (option(next).textStyle as Record<string, unknown>).fontFamily,
+        "serif",
+      );
       eq((option(next).xAxis as { data: string[] }).data, ["Gamma", "Beta"]);
       eq(option(next).series, [{
         type: "line",

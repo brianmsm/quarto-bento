@@ -77,6 +77,12 @@ function semantic(
       path.join("/").startsWith(p + "/")
     )
   ) return true;
+  // Series arrays include data, so retain only independent native palette/font paths.
+  if (
+    target.elementId &&
+    entity(state.generatedBaseline, target)?.type === "chart" &&
+    ["option/color", "option/textStyle/fontFamily"].includes(path.join("/"))
+  ) return false;
   return semanticFields.has(path[0]);
 }
 function upsert(state: ProjectState, change: Change): void {

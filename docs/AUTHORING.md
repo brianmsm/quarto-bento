@@ -306,8 +306,12 @@ header and named numeric series:
 the same wrapper is also supported; see `examples/native-charts/deck.qmd`.
 Missing values, a meaningful category header that the pinned renderer cannot
 display, excessive precision or ambiguous provenance refuse explicitly. Chart
-options remain semantic: native option edits become pending changes or computed
-conflicts; they cannot freeze old data as visual overrides. Reverse chart-data
+series, axes and other options remain semantic: native edits become pending
+changes or computed conflicts; they cannot freeze old data as visual overrides.
+The global palette (`option.color`) and font family (`option.textStyle.fontFamily`)
+are visual overrides and persist alongside geometry when computed data refreshes.
+Per-series option arrays remain semantic because they also contain the data.
+Reverse chart-data
 sync remains unsupported. Plain tables and native bar/line charts support
 bounded card/layout composition. Charts require at least 242px height and enough
 width for all category labels and the full legend; they retain their native
