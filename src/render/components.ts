@@ -106,7 +106,7 @@ export function projectComponent(
       }
     }
     if (
-      element.type === "code" &&
+      element.type === "code" && !measured?.viewports?.has(element.id) &&
       Number(element.h) + 0.01 <
         String(element.content).split("\n").length * Number(element.fontSize) *
           Number(element.lineHeight ?? 1.25)

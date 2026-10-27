@@ -130,13 +130,13 @@ Deno.test({
           `(async()=>{const f=document.getElementById('editor').contentWindow,s=f.__qbentoSnapshot;for(const bad of [{source:window,origin:location.origin,data:{type:'qbento:apply-layout',...s}},{source:f,origin:'https://foreign.invalid',data:{type:'qbento:apply-layout',...s}},{source:f,origin:location.origin,data:{type:'qbento:apply-layout',docId:s.docId,revision:s.revision-1}}])dispatchEvent(new MessageEvent('message',bad));await new Promise(r=>setTimeout(r,100));if(document.getElementById('layouts-dialog').open)throw Error('Spoofed selector request accepted');})()`,
         );
         const report = await evaluate<{ ok: boolean; dropped: unknown[] }>(
-          `(()=>{const b=document.getElementById('editor').contentWindow.bento,d=structuredClone(b.doc);d.slides[0].elements.find(e=>e.id==='body').html='Unsaved β finding.';return b.loadDoc(JSON.stringify(d));})()`,
+          `(()=>{const b=document.getElementById('editor').contentWindow.bento,d=structuredClone(b.doc);b.i18n.setLocale('x-pseudo');d.slides[0].elements.find(e=>e.id==='body').html='Unsaved β finding.';return b.loadDoc(JSON.stringify(d));})()`,
         );
         ok(report.ok && !report.dropped.length);
-        // Click the real pinned native button. managedBoot must intercept before
-        // native applyLayoutToCurrent can replace source IDs with template IDs.
+        // Native controls are localized; use the accessible action name, not its tooltip.
+        // managedBoot must intercept before native layout application changes source IDs.
         await evaluate(
-          `(()=>{const d=document.getElementById('editor').contentDocument;const button=[...d.querySelectorAll('button')].find(b=>b.title.startsWith('Re-arrange this slide'));if(!button)throw Error('Native Apply layout missing');button.click();})()`,
+          `(()=>{const f=document.getElementById('editor').contentWindow,d=f.document,name=f.bento.i18n.t('⧉ Apply layout…');const button=[...d.querySelectorAll('button')].find(b=>b.textContent===name);if(!button)throw Error('Native Apply layout missing: '+JSON.stringify({locale:f.bento.i18n.locale(),buttons:[...d.querySelectorAll('button')].map(b=>({text:b.textContent,title:b.title}))}));const section=button.closest('.ed-section-body')?.previousElementSibling;if(section?.classList.contains('closed'))section.click();if(!button.getClientRects().length)throw Error('Native Apply layout is hidden');button.click();})()`,
         );
         await wait('document.getElementById("layouts-dialog").open');
         const presaved = await readProject(source);

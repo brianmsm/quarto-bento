@@ -66,11 +66,20 @@ a slot-specific named style.
 
 For repetition, `layout: "rows"` or `"columns"` divides the frame evenly between
 one to six identified direct div children. The gap defaults to 16 px. These
-children can contain supported text, code or native components. Row/column slots
-preserve original child identities and order; they do not infer grouping from
-proximity. Nested absolute slots, unknown names, duplicate uses, incompatible
-styles and impossible gaps refuse with a source/design diagnostic. A row/column
-slot is a plain wrapper, not another `.bento-*` component.
+children can contain supported text, code or native components. A named style
+on the row/column slot must match **every** original child target: use a text
+style for authored text children or a code style for displayed-code children,
+not a card style on the whole row/column wrapper. Mixed children, computed
+outputs and card children can use role defaults with no slot-wide named style.
+A single, non-row/column slot can target a card with a named card style.
+Card defaults apply only to their bounded supported children; they are not
+general recursive style inheritance for arbitrary descendants.
+
+Row/column slots preserve original child identities and order; they do not
+infer grouping from proximity. Nested absolute slots, unknown names, duplicate
+uses, incompatible styles and impossible gaps refuse with a source/design
+diagnostic. A row/column slot is a plain wrapper, not another `.bento-*`
+component.
 
 Slot frames are absolute positions on the existing 1280 × 720 canvas, with at
 most 32 named slots per variant. Each frame must fit that canvas. Content must

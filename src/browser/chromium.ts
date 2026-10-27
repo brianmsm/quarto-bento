@@ -3,8 +3,13 @@ export interface ChromiumClient {
   send<T = Record<string, unknown>>(
     method: string,
     params?: Record<string, unknown>,
+    sessionId?: string,
   ): Promise<T>;
-  events: { method: string; params: Record<string, unknown> }[];
+  events: {
+    method: string;
+    params: Record<string, unknown>;
+    sessionId?: string;
+  }[];
   version: string;
 }
 /** A missing result means a valid prefix of Chromium's two-line endpoint file. */
@@ -142,7 +147,11 @@ export async function withHeadlessChromium<T>(
             );
           } else call?.resolve(message.result);
         } else if (events.length < 10_000) {
-          events.push({ method: message.method, params: message.params ?? {} });
+          events.push({
+            method: message.method,
+            params: message.params ?? {},
+            ...(message.sessionId ? { sessionId: message.sessionId } : {}),
+          });
         }
       };
       const send = <R>(
@@ -178,8 +187,11 @@ export async function withHeadlessChromium<T>(
         { targetId: target.targetId, flatten: true },
       );
       return await action({
-        send: <R>(method: string, params?: Record<string, unknown>) =>
-          send<R>(method, params, session.sessionId),
+        send: <R>(
+          method: string,
+          params?: Record<string, unknown>,
+          sessionId?: string,
+        ) => send<R>(method, params, sessionId ?? session.sessionId),
         events,
         version: version.product,
       });

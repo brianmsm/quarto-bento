@@ -37,6 +37,10 @@ import { spliceDocument } from "../render/html.ts";
 import { attachOutputOverflow } from "../render/output-overflow-html.ts";
 import { outputOverflowTargets } from "../render/output-overflow.ts";
 import { scanSource } from "../source/mod.ts";
+import { projectPaths } from "../core/project.ts";
+import { persistedInlineWidgets } from "../core/widgets.ts";
+import { INLINE_WIDGET_CSP, inlineWidgetBootstrap } from "../widgets/inline.ts";
+import { savePlotlyCamera } from "../core/widget-camera.ts";
 import { ISOLATION_BOOTSTRAP, OFFLINE_CSP } from "../bridge/isolation.ts";
 import { type BentoDoc, StateError } from "../state/mod.ts";
 import type { BentoDoc as RenderDoc } from "../render/types.ts";
@@ -168,30 +172,39 @@ export async function startStudio(source: string, port = 0) {
         }
         if (req.method === "GET" && url.pathname === "/deck") {
           const state = await readProject(source);
+          const inlineViews = await persistedInlineWidgets(
+            source,
+            projectPaths(source).stateDir,
+            state,
+          );
+          const mapping = scanSource(await Deno.readTextFile(source));
+          const deckCsp = inlineViews.length ? INLINE_WIDGET_CSP : OFFLINE_CSP;
           return respond(
             attachOutputOverflow(
               spliceDocument(
                 shell,
                 state.emitted as unknown as RenderDoc,
                 managedBoot +
+                  inlineWidgetBootstrap(state.emitted, inlineViews) +
                   "\nObject.defineProperty(globalThis, '__qbentoSnapshot', { value: Object.freeze(" +
                   JSON.stringify({
                     docId: state.docId,
                     revision: state.revision,
+                    sourceHash: mapping.hash,
                     pending: state.pending.length,
                   }).replaceAll("<", "\\u003c") +
                   ") });",
-                OFFLINE_CSP,
+                deckCsp,
               ),
               outputOverflowTargets(
-                scanSource(await Deno.readTextFile(source)),
+                mapping,
                 state.provenance,
                 state.emitted as unknown as RenderDoc,
               ),
             ),
             200,
             "text/html; charset=utf-8",
-            OFFLINE_CSP,
+            deckCsp,
           );
         }
         if (
@@ -384,6 +397,22 @@ export async function startStudio(source: string, port = 0) {
             presenters.delete(presenters.keys().next().value!);
           }
           return respond(JSON.stringify({ url: path }));
+        }
+        if (req.method === "POST" && url.pathname === "/api/widgets/camera") {
+          if (req.headers.get("content-type") !== "application/json") {
+            return respond('{"error":"JSON required"}', 415);
+          }
+          const text = await readStudioBody(req);
+          if (text === null) {
+            return respond('{"error":"Request too large"}', 413);
+          }
+          const saved = await savePlotlyCamera(source, JSON.parse(text));
+          return respond(
+            JSON.stringify({
+              revision: saved.revision,
+              pending: saved.pending.length,
+            }),
+          );
         }
         if (req.method === "POST" && url.pathname === "/api/save") {
           if (

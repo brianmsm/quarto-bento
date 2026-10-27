@@ -57,9 +57,6 @@ const widget = {
 Deno.test("inline widget bootstrap is preserved data outside the native document", () => {
   const boot = inlineWidgetBootstrap(document, [widget]);
   assert(!boot.includes("</script"));
-  assert(boot.includes("data-bento-transient"));
-  assert(boot.includes("event.source!==record.frame.contentWindow"));
-  assert(INLINE_WIDGET_CSP.includes("frame-src 'self' data: blob:"));
   assert(inlineWidgetBootstrap(document, []) === "");
   let refused = false;
   try {

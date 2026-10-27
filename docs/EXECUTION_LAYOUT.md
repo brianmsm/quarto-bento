@@ -51,3 +51,37 @@ retain their existing behavior; these new layout selectors are chunk-local.
 Existing bounded table/chart/widget codecs remain in force. In particular,
 multiple native tables from one producer still refuse unstable positional
 identity; this layout feature does not flatten or silently discard them.
+
+## Scrollable computed output
+
+Opt in on the original executable chunk:
+
+```yaml
+#| bento-overflow: scroll
+#| bento-overflow-height: 240
+```
+
+The height is a literal integer from 80 to 600 px, default 240. The viewport
+applies to supported computed native code, stdout text and tables; it is not a
+general HTML embed or a policy for authored text. Duplicate, indirect or invalid
+options refuse rather than silently clipping output.
+
+The complete code/text/table data remains in the native document with computed
+provenance. Scrolling is an explicit interactive affordance, not a truncation,
+data edit or permission to synchronize output over its producer. Static/PDF
+representations append complete-output continuation pages labeled with their
+source slide and element. Presenter prints native slides and these continuations
+in the paginatable parent document, outside its fixed-height viewer iframe.
+Cards and execution columns still have their measured composition constraints;
+scrolling does not authorize arbitrary shrinking or multiple native tables from
+one producer. See [usage](USAGE.md) for Save, review and recalculation authority.
+
+## Static figure formats
+
+New static R 2D figures default to SVG where no explicit format/device setting
+already chooses otherwise. Authored chunk `dev`, `fig-format`, project/format
+settings and external metadata retain their normal authority; the SVG default
+does not rewrite those choices. Supported Plotly 2D output retains a static SVG,
+while `scatter3d` retains a PNG fallback for printing and unavailable WebGL.
+This is separate from the bounded
+[interactive Plotly data adapter](AUTHORING.md#interactive-plotly-and-local-widget-data).

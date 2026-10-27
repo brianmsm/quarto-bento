@@ -157,6 +157,27 @@ See [license-source investigation](evidence/RUNTIME-LICENSE-SOURCE-AUDIT.md),
 receipt. Public source authorization does not certify those outstanding
 matters or imply an artifact release.
 
+## Composition/interactivity 0.2.0 acceptance boundary
+
+The source integration adds explicit theme slots/variant role styles, bounded
+executable-code/result layout, opt-in computed-output scrolling, inline Plotly
+2D/scatter3d interaction and local inert htmlwidget-data import. See
+[execution layout](EXECUTION_LAYOUT.md),
+[theme slots](features/THEME_SLOTS.md) and
+[widget authoring bounds](AUTHORING.md#interactive-plotly-and-local-widget-data).
+The historical counts and receipts above do not verify these additions. Their
+integrated native/runtime, complete PDF, offline isolation and installed-package
+checks are recorded in the
+[0.2.0 source receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md). Source
+acceptance and local package preparation are not publication or global
+installation actions; the published npm baseline remains 0.1.1.
+
+These additions do not imply arbitrary HTML/widget execution, surface/mesh
+support, automatic reverse propagation of computed data, a general layout DSL,
+managed environments or new platform qualification. Full native code/text/table
+data remains authoritative under a scroll viewport; imported widget data is
+bound to the source artifact hash, not a fabricated R execution receipt.
+
 ## Historical integrated verification
 
 Runtime `75edcdf` passed **430 tests, 4 steps, 0 failures and 0 ignored

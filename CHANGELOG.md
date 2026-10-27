@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — reusable presentation designs
+## 0.2.0 — 2026-10-27
 
 - Share content-free design packages across independently bound QMD projects.
   Initialize a new deck before its first render or preview/apply a replacement
@@ -29,11 +29,33 @@
 - Use compact registry storage when indentation alone would exceed 256 KiB,
   allowing valid exported packages to initialize and import unchanged while
   retaining readable formatting for smaller registries.
+- Add explicit named theme slots and variant-specific role styles for reusable
+  teaching compositions, retaining source ownership and native exceptions.
+- Compose echoed code, text, figures and bounded native tables inside cards;
+  support literal source/result columns, output grids and producer-linked result
+  slides without executing a chunk twice or changing QMD.
+- Prefer SVG for compatible static R figures unless an explicit source/project
+  device or format chooses otherwise. Use real PNG snapshots for Plotly 3D.
+- Keep complete computed code/stdout/table data behind opt-in scroll viewports;
+  print native slides and full continuation pages in the Presenter parent flow
+  instead of clipping long output inside its viewer iframe.
+- Interact with supported Plotly scatter/bar and `scatter3d` points/lines in the
+  native slide rectangle in Studio and offline standalone HTML. Explicit 3D
+  camera saves refresh the static fallback; exploration alone stays transient.
+- Import bounded local R-htmlwidget Plotly data without executing artifact
+  scripts or fabricating an R execution receipt. Reject ambiguous identifiers
+  and read local artifacts through bounded no-follow file descriptors.
+- Preserve native chart palette, font and geometry while recomputing data;
+  chart values and executable source remain under computational authority.
 
-These source additions are not part of the published npm `0.1.1` archive.
-Extended design registries require this newer runtime; older runtimes refuse
-their extra fields. No release, installed-runtime update or platform expansion
-is implied.
+The owner authorized `0.2.0` publication on 2026-10-27; preparation and public
+verification are tracked in [the publication receipt](docs/evidence/NPM-0.2.0.md).
+The registry remains at `0.1.1` until publication is verified. The
+[Linux source and package qualification](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+is prepublication evidence, including a historical dirty local review archive,
+not the future clean publication artifact. Extended design registries require
+the matching runtime; older runtimes refuse their extra fields. No global
+installed-runtime update, stable v1 or platform expansion is implied.
 
 ## 0.1.1 — 2026-10-17
 

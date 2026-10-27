@@ -11,13 +11,16 @@ import {
 import { hashSource, scanSource, type SourceDocument } from "../source/mod.ts";
 import { type Ast } from "../render/types.ts";
 import {
+  applyPlotlyCamera,
   collectExternalPlotlyCandidates,
   collectPlotlyCandidates,
   readExternalWidget,
 } from "../widgets/plotly.ts";
 import {
+  createPlotlyInlineView,
   createPlotlyPresenter,
   createPlotlyReceipt,
+  isPlotly3d,
   loadPlotlyBundle,
   PLOTLY_RUNTIME,
   type PlotlyBundle,
@@ -30,6 +33,13 @@ import { snapshotPlotly } from "../widgets/snapshot.ts";
 import type { WidgetProjection } from "../render/project.ts";
 import { syncDirectory, writeDurable } from "./io.ts";
 import { createDeckPresenter } from "../widgets/deck.ts";
+import { type InlineWidget } from "../widgets/inline.ts";
+import {
+  type OutputOverflowTarget,
+  outputOverflowTargets,
+} from "../render/output-overflow.ts";
+import type { BentoDoc as RenderDoc } from "../render/types.ts";
+import { savedPlotlyCamera } from "./widget-camera.ts";
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 function fail(message: string): never {
   throw new StateError("WIDGET_REBUILD_REQUIRED", message);
@@ -88,6 +98,7 @@ export async function prepareWidgets(
   ast: Ast,
   source: SourceDocument,
   root: string,
+  state?: ProjectState | null,
 ): Promise<PreparedWidgets> {
   const candidates = [
       ...collectPlotlyCandidates(ast, source),
@@ -102,7 +113,25 @@ export async function prepareWidgets(
   }
   const runtime = await installedRuntime(), bundles: PlotlyBundle[] = [];
   for (const candidate of candidates) {
-    const bundle = await snapshotPlotly(candidate, runtime),
+    const elementId = candidate.source.sourceId;
+    const displaySlide = state?.emitted.slides.find((s) =>
+      s.elements.some((e) => e.id === elementId)
+    );
+    const key = targetKey({
+      slideId: displaySlide?.id ?? candidate.source.slideId,
+      elementId,
+    });
+    const detached = state?.provenance[key]?.origin === "detached" ||
+      state?.pending.some((p) =>
+        p.origin === "detached" && p.target.elementId === elementId
+      );
+    const camera = isPlotly3d(candidate) && !detached
+      ? savedPlotlyCamera(state, elementId)
+      : undefined;
+    const bundle = await snapshotPlotly(
+        camera ? applyPlotlyCamera(candidate, camera) : candidate,
+        runtime,
+      ),
       expectedReceipt = createPlotlyReceipt(bundle);
     const projected = plotlyStaticElement(bundle, { source, expectedReceipt });
     projections.set(candidate.source.sourceId, {
@@ -114,6 +143,38 @@ export async function prepareWidgets(
   }
   return { bundles, runtime, projections };
 }
+/** Only exact composed native fallbacks receive an interactive view. */
+export async function preparedInlineWidgets(
+  prepared: PreparedWidgets,
+  source: SourceDocument,
+  document: ProjectState["emitted"],
+  detachedTargets: ReadonlySet<string> = new Set(),
+): Promise<InlineWidget[]> {
+  if (!prepared.runtime) return [];
+  const views: InlineWidget[] = [];
+  for (const bundle of prepared.bundles) {
+    const elementId = bundle.candidate.source.sourceId;
+    const slide = document.slides.find((s) =>
+      s.elements.some((e) => e.id === elementId)
+    );
+    if (!slide) continue;
+    const slideId = slide.id;
+    const element = slide?.elements.find((e) => e.id === elementId);
+    const context = { source, expectedReceipt: createPlotlyReceipt(bundle) };
+    const expected = plotlyStaticElement(bundle, context).element;
+    if (
+      slide?.hidden === true || element?.type !== "image" ||
+      element.src !== expected.src ||
+      detachedTargets.has(targetKey({ slideId, elementId }))
+    ) continue;
+    views.push({
+      slideId,
+      elementId,
+      html: await createPlotlyInlineView(bundle, prepared.runtime, context),
+    });
+  }
+  return views;
+}
 /** Write immutable generation first; only publication of state activates its external receipt. */
 export async function stageWidgets(
   stateDir: string,
@@ -123,6 +184,7 @@ export async function stageWidgets(
   prepared: PreparedWidgets,
   document: ProjectState["emitted"],
   detachedTargets: ReadonlySet<string> = new Set(),
+  overflowTargets: OutputOverflowTarget[] = [],
 ): Promise<WidgetPublication | undefined> {
   if (!prepared.bundles.length) return undefined;
   if (!uuid.test(generation) || !prepared.runtime) {
@@ -160,26 +222,26 @@ export async function stageWidgets(
     const file = `widget-${index}.json`, presenter = `widget-${index}.html`;
     await writeDurable(resolve(staging, file), canonical(bundle));
     await writeDurable(resolve(staging, presenter), html);
+    const slide = document.slides.find((s) =>
+        s.elements.some((e) => e.id === bundle.candidate.source.sourceId)
+      ),
+      element = slide?.elements.find((e) =>
+        e.id === bundle.candidate.source.sourceId
+      );
     publication.entries.push({
-      slideId: bundle.candidate.source.slideId,
+      slideId: slide?.id ?? bundle.candidate.source.slideId,
       elementId: bundle.candidate.source.sourceId,
       file,
       presenter,
       presenterSha256: hashSource(html),
       receipt: receipt as unknown as JsonObject,
     });
-    const slide = document.slides.find((s) =>
-        s.id === bundle.candidate.source.slideId
-      ),
-      element = slide?.elements.find((e) =>
-        e.id === bundle.candidate.source.sourceId
-      );
     const expected =
       plotlyStaticElement(bundle, { source, expectedReceipt: receipt }).element;
     if (
       !detachedTargets.has(
         targetKey({
-          slideId: bundle.candidate.source.slideId,
+          slideId: slide?.id ?? bundle.candidate.source.slideId,
           elementId: bundle.candidate.source.sourceId,
         }),
       ) &&
@@ -187,13 +249,20 @@ export async function stageWidgets(
       element.src === expected.src
     ) {
       widgetPages.push({
-        slideId: bundle.candidate.source.slideId,
+        slideId: slide!.id,
         elementId: bundle.candidate.source.sourceId,
-        html,
+        html: await createPlotlyInlineView(bundle, prepared.runtime, {
+          source,
+          expectedReceipt: receipt,
+        }),
       });
     }
   }
-  const host = await createDeckPresenter(document, widgetPages);
+  const host = await createDeckPresenter(
+    document,
+    widgetPages,
+    overflowTargets,
+  );
   publication.presenterSha256 = hashSource(host);
   await writeDurable(resolve(staging, "presenter.html"), host);
   await syncDirectory(staging);
@@ -252,6 +321,7 @@ export async function projectPresenter(
   sourcePath: string,
   stateDir: string,
   state: ProjectState,
+  overflowTargets?: OutputOverflowTarget[],
 ): Promise<string> {
   if (!state.widgets?.entries.length) {
     fail(
@@ -261,6 +331,9 @@ export async function projectPresenter(
   await assertWidgetFiles(stateDir, state);
   const source = scanSource(await Deno.readTextFile(sourcePath)),
     dir = generationDirectory(stateDir, state);
+  if (source.hash !== state.widgets.sourceHash) {
+    fail("Widget source snapshot is stale; render before presenting.");
+  }
   const runtime = {
     javascript: await checkedRead(dir, "plotly.js"),
     license: await checkedRead(dir, "LICENSE"),
@@ -306,10 +379,128 @@ export async function projectPresenter(
     if (hashSource(html) !== entry.presenterSha256) {
       fail("Widget Presenter changed while preparing the snapshot.");
     }
-    pages.push({ slideId: entry.slideId, elementId: entry.elementId, html });
+    pages.push({
+      slideId: entry.slideId,
+      elementId: entry.elementId,
+      html: await createPlotlyInlineView(bundle, runtime, context),
+    });
   }
   if (hashSource(await Deno.readTextFile(sourcePath)) !== source.hash) {
     fail("QMD changed while preparing Presenter; retry after rendering.");
   }
-  return await createDeckPresenter(state.emitted, pages);
+  return await createDeckPresenter(
+    state.emitted,
+    pages,
+    overflowTargets ??
+      outputOverflowTargets(
+        source,
+        state.provenance,
+        state.emitted as unknown as RenderDoc,
+      ),
+  );
+}
+
+/** Verified generation data, never a receipt supplied by a browser. */
+export async function loadProjectWidgets(
+  sourcePath: string,
+  stateDir: string,
+  state: ProjectState,
+): Promise<PreparedWidgets & { source: SourceDocument }> {
+  await assertWidgetFiles(stateDir, state);
+  const source = scanSource(await Deno.readTextFile(sourcePath));
+  const dir = generationDirectory(stateDir, state);
+  const runtime = {
+    javascript: await checkedRead(dir, "plotly.js"),
+    license: await checkedRead(dir, "LICENSE"),
+  };
+  const bundles: PlotlyBundle[] = [];
+  for (const entry of state.widgets!.entries) {
+    const receipt = entry.receipt as unknown as PlotlyReceipt;
+    if (
+      receipt.source.external &&
+      hashSource(
+          await readExternalWidget(
+            dirname(sourcePath),
+            receipt.source.external.path,
+          ),
+        ) !== receipt.source.external.sha256
+    ) {
+      fail("External widget artifact changed; render before using it.");
+    }
+    bundles.push(
+      await loadPlotlyBundle(await checkedRead(dir, entry.file), {
+        source,
+        runtime,
+        expectedReceipt: receipt,
+      }),
+    );
+  }
+  if (hashSource(await Deno.readTextFile(sourcePath)) !== source.hash) {
+    fail("QMD changed while loading widgets.");
+  }
+  return { source, runtime, bundles, projections: new Map() };
+}
+
+/** Studio must remain available for reconciliation when a generation is stale. */
+export async function persistedInlineWidgets(
+  sourcePath: string,
+  stateDir: string,
+  state: ProjectState,
+): Promise<InlineWidget[]> {
+  if (!state.widgets?.entries.length) return [];
+  try {
+    await assertWidgetFiles(stateDir, state);
+    const source = scanSource(await Deno.readTextFile(sourcePath));
+    const dir = generationDirectory(stateDir, state);
+    const runtime = {
+      javascript: await checkedRead(dir, "plotly.js"),
+      license: await checkedRead(dir, "LICENSE"),
+    };
+    const prepared: PreparedWidgets = {
+      bundles: [],
+      runtime,
+      projections: new Map(),
+    };
+    const detached = new Set(
+      state.pending.filter((p) => p.origin === "detached").map((p) =>
+        targetKey(p.target)
+      ),
+    );
+    for (const entry of state.widgets.entries) {
+      const key = targetKey({
+        slideId: entry.slideId,
+        elementId: entry.elementId,
+      });
+      if (state.provenance[key]?.origin === "detached") detached.add(key);
+      const receipt = entry.receipt as unknown as PlotlyReceipt;
+      if (
+        receipt.source.external &&
+        hashSource(
+            await readExternalWidget(
+              dirname(sourcePath),
+              receipt.source.external.path,
+            ),
+          ) !== receipt.source.external.sha256
+      ) continue;
+      prepared.bundles.push(
+        await loadPlotlyBundle(await checkedRead(dir, entry.file), {
+          source,
+          runtime,
+          expectedReceipt: receipt,
+        }),
+      );
+    }
+    if (hashSource(await Deno.readTextFile(sourcePath)) !== source.hash) {
+      return [];
+    }
+    return await preparedInlineWidgets(
+      prepared,
+      source,
+      state.emitted,
+      detached,
+    );
+  } catch {
+    // A stale or invalid view is never activated; strict Presenter still reports the failure.
+    return [];
+  }
 }

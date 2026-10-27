@@ -1,7 +1,8 @@
 # Using the portable development directory
 
-This directory is a local development build, not a public v1 release or an
-installer. Keep the complete directory together when moving it. It requires
+This guide describes the 0.2.0 portable development directory, not a public
+portable binary release, stable v1 release or installer. Keep the complete
+directory together when moving it. It requires
 installed Deno 2, Quarto and the language packages used by your QMD. It does not
 install or manage computation environments. Only run trusted QMD and code.
 
@@ -32,6 +33,15 @@ project/state files, plus any design registry or widget resources your project
 uses. The generated HTML is rebuildable. Computation dependencies remain your
 responsibility; cross-platform pixel identity is not promised.
 
+Version 0.2.0's
+[execution layout](https://github.com/brianmsm/quarto-bento/blob/main/docs/EXECUTION_LAYOUT.md)
+and [theme slots](https://github.com/brianmsm/quarto-bento/blob/main/docs/features/THEME_SLOTS.md)
+describe bounded composition. Inline Plotly interaction retains a static
+image/PDF fallback;
+scroll viewports retain full native data and static continuations. Local
+`widget-src` imports are inert bounded Plotly data, not arbitrary HTML execution.
+Use the build's manifest and matching acceptance evidence to identify its scope.
+
 `init presentation.qmd` installs the self-contained Quarto extension into the
 project without replacing existing configuration. Ordinary `quarto render`
 integration is currently validated only on Linux. The installed extension is
@@ -53,7 +63,8 @@ stable release.
 The full source checkout contains development, acceptance and CI documentation.
 Those source-only files and verification artifacts are not part of this portable
 directory. The separate
-[npm CLI package](https://github.com/brianmsm/quarto-bento/blob/main/docs/NPM.md)
-wraps the portable runtime with a `qbento` launcher. Version `0.1.0` is
-available for Linux through npm and mise; see that guide for installation
-commands and external Node, Deno and Quarto requirements.
+[npm CLI package version 0.2.0](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.2.0)
+wraps the matching portable runtime with a `qbento` launcher. Its version-specific
+README provides installation commands and external Node, Deno and Quarto
+requirements. Installing a new wrapper does not update other portable directories
+or older CLI installations.

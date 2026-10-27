@@ -1,5 +1,6 @@
 import { producerOutputChildren } from "../render/producer-capture.ts";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { readExternalWidgetFile } from "./external-reader.ts";
+import { resolve } from "node:path";
 import { originalThemeAttributes } from "../render/theme-styles.ts";
 import { canonical } from "../state/json.ts";
 /** Bounded, data-only adapter for executed R Plotly htmlwidgets. */
@@ -23,6 +24,54 @@ export interface PlotlyCandidate {
   specHash: string;
   width: number;
   height: number;
+}
+export interface PlotlyCamera {
+  eye?: { x?: number; y?: number; z?: number };
+  center?: { x?: number; y?: number; z?: number };
+  up?: { x?: number; y?: number; z?: number };
+  projection?: { type: "perspective" | "orthographic" };
+}
+/** Explicit visual camera state, never arbitrary Plotly relayout properties. */
+export function parsePlotlyCamera(value: unknown): PlotlyCamera {
+  const camera = object(value, "scene.camera");
+  keys(camera, "eye center up projection", "scene.camera");
+  if (!Object.keys(camera).length) fail("camera must not be empty");
+  for (const key of ["eye", "center", "up"]) {
+    if (camera[key] === undefined) continue;
+    const vector = object(camera[key], `camera.${key}`);
+    keys(vector, "x y z", `camera.${key}`);
+    if (
+      !Object.keys(vector).length ||
+      Object.values(vector).some((n) =>
+        typeof n !== "number" || !Number.isFinite(n) || Math.abs(n) > 10000
+      )
+    ) fail("camera vectors require bounded finite coordinates");
+  }
+  if (camera.projection !== undefined) {
+    const projection = object(camera.projection, "camera.projection");
+    keys(projection, "type", "camera.projection");
+    if (
+      projection.type !== "perspective" && projection.type !== "orthographic"
+    ) {
+      fail("unsupported camera projection");
+    }
+  }
+  return structuredClone(camera) as PlotlyCamera;
+}
+export function applyPlotlyCamera(
+  candidate: PlotlyCandidate,
+  value: unknown,
+): PlotlyCandidate {
+  if (!candidate.spec.data.some((trace) => trace.type === "scatter3d")) {
+    fail("camera requires scatter3d");
+  }
+  const camera = parsePlotlyCamera(value), result = structuredClone(candidate);
+  result.spec.layout.scene = {
+    ...(result.spec.layout.scene as ObjectValue | undefined),
+    camera,
+  };
+  result.specHash = hashSource(canonical(result.spec));
+  return result;
 }
 export function fail(message: string): never {
   throw new Error(`UNSUPPORTED_WIDGET: ${message}`);
@@ -267,20 +316,7 @@ export function parsePlotlyPayload(payload: string): PlotlyCandidate["spec"] {
     if (scene.domain) {
       keys(object(scene.domain, "scene.domain"), "x y", "scene.domain");
     }
-    if (scene.camera) {
-      const camera = object(scene.camera, "scene.camera");
-      keys(camera, "eye center up projection", "scene.camera");
-      for (const key of ["eye", "center", "up"]) {
-        if (camera[key]) vector(camera[key]);
-      }
-      if (camera.projection) {
-        const projection = object(camera.projection, "camera.projection");
-        keys(projection, "type", "camera.projection");
-        if (
-          !["perspective", "orthographic"].includes(String(projection.type))
-        ) fail("unsupported camera projection");
-      }
-    }
+    if (scene.camera !== undefined) parsePlotlyCamera(scene.camera);
   }
   if (layout.hoverlabel) {
     const label = object(layout.hoverlabel, "hoverlabel");
@@ -477,23 +513,35 @@ export async function collectExternalPlotlyCandidates(
     const file = await readExternalWidget(root, path);
     const matches = [
       ...file.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi),
-    ].filter((match) =>
-      /\btype=["']application\/json["']/i.test(match[1]) &&
-      /\bdata-for=["']htmlwidget-[a-z0-9]+["']/i.test(match[1])
-    );
+    ].flatMap((match) => {
+      if (!/\btype=["']application\/json["']/i.test(match[1])) return [];
+      const attributes = [...match[1].matchAll(
+        /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g,
+      )].filter((attribute) => attribute[1].toLowerCase() === "data-for");
+      if (!attributes.length) return [];
+      const id = attributes[0][2] ?? attributes[0][3] ?? attributes[0][4];
+      if (
+        attributes.length !== 1 || !/^htmlwidget-[a-z0-9]+$/i.test(id ?? "")
+      ) {
+        fail(
+          "external HTML requires one valid data-for identifier per payload",
+        );
+      }
+      return [{ id, payload: match[2] }];
+    });
     if (matches.length !== 1) {
       fail(
         "external HTML must contain exactly one identified R htmlwidget payload",
       );
     }
-    const id = /\bdata-for=["']([^"']+)["']/i.exec(matches[0][1])![1];
+    const { id, payload } = matches[0];
     if (
       !new RegExp(
         `<div[^>]*class=["'][^"']*\\bplotly\\b[^"']*html-widget[^"']*["'][^>]*id=["']${id}["']|<div[^>]*id=["']${id}["'][^>]*class=["'][^"']*\\bplotly\\b[^"']*html-widget[^"']*["']`,
         "i",
       ).test(file)
     ) fail("external HTML lacks its matching Plotly widget container");
-    const spec = parsePlotlyPayload(matches[0][2]);
+    const spec = parsePlotlyPayload(payload);
     const height = Number(spec.layout.height ?? 500),
       width = Number(spec.layout.width ?? 800);
     result.push({
@@ -520,28 +568,44 @@ export async function readExternalWidget(
   root: string,
   path: string,
 ): Promise<string> {
-  if (
-    !path || isAbsolute(path) || /^[a-z][a-z0-9+.-]*:/i.test(path) ||
-    path.includes("\\") || path.includes("\0") || !/\.html?$/i.test(path)
-  ) fail("widget-src requires a local relative HTML file");
-  const actualRoot = await Deno.realPath(root),
-    file = resolve(actualRoot, path),
-    rel = relative(actualRoot, file);
-  if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) {
-    fail("widget artifact is outside its source project");
-  }
-  for (let current = file; current !== actualRoot; current = dirname(current)) {
-    const stat = await Deno.lstat(current);
+  try {
+    return await readExternalWidgetFile(root, path);
+  } catch (error) {
     if (
-      stat.isSymlink ||
-      (current === file
-        ? !stat.isFile || stat.nlink !== 1 || stat.size > 16_000_000
-        : !stat.isDirectory)
-    ) {
-      fail(
-        "widget artifact must be a regular local HTML file without linked paths and at most 16 MB",
-      );
+      !(error instanceof Deno.errors.NotCapable) ||
+      !error.message.includes("all access") ||
+      !error.message.includes("/proc/self/fd/")
+    ) throw error;
+    const artifact = resolve(await Deno.realPath(root), path);
+    const permission = await Deno.permissions.query({
+      name: "read",
+      path: artifact,
+    });
+    if (permission.state !== "granted") {
+      fail("widget artifact read permission is not granted");
     }
+    // Deno gates directory descriptors on -A; only this fixed data-only child receives it.
+    const result = await new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "--no-config",
+        "--no-remote",
+        "--no-npm",
+        "--no-lock",
+        "--allow-all",
+        import.meta.resolve("./external-reader.ts"),
+        root,
+        path,
+      ],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    const decoder = new TextDecoder();
+    if (!result.success) {
+      throw new Error(decoder.decode(result.stderr).trim());
+    }
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      result.stdout,
+    );
   }
-  return await Deno.readTextFile(file);
 }

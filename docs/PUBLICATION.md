@@ -10,13 +10,21 @@ are not part of the publication.
 
 ## Status and validated baseline
 
-The local Linux implementation objective is complete. Runtime `2ee7974` passed
-578 tests and four steps with zero failures and a 117-file portable
-relocation/state-only rebuild smoke. See the
+**Status (2026-10-27):** the owner authorized `0.2.0` Linux npm publication.
+Current source qualification passed 705 tests and four steps with zero failures,
+with one optional pinned-upstream-source math comparison ignored, plus a 132-file
+portable and 137-file offline npm archive with 132 runtime hashes. See the
+[prepublication qualification](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md).
+Its dirty local review archive remains historical; the clean publication
+artifact and public verification are tracked in
+[the release receipt](evidence/NPM-0.2.0.md).
+
+The original Linux implementation closeout at runtime `2ee7974` passed 578 tests
+and four steps with zero failures and a 117-file portable relocation/state-only
+rebuild smoke. Those historical results remain in the
 [implementation ledger](IMPLEMENTATION_STATUS.md),
 [completion audit](COMPLETION_AUDIT.md) and
-[security receipt](evidence/SECURITY-LINUX.md). Documentation-only publication
-changes do not relabel those results as a new full-suite run.
+[security receipt](evidence/SECURITY-LINUX.md), not as current-suite counts.
 
 Public source availability is not a versioned v1 declaration. No binary release,
 installer or portable archive is attached by this publication. Linux is the
@@ -33,13 +41,20 @@ reproduce the complete native-browser acceptance suite.
 
 ## npm development CLI publication
 
-The current correction release, `@brianmsm/quarto-bento@0.1.1`, was published
+The `0.2.0` publication is owner-authorized as of 2026-10-27, but public
+availability and installation are not yet verified. The current registry
+version remains `0.1.1` until those checks complete. Publish the exact reviewed
+clean archive and record anonymous metadata, integrity and fresh-prefix
+installation checks in [the release receipt](evidence/NPM-0.2.0.md).
+No global CLI update is part of this release preparation.
+
+The historical correction release, `@brianmsm/quarto-bento@0.1.1`, was published
 on 2026-10-17 from the exact validated archive. Anonymous registry metadata,
 README, archive bytes and isolated npm/mise installations passed. Public-package selected sync
 preserved excluded work and design through render. The owner-requested mise
 update selected `0.1.1` globally and verified all 117 runtime hashes, doctor and
 rendering without changing unrelated mise configuration. See
-[the current receipt](evidence/SYNC-SELECTION-0.1.1.md).
+[the historical correction receipt](evidence/SYNC-SELECTION-0.1.1.md).
 
 For the initial release, on 2026-10-16 the owner authorized and completed
 publication of
@@ -91,10 +106,11 @@ observations; they are not downloadable files in this public repository.
 Historical counts, failed attempts and version-specific observations remain
 dated rather than rewritten as current results.
 
-## Publication validation
+## Historical source publication validation (2026-10-13)
 
-The publication changes update documentation and the manual workflow; runtime
-code remains at the validated `2ee7974` baseline. Local pre-publication checks
+The original source-publication changes updated documentation and the manual
+workflow; runtime code remained at the validated `2ee7974` baseline. Local
+pre-publication checks
 passed core/portable type checks, runtime and script lint/format checks, the
 portable inventory regression and two launcher-argument tests. The portable
 smoke passed again with the updated packaged guide, and the literal README

@@ -279,6 +279,7 @@ export async function projectAst(
   const measuredComponents = {
     fixed: new Set<string>(),
     omitted: new Set<string>(),
+    viewports: new Set<string>(),
   };
   // A producer may emit code through several transparent execution wrappers.
   // Count across those wrappers while keeping different slides/producers apart.
@@ -331,6 +332,14 @@ export async function projectAst(
     }
     slide!.elements.push(el);
     result.origins[slide!.id][el.id] = origin;
+    if (
+      origin.origin === "computed" &&
+      ["code", "text", "table"].includes(el.type) &&
+      outputOverflowOption(source, origin.producer)
+    ) {
+      measuredComponents.fixed.add(el.id);
+      measuredComponents.viewports.add(el.id);
+    }
   }
   function text(
     id: string,
@@ -352,9 +361,12 @@ export async function projectAst(
           0,
         )
       : 0;
-    const h = contentFrame && !heading
+    const naturalHeight = contentFrame && !heading
       ? contentFrame.h
       : Math.max(90, listLines * 40 + 20);
+    const h = origin.origin === "computed"
+      ? outputViewportHeight(source, origin.producer, naturalHeight)
+      : naturalHeight;
     const frame = heading
       ? slideVariant?.titleFrame
       : contentFrame ?? slideContentFrame;
@@ -589,7 +601,11 @@ export async function projectAst(
     });
     y += 420;
   }
-  const executionHeight = (node: Node, width: number): number => {
+  const executionHeight = (
+    node: Node,
+    width: number,
+    producerId?: string,
+  ): number => {
     if (images([node]).length) return -1;
     if (node.t === "RawBlock") {
       return /class=["']plotly html-widget/.test(
@@ -600,16 +616,54 @@ export async function projectAst(
     }
     if (node.t === "Table") {
       return Number(
-        projectTable(node, "measurement", 0, { x: 0, y: 0, w: width, h: 720 })
+        projectTable(
+          node,
+          "measurement",
+          0,
+          { x: 0, y: 0, w: width, h: 720 },
+          outputOverflowOption(source, producerId)?.height,
+        )
           .h,
       );
     }
     if (node.t === "Div") {
+      const [attr] = node.c as [Attr, Node[]];
+      const token = attr[2].find(([key]) => key === "qbento-producer-proof")
+        ?.[1];
+      if (token !== undefined && source) {
+        producerId = producerReceipt(ast, source.hash, token).id;
+      }
       const children = (node.c as [Attr, Node[]])[1].filter((child) =>
         child.t !== "RawBlock" ||
         /class=["']plotly html-widget/.test(String((child.c as unknown[])[1]))
       );
-      const heights = children.map((child) => executionHeight(child, width));
+      if (token !== undefined && source) {
+        const producer = source.blocks.find((block) =>
+          block.id === producerId && block.kind === "chunk"
+        );
+        if (!producer) {
+          throw new Error(
+            "INVALID_PRODUCER_RECEIPT: original producer missing",
+          );
+        }
+        let flexible = false;
+        const frames = executionFrames(
+          executionUnits(children),
+          executionLayout(producer),
+          { x: 0, y: 0, w: width, h: Number.MAX_SAFE_INTEGER },
+          (child, childWidth) => {
+            const measured = executionHeight(child, childWidth, producerId);
+            if (measured === -1) flexible = true;
+            return measured;
+          },
+        );
+        return flexible
+          ? -1
+          : Math.max(0, ...frames.map((frame) => frame.y + frame.h));
+      }
+      const heights = children.map((child) =>
+        executionHeight(child, width, producerId)
+      );
       return heights.includes(-1)
         ? -1
         : heights.reduce((sum, value) => sum + value, 0) +
@@ -622,7 +676,21 @@ export async function projectAst(
       ...(code ? inheritedCardCodeStyle : inheritedCardTextStyle),
       ...roleStyle(reusableTheme, code ? "code" : "body", slideVariant),
       ...(code ? inheritedCodeStyle : inheritedTextStyle),
-      ...explicitCardStyle,
+      ...(code
+        ? {
+          ...selectedStyle(
+            recoverThemeAttributes(
+              (node.c as [Attr, string])[0],
+              "code",
+              source,
+              true,
+            ),
+            "code",
+          ),
+          ...explicitCardStyle,
+          ...parseDesignAttributes((node.c as [Attr, string])[0]).properties,
+        }
+        : explicitCardStyle),
     };
     const size = Number(style.fontSize), leading = Number(style.lineHeight);
     const content = code
@@ -636,7 +704,11 @@ export async function projectAst(
         )),
       0,
     );
-    return Math.max(90, (count + (code ? 1 : 0)) * size * leading);
+    return outputViewportHeight(
+      source,
+      producerId,
+      Math.max(90, (count + (code ? 1 : 0)) * size * leading),
+    );
   };
   async function walk(
     nodes: Node[],
@@ -652,7 +724,7 @@ export async function projectAst(
     let mathIndex = 0;
     let sourceMarker: string | undefined;
     let slot = 0;
-    for (const node of nodes) {
+    for (const [nodeIndex, node] of nodes.entries()) {
       const previousFrame = contentFrame;
       if (frames && node.t !== "RawBlock") contentFrame = frames[slot++];
       const groupSlide = slide, groupStart = slide?.elements.length ?? 0;
@@ -1612,8 +1684,90 @@ export async function projectAst(
                   "Place output-location: slide chunks outside cards and layouts; continuation slides cannot split a component.",
                 );
               }
-              const frame = contentFrame ?? remainingFrame() ??
+              let frame = contentFrame ?? remainingFrame() ??
                 { x: 80, y, w: 1120, h: Math.max(.01, 670 - y) };
+              if (
+                !inComponent && !contentFrame && layout.location !== "slide"
+              ) {
+                const siblings = [];
+                for (const sibling of nodes.slice(nodeIndex)) {
+                  if (sibling.t === "RawBlock") continue;
+                  if (sibling.t !== "Div") break;
+                  const [siblingAttr, siblingChildren] = sibling.c as [
+                    Attr,
+                    Node[],
+                  ];
+                  const siblingToken = siblingAttr[2].find(([key]) =>
+                    key === "qbento-producer-proof"
+                  )?.[1];
+                  if (siblingToken === undefined) break;
+                  const siblingProof = producerReceipt(
+                    ast,
+                    source.hash,
+                    siblingToken,
+                  );
+                  const siblingProducer = source.blocks.find((block) =>
+                    block.id === siblingProof.id && block.kind === "chunk"
+                  );
+                  if (
+                    !siblingProducer ||
+                    siblingProducer.slideId !== proof.slideId
+                  ) {
+                    throw new Error(
+                      "INVALID_PRODUCER_RECEIPT: original producer scope changed",
+                    );
+                  }
+                  const siblingLayout = executionLayout(siblingProducer);
+                  if (siblingLayout.location === "slide") break;
+                  const siblingUnits = executionUnits(siblingChildren);
+                  const flexible = new Set<Node>();
+                  // Reuse the source-aware planner at figure minima before sharing surplus.
+                  const minimumFrames = executionFrames(
+                    siblingUnits,
+                    siblingLayout,
+                    { x: 0, y: 0, w: frame.w, h: Number.MAX_SAFE_INTEGER },
+                    (child, width) => {
+                      const height = executionHeight(
+                        child,
+                        width,
+                        siblingProof.id,
+                      );
+                      if (height !== -1) return height;
+                      flexible.add(child);
+                      return 100;
+                    },
+                  );
+                  siblings.push({
+                    minimum: Math.max(
+                      0,
+                      ...minimumFrames.map((slot) => slot.y + slot.h),
+                    ),
+                    flexible: new Set(minimumFrames.flatMap((slot, index) =>
+                      flexible.has(siblingUnits[index].node) ? [slot.y] : []
+                    )).size,
+                  });
+                }
+                if (siblings.length > 1) {
+                  const minimum = siblings.reduce((sum, cell) =>
+                    sum + cell.minimum, 0) +
+                    (siblings.length - 1) * 20;
+                  const flexible = siblings.reduce(
+                    (sum, cell) => sum + cell.flexible,
+                    0,
+                  );
+                  frame = {
+                    ...frame,
+                    h: Math.min(
+                      frame.h,
+                      siblings[0].minimum +
+                        (flexible
+                          ? Math.max(0, frame.h - minimum) *
+                            siblings[0].flexible / flexible
+                          : 0),
+                    ),
+                  };
+                }
+              }
               if (layout.location === "slide") {
                 const codes = units.filter((unit) => unit.code),
                   outputs = units.filter((unit) => !unit.code);
@@ -1621,7 +1775,7 @@ export async function projectAst(
                   codes,
                   { ...layout, location: "default", columns: 1 },
                   frame,
-                  executionHeight,
+                  (node, width) => executionHeight(node, width, proof.id),
                 );
                 for (const [index, unit] of codes.entries()) {
                   y = codeFrames[index].y;
@@ -1663,7 +1817,7 @@ export async function projectAst(
                   outputs,
                   { ...layout, location: "default" },
                   outputFrame,
-                  executionHeight,
+                  (node, width) => executionHeight(node, width, proof.id),
                 );
                 for (const [index, unit] of outputs.entries()) {
                   y = outputFrames[index].y;
@@ -1680,7 +1834,7 @@ export async function projectAst(
                   units,
                   layout,
                   frame,
-                  executionHeight,
+                  (node, width) => executionHeight(node, width, proof.id),
                 );
                 for (const [index, unit] of units.entries()) {
                   y = frames[index].y;
@@ -1976,18 +2130,19 @@ export async function projectAst(
             "UNSUPPORTED_CODE_CLASSES: displayed code supports one language class plus native visual attributes",
           );
         }
-        const naturalHeight = contentFrame
-          ? Math.max(
-            90,
-            (content.split("\n").length + 1) * codeSize * codeLineHeight,
-          )
-          : Math.min(
-            470,
-            Math.max(
+        const naturalHeight =
+          contentFrame || computed && outputOverflowOption(source, parentId)
+            ? Math.max(
               90,
               (content.split("\n").length + 1) * codeSize * codeLineHeight,
-            ),
-          );
+            )
+            : Math.min(
+              470,
+              Math.max(
+                90,
+                (content.split("\n").length + 1) * codeSize * codeLineHeight,
+              ),
+            );
         const height = computed
           ? outputViewportHeight(source, parentId, naturalHeight)
           : naturalHeight;
@@ -2026,10 +2181,18 @@ export async function projectAst(
         if (matchingWidget) {
           const [id, widget] = matchingWidget,
             candidate = expectedWidgets.get(id)!;
+          const producer = source?.blocks.find((block) =>
+            block.id === candidate.source.producerId && block.kind === "chunk"
+          );
+          const displaySlideId = producer &&
+              producer.slideId === widget.slideId &&
+              executionLayout(producer).location === "slide"
+            ? `qb-output-${hashSource(producer.id).slice(0, 24)}`
+            : widget.slideId;
           if (
             format !== "html" || !computed ||
             parentId !== candidate.source.producerId ||
-            slide?.id !== widget.slideId || consumedWidgets.has(id)
+            slide?.id !== displaySlideId || consumedWidgets.has(id)
           ) {
             throw new Error(
               "WIDGET_PROJECTION_MISMATCH: widget display differs from its original producer context",

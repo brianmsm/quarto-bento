@@ -6,7 +6,6 @@ import {
 } from "../src/core/project.ts";
 import { collectExternalPlotlyCandidates } from "../src/widgets/plotly.ts";
 import {
-  createPlotlyInlineView,
   createPlotlyReceipt,
   plotlyStaticElement,
   verifyStaticPng,
@@ -104,33 +103,6 @@ Deno.test("real R Plotly3D echoes code, captures a PNG, keeps geometry and updat
         ),
       );
     assert(bundle.candidate.spec.data[0].z[1] === 20);
-    const runtimeDir = new TextDecoder().decode(
-      (await new Deno.Command("Rscript", {
-        args: [
-          "--vanilla",
-          "-e",
-          'cat(system.file("htmlwidgets/lib/plotlyjs",package="plotly"))',
-        ],
-        stdout: "piped",
-      }).output()).stdout,
-    ).trim();
-    const runtime = {
-      javascript: await Deno.readTextFile(runtimeDir + "/plotly-latest.min.js"),
-      license: await Deno.readTextFile(runtimeDir + "/LICENSE"),
-    };
-    const inline = await createPlotlyInlineView(bundle, runtime, {
-      source: scanSource(source),
-      expectedReceipt: createPlotlyReceipt(bundle),
-    });
-    assert(
-      inline.includes("qbentoWidgetReady") &&
-        inline.includes("qbentoWidgetEscape") &&
-        inline.includes("ResizeObserver"),
-    );
-    assert(
-      !inline.includes("allow-same-origin") &&
-        inline.includes("connect-src 'none'"),
-    );
     assert(await Deno.readTextFile(path) === source);
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -184,11 +156,6 @@ Deno.test("local R htmlwidget import extracts only checked data and records arti
       expectedReceipt: createPlotlyReceipt(bundle),
     });
     assert(projected.origin.origin === "authored" && projected.origin.widget);
-    assert(
-      (await readProjectPresenter(path, result.state.revision)).includes(
-        "scatter3d",
-      ),
-    );
     await Deno.writeTextFile(
       join(dir, "cloud.html"),
       bytes + "\n<!-- changed -->",

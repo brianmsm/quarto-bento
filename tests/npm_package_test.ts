@@ -37,7 +37,7 @@ async function copyTree(source: string, destination: string) {
 function metadata(): Record<string, unknown> {
   return {
     name: "@brianmsm/quarto-bento",
-    version: "0.1.1",
+    version: "0.2.0",
     private: true,
     type: "module",
     bin: { qbento: "bin/qbento-npm.mjs" },

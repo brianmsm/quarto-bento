@@ -9,8 +9,8 @@ and [architecture](docs/ARCHITECTURE.md). Coding agents must also read
 
 ## Development setup
 
-Use installed Deno 2.9.6 and Quarto 1.10.19 for the tested baseline. Computation
-tests need their installed R/Python packages; browser tests need Chromium.
+Use installed Deno 2.9.8 and Quarto 1.10.19 for current source qualification.
+Computation tests need installed R/Python packages; browser tests need Chromium.
 Quarto-Bento does not install or lock these environments. The source checkout
 does not require `npm install` to use its committed runtime. The separate Linux
 npm CLI package is staged from the reviewed portable distribution; Bento's
@@ -29,18 +29,18 @@ from the repository root into a new directory outside the checkout:
 
 ```sh
 deno run --no-config --allow-read --allow-write --allow-run=git \
-  scripts/npm-package.ts /tmp/qbento-npm-0.1.0
-npm pack --ignore-scripts --pack-destination /tmp /tmp/qbento-npm-0.1.0
+  scripts/npm-package.ts /tmp/qbento-npm-0.2.0
+npm pack --ignore-scripts --pack-destination /tmp /tmp/qbento-npm-0.2.0
 ```
 
 The staging script validates the package metadata and builds the self-contained
 runtime payload. It does not publish to npm. See [NPM.md](docs/NPM.md) for the
-local and registry installation workflows and publication status. The owner
-authorized development version `0.1.0`; the documented historical license-source
-gaps remain open. Future publication must preserve that disclosure and the exact
-bundled notices. Authenticate as the authorized publisher, verify the staged
-archive, publish that archive explicitly and verify its registry integrity and
-anonymous installation before recording success.
+local and registry installation workflows and publication status. Metadata
+`0.2.0` prepares a local review candidate, not publication authorization.
+Historical license-source gaps remain open. A future explicitly authorized
+publication must preserve that disclosure and exact notices, use a reviewed
+clean archive and verify registry integrity plus anonymous installation before
+recording success.
 
 Run `deno task npm-check` for the real offline tarball installation and
 relocated state-only rebuild smoke. Run
@@ -90,9 +90,9 @@ The GitHub workflow is a manually dispatched Linux portable smoke. It is a
 smaller authored-source test and does not reproduce the full R/Python/browser
 acceptance suite.
 
-The reusable-design feature was also validated locally with Deno 2.9.7. Its
-current-runtime portable check exercises initialization, export, checked import,
-relocation/rebuild and installed-Chromium style adaptation:
+The reusable-design feature was validated on Deno 2.9.7; the current 0.2.0
+source also passes this portable check on 2.9.8. It exercises initialization,
+export, checked import, relocation/rebuild and installed-Chromium adaptation:
 
 ```sh
 deno run --no-config --no-remote --no-npm --allow-read --allow-write \
@@ -100,7 +100,8 @@ deno run --no-config --no-remote --no-npm --allow-read --allow-write \
 ```
 
 This does not relax the historical `portable-check.ts` Deno version guard or
-claim an npm publication. See the [feature receipt](docs/evidence/REUSABLE-DESIGNS.md).
+claim publication. See [current source evidence](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+and [historical design evidence](docs/evidence/REUSABLE-DESIGNS.md).
 
 ## Changes and reviews
 

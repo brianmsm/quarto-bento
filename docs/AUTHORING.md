@@ -63,6 +63,12 @@ This example uses a computed SVG image inside a card. Native `.bento-chart`
 instead consumes explicit simple table data and supports measured card/layout
 slots; see its implemented contract below.
 
+Executable chunks also support bounded source/result placement, multi-result
+columns and opt-in full-data scroll viewports; see
+[code and result layout](EXECUTION_LAYOUT.md). These are literal chunk options,
+not a general layout language. Static R 2D figures default to SVG only when an
+explicit device/format or project/metadata setting has not selected otherwise.
+
 ### Component vocabulary and status
 
 | QMD component | Role and current status |
@@ -319,6 +325,59 @@ width for all category labels and the full legend; they retain their native
 [composed chart evidence](evidence/COMPOSED-CHARTS.md) and
 [the composed example](../examples/composed-charts/deck.qmd).
 
+### Interactive Plotly and local widget data
+
+The bounded Plotly adapter supports 2D scatter/bar and `scatter3d` points/lines.
+Studio, standalone HTML and Presenter place interaction in the actual native
+image rectangle, retaining a static SVG (2D) or PNG (3D) for PDF and unavailable
+interaction/WebGL. Editor interaction is opt-in through **Interactuar**
+(Interact); Escape or **Volver al diseño · Esc** returns to native editing.
+Exploration does not change source data or QMD. Native geometry still belongs
+to the image; widget exploration is not a reverse chart-data editor.
+
+For 3D, **Save view** explicitly persists the camera and updates the PNG
+fallback; other exploration stays transient. Studio stores typed camera visual
+state separately from BentoDoc and QMD, checks the current source/revision and
+published static identity, and recaptures with its pinned local runtime.
+Recalculation/state-only reconstruction reapplies the approved camera without
+freezing source data. In standalone HTML, follow **Save view** with native Save;
+checked `qbento capture` validates that copy's generation/source/image identity
+and recaptures locally rather than trusting browser pixels as execution proof.
+See [the user workflow](USAGE.md#deliver-html-pdf-or-interactive-charts).
+
+For an existing R htmlwidget export, use an empty identified original div under
+a slide heading:
+
+```markdown
+## Results {#results}
+
+::: {#external-plot widget-src="figures/plot.html"}
+:::
+```
+
+`widget-src` must be a project-relative local `.html`/`.htm` file, regular,
+without symlink/hardlink paths, valid UTF-8 and at most 16 MB. Its fingerprint
+includes a leading UTF-8 BOM; invalid byte sequences refuse. It must contain
+exactly one identified R Plotly htmlwidget JSON payload and matching container.
+Import reads and validates inert data only: it does not reuse scripts or
+callbacks, execute the original R producer, or create an R execution receipt.
+The source wrapper and artifact hash bind its provenance; changed artifact bytes
+require recalculation and cannot silently reuse an old result.
+
+Local artifact reads require Linux procfs. Each path component is opened without
+following links and bytes are bounded on the same file descriptor. Deno gates
+descriptor paths behind all-access permission: under the ordinary CLI flags, a
+fixed shipped data-only reader runs in a separate Deno process with `--allow-all`.
+It accepts paths as data, never imports the artifact, and leaves the main CLI's
+permissions unchanged. This is not a sandbox for executable QMD.
+
+The generated offline runtime runs in a sandboxed `allow-scripts` iframe without
+same-origin permission and with networking blocked by CSP. Raw HTML, surface,
+mesh, animation and arbitrary widget/callback execution are outside the adapter.
+Only run trusted QMD: sandboxing an imported widget does not sandbox the
+document's own executable chunks. The [earlier Plotly evidence](evidence/PLOTLY.md)
+is historical and does not establish acceptance of the new inline/3D paths.
+
 ### Displayed code (implemented subset)
 
 An identified non-executable fenced block projects to Bento's native code object:
@@ -490,3 +549,11 @@ in QMD; keep explicit QMD design ownership separate from native sparse
 overrides. See the
 [registry schema and authority contract](DESIGN_REGISTRY.md) and
 [reusable course example](../examples/reusable-designs/README.md).
+
+For explicit reusable absolute regions and variant role styles, see
+[slide slots and variant styles](features/THEME_SLOTS.md). A row/column slot
+may apply a named text/code style only when it matches every original child
+target. Card children can use bounded defaults without a card style on the
+whole row/column wrapper; a single card slot can select a named card style.
+Neither case introduces general recursive inheritance, source templates or
+automatic source edits. Saved native visual overrides retain precedence.

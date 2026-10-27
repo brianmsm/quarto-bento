@@ -8,19 +8,36 @@ the original runs; those files are excluded from this repository. Committed
 screenshots and JSON snapshots are linked from their receipts where available.
 See [publication scope](../PUBLICATION.md) for the current baseline.
 
-## Current combined results
+## Current release preparation (2026-10-27)
 
-- [Reusable presentation designs](REUSABLE-DESIGNS.md): current source feature
+- [npm 0.2.0 publication](NPM-0.2.0.md): owner-authorized clean archive
+  preparation, publication and public verification tracking. The registry
+  remains `0.1.1` until publication is verified; no global update is requested.
+
+- [Composition/interactivity 0.2.0](COMPOSITION-INTERACTIVITY-0.2.0.md): explicit
+  theme slots, measured code/results, complete scroll/Presenter PDF, inline
+  offline Plotly3D, camera Save/native reopen/capture, source-only reconstruction
+  and local review packaging. Qualification passed 705 tests and four steps,
+  zero failures, with one optional upstream-source math comparison ignored;
+  portable 132 files, offline npm 137 files/132 runtime hashes. Its dirty local
+  review archive remains historical prepublication evidence, distinct from the
+  clean publication artifact. Source qualification is not npm publication.
+
+## Earlier integrations and historical publication
+
+- [Reusable presentation designs](REUSABLE-DESIGNS.md): integrated source feature
   with native styles/templates, content-free packages, safe initialization and
   import, Studio native samples and local Reveal adaptation; separate from npm
   0.1.1 publication.
 
-- [Published 0.1.1 corrections](SYNC-SELECTION-0.1.1.md): bound source reads,
+- [Historical published 0.1.1 corrections](SYNC-SELECTION-0.1.1.md): bound source
+  reads,
   reviewed selective sync and post-Apply pending semantics; separate local
   runtime evidence, anonymous public npm/mise verification and the owner-requested
   global mise update.
 
-- [npm CLI preparation and public installation](NPM-CLI.md): public registry
+- [Historical npm 0.1.0 preparation and public installation](NPM-CLI.md): public
+  registry
   integrity and npm/mise installation/rendering, explicit tarball inventory,
   prefix relocation/state rebuilding, and an isolated real mise backend check.
 - [Security and dependencies](SECURITY-LINUX.md): mitigations, 578 tests and

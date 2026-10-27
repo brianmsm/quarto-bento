@@ -5,6 +5,10 @@ local Linux; the [implementation ledger](IMPLEMENTATION_STATUS.md) distinguishes
 verified behavior from pending capabilities. The Linux development objective is
 complete for its documented scope. Public source availability does not establish
 a full v1 release. Windows and macOS qualification remains future work.
+The 0.2.0 composition/interactivity sections describe the source integration
+contract; earlier receipts do not verify those additions. Consult the ledger
+for matching acceptance evidence. Published npm/global installations remain
+0.1.1 until a separately authorized release.
 
 Studio currently uses Spanish control labels. This guide preserves the exact
 labels you will see and provides their English meanings here:
@@ -89,6 +93,11 @@ apply those patches alongside semantic changes; save and recalculate do not add
 them. Changing identities after saving design may still require reconciliation.
 See [authoring syntax and limits](AUTHORING.md) for components, code, equations,
 notes, tables, and charts, and the [plain-QMD receipt](evidence/PLAIN-QMD.md).
+
+For echoed executable code and results, use the literal chunk options in
+[code and result layout](EXECUTION_LAYOUT.md), rather than a displayed-code
+wrapper. For reusable absolute regions, see
+[slide slots and variant styles](features/THEME_SLOTS.md).
 
 ## Local images and captions
 
@@ -319,6 +328,13 @@ registry, save refuses and retains the draft: review it before selecting
 **Descartar borrador y recargar registro**. You can also edit JSON following the
 [registry contract](DESIGN_REGISTRY.md).
 
+Named slide slots are explicitly selected with `bento-slot`; variants may supply
+their own role defaults and slot styles. A row/column slot's named text/code
+style must match every original child target. Card children can use bounded
+card defaults without applying a card style to the entire row/column wrapper.
+These defaults do not replace explicit source values or retained native edits.
+See [the slot contract](features/THEME_SLOTS.md).
+
 ## Change data and rebuild
 
 Change input data and select **Recalcular**, or run:
@@ -354,12 +370,40 @@ representation and omits hidden slides. That print layer has been tested in
 Chromium on Linux, with visual PDF inspection; operating-system dialogs are a
 separate qualification layer.
 
-For supported Plotly output, **Presentar con gráficos** saves and opens a viewer
-containing the static presentation and separate interactive views. Interactive
-charts do not overlay the slide at its exact object positions. Ordinary HTML and
-PDF retain the static SVG. Generation requires Chromium and a compatible local
-Plotly runtime; interactive output bundles its resources for offline viewing.
-See [adapter scope, versions, and controls](evidence/PLOTLY.md).
+Supported Plotly 2D scatter/bar and `scatter3d` points/lines are interactive
+inline in their actual native image rectangles in Studio, standalone HTML and
+**Presentar con gráficos** (Present with charts). In the editor, select
+**Interactuar** (Interact) to explore; **Volver al diseño · Esc** (Return to
+design) or Escape returns to editing. The static image remains authoritative
+for geometry and for PDF; unavailable interaction or WebGL retains that
+fallback. 2D uses SVG and 3D uses a PNG fallback.
+
+For 3D, **Save view** explicitly approves the current camera and refreshes its
+static PNG fallback. Unapproved rotation/zoom remains transient. In Studio the
+save checks the current project, source, revision and published image, and
+recaptures locally; saved camera metadata is visual state outside BentoDoc and
+is reapplied on recalculation and state-only reconstruction. It never writes
+QMD or changes the underlying data. In standalone HTML, use **Save view**, then
+Bento's native Save to retain the approved view in the downloaded copy. To bring
+it back into the project, use the checked `capture` flow below: browser pixels
+or embedded camera metadata are not accepted as an execution receipt, and the
+project recaptures the validated view locally.
+
+Generation requires Chromium and a compatible local Plotly runtime. Resources
+are bundled for offline viewing. Widget scripts run only in an isolated
+`allow-scripts` iframe without same-origin permission, with networking blocked
+by CSP; they do not enter BentoDoc or gain access to the project. Surface/mesh,
+arbitrary HTML and callbacks are outside this adapter. A local exported
+htmlwidget can be imported as bounded inert Plotly data, not as executable HTML
+or proof that its R producer ran; see
+[authoring and import bounds](AUTHORING.md#interactive-plotly-and-local-widget-data).
+The [earlier Plotly receipt](evidence/PLOTLY.md) records its historical scope,
+not acceptance of these newer inline/3D paths.
+
+Long computed code, stdout and native tables can opt into an interactive scroll
+viewport without discarding data. Static/PDF output uses full-content
+continuations, not a clipped screenshot; see
+[scroll options and data authority](EXECUTION_LAYOUT.md#scrollable-computed-output).
 
 If you edited local HTML through Bento's native Save, explicitly capture those
 changes before regeneration:

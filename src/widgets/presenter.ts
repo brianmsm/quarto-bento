@@ -241,8 +241,9 @@ function innerPage(
   inline = false,
   capture = false,
 ) {
+  // Pinned Plotly rasterizes its SVG through a local blob image during explicit view capture.
   const csp =
-    `default-src 'none'; script-src 'nonce-${nonce}' data:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'`;
+    `default-src 'none'; script-src 'nonce-${nonce}' data:; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'`;
   const script = `"use strict";
 const spec=${
     json(candidate.spec)
@@ -254,6 +255,54 @@ const report=value=>${
       ? "document.getElementById('qb-widget-result').textContent=JSON.stringify(value)"
       : `parent.postMessage({qbentoWidget:${json(nonce)},...value},'*')`
   };
+chart.addEventListener('webglcontextlost',event=>{
+ event.preventDefault();
+ const error='WebGL context lost; the static fallback is retained';
+ if(${inline})parent.postMessage({qbentoWidgetError:error},'*');
+ report({error});
+},true);
+const cameraChannel=${json(nonce)};
+let savingCamera=false;
+window.addEventListener('message',event=>{
+ if(event.source!==parent||event.data?.qbentoWidgetCameraRestore!==cameraChannel||!${
+    isPlotly3d(candidate)
+  })return;
+ const camera=event.data.camera;
+ if(!camera||typeof camera!=='object'||Array.isArray(camera)||!Object.keys(camera).length)return;
+ for(const [key,value] of Object.entries(camera)){
+  if(!value||typeof value!=='object'||Array.isArray(value))return;
+  if(key==='projection'){if(Object.keys(value).length!==1||!['perspective','orthographic'].includes(value.type))return;}
+  else if(!['eye','center','up'].includes(key)||!Object.keys(value).length||Object.entries(value).some(([axis,n])=>!['x','y','z'].includes(axis)||typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>10000))return;
+ }
+ Plotly.relayout(chart,{'scene.camera':camera}).catch(error=>parent.postMessage({qbentoWidgetError:String(error)},'*'));
+});
+window.addEventListener('message',async event=>{
+ if(event.source!==parent||event.data?.qbentoWidgetCameraRequest!==cameraChannel||typeof event.data.requestId!=='string'||event.data.requestId.length>100||savingCamera||!${
+    isPlotly3d(candidate)
+  })return;
+ savingCamera=true;
+ try{
+  const current=chart._fullLayout?.scene?._scene?.getCamera();
+  if(!current)throw new Error('Camera is not ready');
+  const camera={};
+  for(const key of ['eye','center','up']){
+   camera[key]={};
+   for(const axis of ['x','y','z']){
+    const n=current[key]?.[axis];
+    if(typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>10000)throw new Error('Invalid camera coordinate');
+    camera[key][axis]=n;
+   }
+  }
+  const type=current.projection?.type;
+  if(type!=='perspective'&&type!=='orthographic')throw new Error('Invalid camera projection');
+  camera.projection={type};
+  await Plotly.relayout(chart,{'scene.camera':camera});
+  const png=await Plotly.toImage(chart,{format:'png',width:width*2,height:height*2});
+  if(!png.startsWith('data:image/png;base64,')||png.length>12000022)throw new Error('Invalid camera snapshot');
+  parent.postMessage({qbentoWidgetCamera:cameraChannel,requestId:event.data.requestId,camera,png},'*');
+ }catch(error){parent.postMessage({qbentoWidgetCamera:cameraChannel,requestId:event.data.requestId,error:String(error)},'*');}
+ finally{savingCamera=false;}
+});
 document.addEventListener('keydown',event=>{if(${inline}&&event.key==='Escape'){event.preventDefault();event.stopPropagation();parent.postMessage({qbentoWidgetEscape:true},'*');}});
 const layout={...spec.layout,width,height};
 Promise.resolve().then(()=>{
@@ -276,7 +325,9 @@ return Plotly.newPlot(chart,spec.data,layout,spec.config);}).then(async()=>{
     if(${inline}){
       const resize=()=>Plotly.relayout(chart,{width:Math.max(100,innerWidth),height:Math.max(100,innerHeight)});
       new ResizeObserver(resize).observe(document.documentElement);resize();
-      parent.postMessage({qbentoWidgetReady:true},'*');
+      parent.postMessage({qbentoWidgetReady:true,...(${
+    isPlotly3d(candidate)
+  }?{qbentoWidgetChannel:cameraChannel}:{})},'*');
     }
     report({ready:true});
   }
@@ -323,7 +374,7 @@ window.addEventListener('message',event=>{
  if(event.source!==iframe.contentWindow||event.origin!=='null'||event.data?.qbentoWidget!==${
     json(nonce)
   })return;
- if(event.data.error){status.textContent='No se pudo representar el widget: '+event.data.error;result.textContent=JSON.stringify({error:event.data.error});return;}
+ if(event.data.error){status.textContent='No se pudo representar el widget: '+event.data.error;result.textContent=JSON.stringify({error:event.data.error});const fallback=document.getElementById('fallback');if(fallback){iframe.hidden=true;fallback.hidden=false;const button=document.getElementById('activate');if(button)button.disabled=true;}return;}
  if(event.data.ready){status.textContent='Listo · recursos incluidos · sin conexión';result.textContent=JSON.stringify({ready:true,svg:event.data.svg,png:event.data.png});const button=document.getElementById('activate');if(button)button.disabled=false;}
 });
 const button=document.getElementById('activate');if(button)button.addEventListener('click',()=>{const active=iframe.hidden;iframe.hidden=!active;document.getElementById('fallback').hidden=active;button.textContent=active?'Mostrar versión estática':'Activar gráfico interactivo';});

@@ -221,12 +221,23 @@ Deno.test({
           JSON.stringify(expectedOverflowIds),
         JSON.stringify({ overflows, expectedOverflowIds }),
       );
+      const ordered = [...firstSlide.elements].sort((a, b) =>
+        Number(a.y) - Number(b.y)
+      );
       assert(
-        overflows.some((diagnostic) => diagnostic.elementId === figures[1].id),
-        JSON.stringify({
-          figures: figures.map((figure) => figure.id),
-          overflows,
-        }),
+        ordered.every((element, index) =>
+          Number(element.y) >= 0 &&
+          Number(element.y) + Number(element.h) <= pageHeight &&
+          (index === 0 ||
+            Number(ordered[index - 1].y) + Number(ordered[index - 1].h) <=
+              Number(element.y))
+        ),
+        JSON.stringify(ordered.map(({ id, y, h }) => ({ id, y, h }))),
+      );
+      assert(
+        figures.every((figure) => Number(figure.h) >= 100) &&
+          Math.abs(Number(figures[0].h) - Number(figures[1].h)) < .01,
+        "default figures must share surplus without shrinking below their minima",
       );
 
       const fitted = structuredClone(first.state.emitted);

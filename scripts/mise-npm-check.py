@@ -23,7 +23,7 @@ def check(archive: Path):
         metadata = json.load(packed.extractfile('package/package.json'))
         manifest_bytes = packed.extractfile('package/distribution/manifest.json').read()
     if (metadata.get('name') != '@brianmsm/quarto-bento'
-            or metadata.get('version') != '0.1.1'
+            or metadata.get('version') != '0.2.0'
             or metadata.get('bin') != {'qbento': 'bin/qbento-npm.mjs'}
             or metadata.get('os') != ['linux']
             or any(key in metadata for key in ('scripts', 'dependencies',

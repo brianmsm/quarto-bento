@@ -6,45 +6,48 @@ while retaining its visual design. Quarto-Bento provides a local Studio,
 explicit reviewed synchronization to QMD, and an offline standalone Bento HTML
 output.
 
-**Status:** public development source. The supported Linux implementation
-objective is complete: the runtime at `2ee7974` passed 578 tests and four steps,
-with zero failures, and the 117-file portable smoke passed. The supported
-workflows and their limits are documented in the
-[implementation ledger](docs/IMPLEMENTATION_STATUS.md) and
-[completion audit](docs/COMPLETION_AUDIT.md). This repository is available for
-use, inspection and contributions; a versioned v1 release has not been declared.
-Windows and macOS qualification are future work outside the completed Linux
-objective.
+**Status (2026-10-27):** owner-authorized `0.2.0` Linux release preparation.
+Current source qualification passed **705 tests and four steps, zero failures**,
+with one optional pinned-upstream-source math comparison ignored, plus the
+132-file portable and 137-file offline npm checks. See the
+[qualification receipt](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md) and
+[publication receipt](docs/evidence/NPM-0.2.0.md). The earlier 578-test runtime
+`2ee7974` and 117-file portable results remain historical in the
+[implementation ledger](docs/IMPLEMENTATION_STATUS.md).
 
-The compatible `0.1.1` correction is published on
-[npm](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.1). It adds reviewed
-selection in CLI/Studio, consistent QMD association checks and clearer post-sync
-state guidance. See the [changelog](CHANGELOG.md) and
-[correction and publication evidence](docs/evidence/SYNC-SELECTION-0.1.1.md).
+The public registry remains at `0.1.1` until `0.2.0` publication is verified.
+Its [correction receipt](docs/evidence/SYNC-SELECTION-0.1.1.md) records the
+historical publication and global update, not a `0.2.0` installation.
+This is public development source, not stable v1; Windows and macOS
+qualification remain future work outside the completed Linux objective.
 
 ## Install the Linux CLI
 
 Quarto-Bento's npm CLI is `@brianmsm/quarto-bento`. Install Node.js 22 or later,
-Deno and Quarto first; the tested baseline is Node 26.10.0, Deno 2.9.6 and
+Deno and Quarto first; the qualified baseline is Node 26.12.0, Deno 2.9.8 and
 Quarto 1.10.19. The package includes application source/assets, but does not
 install these runtimes or your document's computation packages.
 
+The following pinned `0.2.0` registry commands are for use **after availability
+is verified** in the [publication receipt](docs/evidence/NPM-0.2.0.md); they do
+not assert that publication has completed. Use a source checkout meanwhile.
+
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.1
+npm install -g @brianmsm/quarto-bento@0.2.0
 qbento --version
 qbento doctor
 qbento edit /absolute/path/to/my-presentation/deck.qmd
 ```
 
 For an npm prefix writable by your user, use
-`npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.1.1` and ensure
+`npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.2.0` and ensure
 `$HOME/.local/bin` is on `PATH`.
 
 Alternatively, manage the CLI and its Node/Deno runtimes through mise:
 
 ```sh
-mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
+mise use -g node@26.12.0 deno@2.9.8 \
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
 qbento doctor
 ```
 
@@ -60,9 +63,9 @@ macOS/Windows and a stable v1 are outside this release scope.
 
 ## Run from a source checkout
 
-Install Deno and Quarto yourself. The tested Linux baseline is **Deno 2.9.6**
-and **Quarto 1.10.19**. A document with computation also needs its language and
-packages; the acceptance suite used R 4.6.1 and locally installed Python.
+Install Deno and Quarto yourself. The current source qualification uses
+**Deno 2.9.8** and **Quarto 1.10.19** on Linux. A document with computation also
+needs its language and packages; acceptance used R 4.6.1 and installed Python.
 Chromium is needed for supported browser-based captures and PDF workflows.
 Quarto-Bento does not install or manage these dependencies.
 
@@ -130,7 +133,8 @@ copy before rendering again. See [capture](docs/evidence/CAPTURE.md) and
 Define a course design once and reuse its native text/code/card styles, named
 slide templates and layouts in independent presentations. The current source
 adds reviewed package export/import in Studio and the `design` CLI family.
-These additions are **not included in the published npm 0.1.1 archive**.
+These additions are included in the qualified `0.2.0` source, but **not in the
+historical npm 0.1.1 archive**; `0.2.0` registry verification is pending.
 
 For a new QMD that already selects named styles or slide variants:
 
@@ -153,6 +157,27 @@ sessions. See the [course example](examples/reusable-designs/README.md),
 [package workflow](docs/DESIGN_PACKAGES.md),
 [Studio guide](docs/STUDIO_DESIGNS.md) and
 [Reveal adaptation](docs/DESIGN_ADAPTATION.md).
+
+### Compose code, results and interactive plots (development source)
+
+Named [theme slots and variant role styles](docs/features/THEME_SLOTS.md) place
+teaching regions explicitly, without inferring roles from IDs. Use native
+`.bento-card` backgrounds for code and the bounded
+[execution layout options](docs/EXECUTION_LAYOUT.md) for echoed code beside
+results, result grids or a separate result slide. Long computed code/stdout and
+tables can opt into scroll viewports; complete-output pages remain available
+in PDF, including the combined Presenter.
+
+Supported Plotly scatter/bar and `scatter3d` points/lines interact in their
+native slide rectangle in Studio and offline standalone HTML. Interaction is
+explicit in the editor, with Escape returning to design. A 3D **Save view**
+operation preserves an approved camera without editing QMD; ordinary
+exploration remains temporary. Local R-htmlwidget exports can supply bounded
+inert Plotly data, not arbitrary widget scripts or an invented execution
+receipt. See [the authoring bounds](docs/AUTHORING.md#interactive-plotly-and-local-widget-data).
+These source capabilities are not in the published npm `0.1.1` archive.
+Current source metadata is `0.2.0`; the registry/global baseline stays `0.1.1`.
+See [the source acceptance evidence](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md).
 
 ### Content and computation
 

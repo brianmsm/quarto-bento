@@ -1,11 +1,15 @@
 # Implementation ledger
 
-Updated 2026-10-19. The owner has closed the Linux-local implementation and
-validation objective at runtime `2ee7974` and authorized publication of the
-source repository on GitHub. The complete local suite passed **578 tests and
-4 steps, zero failures**; the **117-file portable smoke** rebuilt from QMD and
-minimal saved state without previous HTML. See the latest
-[security/dependency closeout](evidence/SECURITY-LINUX.md).
+Updated 2026-10-27. The owner authorized `0.2.0` Linux npm publication;
+clean archive preparation and public verification are tracked in
+[the release receipt](evidence/NPM-0.2.0.md). Registry availability remains
+`0.1.1` until publication is verified. No global update is requested.
+
+The original Linux-local implementation and validation objective closed at
+runtime `2ee7974`, with source publication authorized on GitHub. That historical
+suite passed **578 tests and 4 steps, zero failures**; its **117-file portable
+smoke** rebuilt from QMD and minimal saved state without previous HTML. See the
+[historical security/dependency closeout](evidence/SECURITY-LINUX.md).
 
 The full product destination remains [PRODUCT_TARGET.md](PRODUCT_TARGET.md).
 See [PUBLICATION.md](PUBLICATION.md) for public source scope. Source availability
@@ -14,7 +18,43 @@ completed objective, and hosted CI is deferred. The earlier
 [first-slice evidence](evidence/FIRST-SLICE.md) remains valid for its recorded
 revision and scope.
 
-## Published correction release
+## Composition and interactivity 0.2.0 release preparation
+
+Source/package/extension metadata is now `0.2.0`; the registry remains at
+`0.1.1` pending public verification. The OMP continuation integrates explicit
+theme slots and variant role styles, native code cards, measured code/result
+columns and grids, producer result slides, complete scroll/static/PDF output,
+SVG defaults with explicit-device precedence, inline offline Plotly 2D/3D and
+explicit camera saving. Native chart palette/font/geometry remain design while
+data and axes refresh from computation.
+
+Final source-candidate acceptance passed **705 tests and four steps, zero
+failures**, with one optional upstream-source comparison ignored. Types, lint
+and source/script formatting passed. The 132-file portable, 137-file offline
+npm archive and isolated mise installation passed; installed external 3D import,
+camera saving and complete scroll data have actual runtime/UI proof.
+
+Actual native input, Save/download/reopen, checked capture, changed-data refresh,
+pending-edit retention and state-only reconstruction have Linux evidence.
+The combined Presenter PDF includes complete final lines/rows in parent-flow
+continuations rather than clipping its child viewer. Bounded local htmlwidget
+imports extract inert data with exact artifact fingerprints and no fake R
+execution receipt. See [the integrated receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+for checks, corrected attempts, package provenance and remaining limits.
+The receipt's dirty local review archive remains a historical qualification
+artifact, distinct from the clean publication archive tracked in the
+[release receipt](evidence/NPM-0.2.0.md). The current qualification uses
+Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19 on Linux.
+
+Publication is owner-authorized; completion is not inferred from source metadata
+or local checks. Source publication retains the `main`-only branch policy;
+experimental branches, a global update, an upstream fork or a new platform claim
+are outside this release. The user's presentation and separate plugin remain
+outside this change.
+Saved-state, design-package and JSON API versions remain 1; new optional camera
+state and extended design definitions require the matching runtime.
+
+## Historical published correction release
 
 The published `0.1.1` correction fixes read-only QMD association checks, exposes
 selected sync in CLI/Studio and clarifies pending state after Apply. The earlier
@@ -25,20 +65,21 @@ fixture failures and one optional source comparison omitted. The corrected
 fixture files passed all eight tests; the omitted comparison passed separately.
 This provides combined passing coverage of 602 distinct cases, rather than a
 new single clean full-suite receipt.
-The current public npm version is `0.1.1`, published on 2026-10-17 from the
-exact validated archive. Anonymous npm installation and selected sync passed;
+The public npm version remains `0.1.1` pending `0.2.0` verification; it was
+published on 2026-10-17 from the exact validated archive. Anonymous npm
+installation and selected sync passed;
 the owner-requested global mise update verified all 117 payload hashes, version,
 doctor and rendering. The initial `0.1.0` archive remains unchanged.
 
 ## Execution baseline
 
-### Current source feature after npm 0.1.1
+### Historical reusable-design integration after npm 0.1.1
 
 Owner-authorized reusable presentation designs add bounded role/named styles,
 slide variants, portable content-free packages, checked initialization/import,
 Studio native preview and optional local Reveal style adaptation. Existing
-QMD/design authority and pending-edit rules remain unchanged. The public npm
-archive and global installation remain 0.1.1; this feature is a source addition.
+QMD/design authority and pending-edit rules remain unchanged. This integration
+preceded the current `0.2.0` qualification and was absent from npm `0.1.1`.
 See [the feature contract](features/REUSABLE_DESIGNS.md),
 [package guide](DESIGN_PACKAGES.md) and
 [integrated evidence](evidence/REUSABLE-DESIGNS.md).

@@ -5,14 +5,26 @@ with [Bento](https://github.com/nyblnet/bento) slide design. It provides a local
 Studio, reviewed QMD synchronization and an offline standalone Bento HTML
 output.
 
-This npm CLI package is named `@brianmsm/quarto-bento` and currently targets
-**Linux only**. Version `0.1.1` is a development release, not a stable v1.
+`@brianmsm/quarto-bento@0.2.0` is a **Linux-only development CLI**, not stable
+v1. It includes bounded
+[execution layout](https://github.com/brianmsm/quarto-bento/blob/main/docs/EXECUTION_LAYOUT.md),
+[theme slots](https://github.com/brianmsm/quarto-bento/blob/main/docs/features/THEME_SLOTS.md)
+and inline Plotly 2D/scatter3d with explicit camera saving and static/PDF fallback.
+
+Install version `0.2.0` with the commands below, or install a matching local
+tarball using an isolated writable prefix:
+
+```sh
+npm install --global --offline --ignore-scripts --no-audit --no-fund \
+  --prefix "$HOME/.local/share/qbento-0.2.0" \
+  /path/to/brianmsm-quarto-bento-0.2.0.tgz
+```
 
 ## Requirements
 
 - Linux.
-- Node.js 22 or later to run the `qbento` command launcher.
-- Deno 2.9.6 on `PATH` to execute the bundled TypeScript runtime.
+- Node.js 22 or later to run the `qbento` command launcher (qualified with 26.12.0).
+- Deno 2 on `PATH` (qualified with 2.9.8).
 - Quarto 1.10.19 for rendering and computation.
 - Any language engines, packages and local inputs used by your QMD documents.
 
@@ -26,7 +38,7 @@ executable code you trust.
 With Node, Deno and Quarto already installed, install the pinned CLI version:
 
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.1
+npm install -g @brianmsm/quarto-bento@0.2.0
 qbento --version
 qbento doctor
 ```
@@ -35,7 +47,7 @@ If your npm global prefix is not writable, use a user-owned prefix instead:
 
 ```sh
 npm install -g --prefix "$HOME/.local" \
-  @brianmsm/quarto-bento@0.1.1
+  @brianmsm/quarto-bento@0.2.0
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
@@ -45,8 +57,8 @@ Mise can manage Node, Deno and the npm CLI together. Quarto remains a separate
 user-installed dependency:
 
 ```sh
-mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
+mise use -g node@26.12.0 deno@2.9.8 \
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
 qbento doctor
 ```
 

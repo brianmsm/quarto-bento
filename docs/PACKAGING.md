@@ -1,9 +1,17 @@
 # Portable development directory
 
-For the separately staged Linux npm CLI wrapper, public npm/mise installation
-and local tarballs, see [NPM.md](NPM.md). Development version `0.1.0` is
-published; anonymous registry integrity and installation checks are recorded in
-[the npm receipt](evidence/NPM-CLI.md), separately from local preparation tests.
+For the separately staged Linux npm CLI wrapper, npm/mise installation and local
+tarballs, see [NPM.md](NPM.md). **Status (2026-10-27):** the owner authorized
+`0.2.0` publication; the registry remains at `0.1.1` until publication is
+verified. Clean archive preparation and public checks are tracked in
+[the 0.2.0 receipt](evidence/NPM-0.2.0.md). No global update is requested.
+
+The current [Linux qualification](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+records 705 tests and four steps, zero failures, with one optional upstream-source
+math comparison ignored, a 132-file portable distribution and a 137-file offline
+npm archive with 132 runtime hashes. Its dirty local review archive is
+prepublication evidence, not the clean publication artifact. Current qualified
+versions are Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19.
 
 This package is a local development artifact, not a v1 release or a native
 installer. It contains the current TypeScript runtime, Lua filters, offline
@@ -297,7 +305,7 @@ both the package root and runtime and contains 117 verified files. It is at
 [MIT carriage receipt](evidence/DISTRIBUTION-NOTICES.md#owner-selected-mit-license)
 records native preservation, installation, relocation and exact license bytes.
 
-## Latest Linux security baseline
+## Historical Linux security baseline (2026-10-13)
 
 Runtime `2ee7974` passed the full local Linux suite: 578 tests and four steps,
 zero failures. Its clean portable directory has 117 independently verified

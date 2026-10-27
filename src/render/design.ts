@@ -725,6 +725,8 @@ export interface MeasuredComponents {
   fixed: ReadonlySet<string>;
   /** Rescued default text has no painted bounds until saved overlays are composed. */
   omitted: ReadonlySet<string>;
+  /** Authenticated producer scroll boxes retain complete content beyond their viewport. */
+  viewports?: ReadonlySet<string>;
 }
 function bounds(elements: Element[], measured?: MeasuredComponents): Element[] {
   return elements.filter((element) => !measured?.omitted.has(element.id));
@@ -847,7 +849,7 @@ export function componentFrames(
     if (fixed >= available && flexible || fixed > available) {
       throw new DesignError(
         "CARD_CONTENT_OVERFLOW",
-        "Content needs a taller card; refusing unreadable automatic shrink.",
+        `${declaration.sourceId} needs ${fixed}px of fixed content inside ${available}px; use a taller card instead of automatic shrink.`,
       );
     }
     let y = frame.y + padding;

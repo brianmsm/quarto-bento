@@ -106,14 +106,15 @@ export function executionFrames(
     const width = (area.w - gap * (columns - 1)) / columns;
     const heights = rows.map((row) => {
       const values = row.map((index) => height(units[index].node, width));
-      return values.includes(-1) ? -1 : Math.max(...values);
+      const flexible = values.includes(-1);
+      return { flexible, minimum: Math.max(flexible ? 100 : 0, ...values) };
     });
-    const fixed = heights.reduce((sum, value) => sum + Math.max(0, value), 0);
-    const flexible = heights.filter((value) => value === -1).length;
+    const fixed = heights.reduce((sum, row) => sum + row.minimum, 0);
+    const flexible = heights.filter((row) => row.flexible).length;
     const free = area.h - gap * Math.max(0, rows.length - 1) - fixed;
     if (
       width <= 0 || free < -.01 ||
-      flexible && (free / flexible < 100 || width < 100)
+      flexible && width < 100
     ) {
       throw new DesignError(
         "EXECUTION_CONTENT_OVERFLOW",
@@ -122,7 +123,9 @@ export function executionFrames(
     }
     let y = area.y;
     rows.forEach((row, rowIndex) => {
-      const h = heights[rowIndex] === -1 ? free / flexible : heights[rowIndex];
+      const measured = heights[rowIndex];
+      const h = measured.minimum +
+        (measured.flexible ? Math.max(0, free) / flexible : 0);
       row.forEach((index, column) =>
         result[index] = { x: area.x + column * (width + gap), y, w: width, h }
       );
@@ -140,11 +143,11 @@ export function executionFrames(
       w: frame.w - width - 24,
     }, layout.columns);
   } else if (layout.columns > 1 && outputs.length) {
+    stack(codes, frame);
     const codeHeight = codes.reduce(
-      (sum, index) => sum + height(units[index].node, frame.w) + 20,
+      (sum, index) => sum + result[index].h + 20,
       0,
     );
-    stack(codes, frame);
     stack(outputs, {
       ...frame,
       y: frame.y + codeHeight,

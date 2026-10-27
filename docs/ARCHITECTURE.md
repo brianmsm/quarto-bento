@@ -33,6 +33,28 @@ See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured acceptance
   security/path mitigations and complete test result are in
   [the Linux closeout](evidence/SECURITY-LINUX.md).
 
+## Composition/interactivity source integration (2026-10-27)
+
+- `src/core/widgets.ts` prepares source/receipt-checked inline pages before
+  publication and reconstructs them from immutable generation resources for
+  Studio. Only native static images remain in BentoDoc; isolated live views,
+  their bootstrap and transient native hit-path controls stay outside it.
+- `src/core/widget-camera.ts` persists explicit bounded visual camera state
+  separately from computed data. Standalone private native Save carries approved
+  camera metadata in a checked PNG ancillary chunk. Capture verifies lineage and
+  recaptures locally; it does not accept browser pixels as execution evidence.
+- Original producer options control native code/table viewports while complete
+  data remains in the model. `src/widgets/deck.ts` prints native slide DOM and
+  full continuations in parent pagination rather than a fixed-height iframe.
+- Local HTML widget imports extract inert Plotly data only. The Linux descriptor
+  reader checks no-follow opened handles and exact valid UTF-8 bytes; its narrow
+  trusted child handles Deno's procfs permission gate without broadening the
+  main CLI's permissions or bypassing explicit parent read denial.
+
+See [the source integration receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+and [authoring bounds](AUTHORING.md#interactive-plotly-and-local-widget-data).
+The pin, source/design authority and schema/API versions remain unchanged.
+
 ## Pipeline
 
 ```text

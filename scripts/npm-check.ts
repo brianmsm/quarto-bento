@@ -172,8 +172,8 @@ export async function npmCheck() {
       "doctor",
     );
     assert(
-      doctor.deno === "2.9.6" && doctor.quarto === "1.10.19",
-      "baseline differs",
+      doctor.deno === "2.9.8" && doctor.quarto === "1.10.19",
+      "current 0.2.0 qualification baseline differs",
     );
     const sourceName = "deck café with spaces.qmd";
     let source = join(caller, sourceName);

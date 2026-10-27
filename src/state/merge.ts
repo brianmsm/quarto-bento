@@ -1,3 +1,4 @@
+import { hashSource } from "../source/mod.ts";
 import {
   captureComponentSnapshots,
   componentOwns,
@@ -921,6 +922,39 @@ export function validateState(value: unknown): asserts value is ProjectState {
   const fail = (message: string): never => {
     throw new StateError("INVALID_STATE", message);
   };
+  if (s.widgetCameras !== undefined) {
+    // Live widgets are bounded by their receipt; pending/detached views remain recoverable.
+    if (!Array.isArray(s.widgetCameras)) fail("Invalid saved widget cameras.");
+    const seen = new Set<string>();
+    for (const entry of s.widgetCameras) {
+      if (
+        !object(entry) || typeof entry.slideId !== "string" || !entry.slideId ||
+        typeof entry.elementId !== "string" || !entry.elementId ||
+        !object(entry.camera)
+      ) fail("Invalid camera target.");
+      const id = JSON.stringify([entry.slideId, entry.elementId]);
+      if (seen.has(id)) fail("Duplicate saved widget camera.");
+      seen.add(id);
+      const camera = entry.camera;
+      if (!Object.keys(camera).length) fail("Empty saved widget camera.");
+      for (const [key, value] of Object.entries(camera)) {
+        if (!object(value)) return fail("Invalid camera component.");
+        if (key === "projection") {
+          if (
+            Object.keys(value).length !== 1 ||
+            !["perspective", "orthographic"].includes(String(value.type))
+          ) fail("Invalid camera projection.");
+        } else if (
+          !["eye", "center", "up"].includes(key) ||
+          !Object.keys(value).length ||
+          Object.entries(value).some(([axis, n]) =>
+            !["x", "y", "z"].includes(axis) || typeof n !== "number" ||
+            !Number.isFinite(n) || Math.abs(n) > 10000
+          )
+        ) fail("Invalid camera vector.");
+      }
+    }
+  }
   if (!object(s.provenance) || !object(s.ownership)) {
     fail("Malformed provenance or ownership map.");
   }
@@ -1024,7 +1058,18 @@ export function validateState(value: unknown): asserts value is ProjectState {
         !object(entry.receipt.source) ||
         entry.receipt.source.sourceHash !== w.sourceHash ||
         entry.receipt.source.sourceId !== entry.elementId ||
-        entry.receipt.source.slideId !== entry.slideId ||
+        typeof entry.receipt.source.slideId !== "string" ||
+        (entry.receipt.source.slideId !== entry.slideId &&
+          (typeof entry.receipt.source.producerId !== "string" ||
+            entry.slideId !==
+              `qb-output-${
+                hashSource(entry.receipt.source.producerId).slice(0, 24)
+              }` ||
+            !s.generatedBaseline.slides.find((slide) =>
+              slide.id === entry.slideId
+            )?.elements.some((element) =>
+              element.id === entry.elementId && element.type === "image"
+            ))) ||
         typeof entry.receipt.source.producerId !== "string" ||
         !digest(entry.receipt.source.chunkHash) ||
         !digest(entry.receipt.source.outputHash)

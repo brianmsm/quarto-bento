@@ -142,6 +142,8 @@ export interface ProjectState {
   componentProjections?: ComponentProjection[];
   output?: OutputReceipt;
   widgets?: WidgetPublication;
+  /** Explicit visual camera saves; source specs and execution receipts remain authoritative. */
+  widgetCameras?: { slideId: string; elementId: string; camera: JsonObject }[];
 }
 export class StateError extends Error {
   constructor(public code: string, message: string, public details?: unknown) {

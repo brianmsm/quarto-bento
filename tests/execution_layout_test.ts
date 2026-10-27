@@ -79,3 +79,38 @@ Deno.test("execution layout reserves code height and divides only flexible figur
   }
   assert(refused);
 });
+
+Deno.test("mixed figure grid rows reserve fixed-content minima and measure each unit once", () => {
+  const text = { t: "CodeBlock", c: [["", [], []], "stdout"] };
+  const figures = Array.from({ length: 3 }, () => ({ t: "Para", c: [] }));
+  const units = [text, ...figures].map((node) => ({ node, code: false }));
+  let calls = 0;
+  const frames = executionFrames(
+    units,
+    option("#| layout-ncol: 2"),
+    { x: 0, y: 0, w: 1120, h: 504 },
+    (node) => {
+      calls++;
+      return node === text ? 330 : -1;
+    },
+  );
+  assert(calls === units.length);
+  assert(frames[0].h >= 330 && frames[1].h === frames[0].h);
+  assert(frames[2].y >= frames[0].y + frames[0].h + 20);
+  assert(frames[2].h >= 100 && frames[2].y + frames[2].h <= 504);
+  let refused = false;
+  try {
+    executionFrames(
+      units,
+      option("#| layout-ncol: 2"),
+      { x: 0, y: 0, w: 1120, h: 400 },
+      (node) => node === text ? 330 : -1,
+    );
+  } catch (error) {
+    refused = String(error).includes("EXECUTION_CONTENT_OVERFLOW");
+  }
+  assert(
+    refused,
+    "An impossible mixed row must not overlap or shrink its text",
+  );
+});

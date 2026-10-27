@@ -16,7 +16,17 @@ import { attachOutputOverflow } from "../render/output-overflow-html.ts";
 import { assertGraphTypography } from "../render/graphs.ts";
 import { prepareRichTables } from "../rich/project.ts";
 import { missingDesignDiagnostics } from "./design-diagnostics.ts";
-import { prepareWidgets, projectPresenter, stageWidgets } from "./widgets.ts";
+import {
+  preparedInlineWidgets,
+  prepareWidgets,
+  projectPresenter,
+  stageWidgets,
+} from "./widgets.ts";
+import { INLINE_WIDGET_CSP, inlineWidgetBootstrap } from "../widgets/inline.ts";
+import {
+  pruneWidgetCameras,
+  reconcileCapturedPlotlyCameras,
+} from "./widget-camera.ts";
 import {
   assertDesignRegistryUnchanged,
   loadDesignRegistry,
@@ -382,7 +392,7 @@ export async function projectProjection(
     );
   }
   await assertDesignRegistryUnchanged(paths.directory, registry.hash);
-  const widgets = await prepareWidgets(ast, mapping, paths.directory);
+  const widgets = await prepareWidgets(ast, mapping, paths.directory, state);
   const richTables = await prepareRichTables(ast, mapping);
   const kpiAppearances = retainedKpiAppearances(state, mapping);
   const projected = validateProjectionOrigins(
@@ -595,6 +605,14 @@ async function render(source: string, executed?: ExecutedRender) {
       composed.state.provenance,
     );
     state = composed.state;
+    pruneWidgetCameras(
+      state,
+      new Set(
+        projected.widgets.bundles.map((bundle) =>
+          bundle.candidate.source.sourceId
+        ),
+      ),
+    );
     const kpiDiagnostics = await kpiReadabilityDiagnostics(
       projected.mapping,
       composed.document as unknown as RenderDoc,
@@ -608,12 +626,27 @@ async function render(source: string, executed?: ExecutedRender) {
       state.provenance,
       composed.document as unknown as RenderDoc,
     );
+    const detachedWidgets = new Set([
+      ...state.pending.filter((p) => p.origin === "detached").map((p) =>
+        targetKey(p.target)
+      ),
+      ...Object.entries(state.provenance).filter(([, p]) =>
+        p.origin === "detached"
+      ).map(([key]) => key),
+    ]);
+    const inlineViews = await preparedInlineWidgets(
+      projected.widgets,
+      projected.mapping,
+      composed.document,
+      detachedWidgets,
+    );
     const assembled = attachOutputOverflow(
       spliceDocument(
         shell,
         composed.document as unknown as RenderDoc,
-        ISOLATION_BOOTSTRAP,
-        OFFLINE_CSP,
+        ISOLATION_BOOTSTRAP +
+          inlineWidgetBootstrap(composed.document, inlineViews),
+        inlineViews.length ? INLINE_WIDGET_CSP : OFFLINE_CSP,
       ),
       overflowTargets,
     );
@@ -628,11 +661,8 @@ async function render(source: string, executed?: ExecutedRender) {
       projected.mapping,
       projected.widgets,
       composed.document,
-      new Set(
-        state.pending.filter((p) => p.origin === "detached").map((p) =>
-          targetKey(p.target)
-        ),
-      ),
+      detachedWidgets,
+      overflowTargets,
     );
     // Recheck immediately before publishing: edits during execution must also survive.
     await assertOutputUnchanged(state, paths.output);
@@ -771,7 +801,13 @@ export async function captureProject(source: string, editedPath?: string) {
       await assertOutputUnchanged(state, paths.output);
     }
     const html = await Deno.readTextFile(target);
-    const doc = await verifyCapture(state, html);
+    let doc = await verifyCapture(state, html);
+    ({ state, document: doc } = await reconcileCapturedPlotlyCameras(
+      paths.source,
+      paths.stateDir,
+      state,
+      doc,
+    ));
     assertSourceThemeReferences(doc, {}, true);
     state = captureEdits(state, doc);
     if (target === paths.output) {

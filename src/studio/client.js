@@ -854,6 +854,44 @@ globalThis.addEventListener("message", (event) => {
   ) return;
   void layoutEditor.open();
 });
+globalThis.addEventListener("message", (event) => {
+  const frame = $("editor").contentWindow, snapshot = frame?.__qbentoSnapshot;
+  if (
+    event.source !== frame || event.origin !== location.origin || busy ||
+    event.data?.type !== "qbento:save-widget-camera" ||
+    event.data.docId !== snapshot?.docId ||
+    event.data.revision !== snapshot?.revision ||
+    snapshot?.docId !== state?.docId
+  ) return;
+  void (async () => {
+    try {
+      setBusy(true);
+      await bridge.save();
+      if (bridge.dirty) {
+        throw new Error("Save new edits before saving the camera.");
+      }
+      const receipt = await api("widgets/camera", {
+        docId: state.docId,
+        revision: state.revision,
+        sourceHash: snapshot.sourceHash,
+        slideId: event.data.slideId,
+        elementId: event.data.elementId,
+        staticSrc: event.data.staticSrc,
+        camera: event.data.camera,
+      });
+      state.revision = receipt.revision;
+      status("Camera view saved; QMD unchanged.");
+      reloadEditor();
+    } catch (error) {
+      setBusy(false);
+      showError(error);
+      frame.postMessage({
+        type: "qbento:widget-camera-error",
+        message: String(error),
+      }, location.origin);
+    }
+  })();
+});
 const registryEditor = attachRegistryEditor({
   api,
   getState: () => state,

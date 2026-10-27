@@ -163,3 +163,35 @@ Deno.test("invalid original output options refuse before executing R", async () 
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("real stdout and figure grids keep text clear of the next row", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "qbento-output-mixed-grid-" });
+  try {
+    const source = dir + "/deck.qmd";
+    const qmd = `## Mixed {#mixed}
+
+\`\`\`{r}
+#| label: mixed-output
+#| echo: false
+#| layout-ncol: 2
+#| dev: svg
+cat(paste0("line", seq_len(10)), sep="\\n")
+plot(1:3)
+plot(3:1)
+plot(2:4)
+\`\`\`
+`;
+    await Deno.writeTextFile(source, qmd);
+    const rendered = await renderProject(source);
+    const elements = rendered.state.emitted.slides[0].elements;
+    const stdout = elements.find((element) => element.type === "code")!;
+    const figures = elements.filter((element) => element.type === "image");
+    assert(stdout && figures.length === 3);
+    assert(stdout.fontSize === 24 && String(stdout.content).includes("line10"));
+    assert(Number(figures[1].y) >= Number(stdout.y) + Number(stdout.h) + 20);
+    assert(Number(figures[0].h) >= Number(stdout.h));
+    assert(await Deno.readTextFile(source) === qmd);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

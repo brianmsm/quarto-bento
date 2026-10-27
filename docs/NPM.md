@@ -1,27 +1,44 @@
 # npm CLI package
 
 Quarto-Bento uses the scoped npm CLI package
-[@brianmsm/quarto-bento](https://www.npmjs.com/package/@brianmsm/quarto-bento/v/0.1.1).
-Version **`0.1.1` is published**, with `latest` pointing to it. The package
-targets **Linux only** and does not declare a stable v1 release. The owner
-authorized this correction publication and global mise update on 2026-10-17.
-Anonymous registry metadata, README and exact archive integrity passed, followed
-by a fresh npm installation and selected-sync/render checks. The owner-requested
-global mise update also passed version, doctor, render and all 117 runtime
-payload hashes. See [the correction/publication receipt](evidence/SYNC-SELECTION-0.1.1.md).
-The initial `0.1.0` publication is preserved separately in
-[its historical receipt](evidence/NPM-CLI.md).
+[@brianmsm/quarto-bento](https://www.npmjs.com/package/@brianmsm/quarto-bento).
+**Status (2026-10-27):** the owner authorized `0.2.0` publication. Clean archive
+preparation, publication and public verification are tracked in
+[the 0.2.0 receipt](evidence/NPM-0.2.0.md). The public registry remains at
+**`0.1.1`**, with `latest` pointing to it, until publication is verified.
+The package targets **Linux only**, not stable v1. This release preparation
+does not request or perform a global installation update.
+
+The historical `0.1.1` publication and owner-requested global mise update passed
+on 2026-10-17, including anonymous registry integrity, installation, selected
+sync/render and all 117 runtime payload hashes. See
+[its receipt](evidence/SYNC-SELECTION-0.1.1.md). The initial `0.1.0` publication
+is preserved separately in [its historical receipt](evidence/NPM-CLI.md).
 
 ## Development version policy
 
-The current compatible correction release is published as `0.1.1`. During the
-`0.1.x` development series, patches may complete documented workflows without
-changing existing command spellings, saved-state schema or the JSON API version.
-This patch exposes selected sync, fixes source-binding checks and clarifies
+The current release preparation is `0.2.0`, a separately reviewed Linux minor
+development release for larger workflow additions. The historical `0.1.1`
+compatible correction followed the `0.1.x` policy: patches may complete
+documented workflows without changing existing command spellings, saved-state
+schema or the JSON API version. That patch exposes selected sync, fixes
+source-binding checks and clarifies
 post-sync pending state. The new selection option is an additive capability; it
 is not presented as a bug fix with no public-interface addition. Larger workflow
 additions or incompatible contracts should receive a separately reviewed minor
 release. No `0.x` version declares stable v1.
+
+Source/package/extension metadata is `0.2.0`. It adds
+[execution layout](EXECUTION_LAYOUT.md), [theme slots](features/THEME_SLOTS.md),
+inline Plotly 2D/scatter3d, checked local widget-data import and full-data
+scroll/static continuations. Its
+[Linux acceptance evidence](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md) records
+705 tests and four steps, zero failures, with one optional upstream-source math
+comparison ignored, a 132-file portable distribution and a 137-file offline npm
+archive with 132 runtime hashes. That prepublication receipt's dirty local
+review archive remains historical; the clean publication artifact and public
+checks belong in [the publication receipt](evidence/NPM-0.2.0.md). Source
+metadata and local installation do not establish registry availability.
 
 The published `0.1.1` archive is the exact clean artifact prepared before
 publication; anonymous registry downloads match its SHA256, npm shasum and
@@ -40,11 +57,11 @@ runs without downloading JavaScript dependencies. Quarto remains an external
 dependency. QMD computation also needs the language engines and packages
 required by the document.
 
-The package declares Node 22 or later; the tested application baseline is Deno
-2.9.6 and Quarto 1.10.19 on Linux. Deno is called from `PATH`, so install it
-separately. Quarto, Chromium for browser-based workflows, and document
-computation dependencies are also managed by the user. Quarto-Bento does not
-install or manage them. Only run QMD and executable code you trust.
+The package declares Node 22 or later. The current source qualification uses
+Deno 2.9.8, Node 26.12.0 and Quarto 1.10.19 on Linux; earlier 0.1.1 receipts
+retain their Deno 2.9.6 baseline. Deno is called from `PATH`, so install it
+separately. Quarto, Chromium and computation dependencies are also user-managed.
+Only run QMD and executable code you trust.
 
 The package includes the pinned Bento shell and the existing license and
 third-party notices. It preserves four documented historical gaps in complete
@@ -61,7 +78,7 @@ publish anything.
 
 ```sh
 deno run --no-config --allow-read --allow-write --allow-run=git \
-  scripts/npm-package.ts /tmp/qbento-npm-0.1.1
+  scripts/npm-package.ts /tmp/qbento-npm-0.2.0
 ```
 
 Create a tarball from the staged package. `--ignore-scripts` makes the pack step
@@ -73,7 +90,7 @@ explicitly assembled staging directory. Always pack the staged directory.
 ```sh
 npm pack --ignore-scripts \
   --pack-destination /tmp \
-  /tmp/qbento-npm-0.1.1
+  /tmp/qbento-npm-0.2.0
 ```
 
 The generated tarball is suitable for a local installation test. For example,
@@ -83,7 +100,7 @@ install it to an isolated user prefix rather than the machine-wide npm prefix:
 npm install --global \
   --offline --ignore-scripts --no-audit --no-fund \
   --prefix "$HOME/.local/share/qbento-npm-test" \
-  /tmp/brianmsm-quarto-bento-0.1.1.tgz
+  /tmp/brianmsm-quarto-bento-0.2.0.tgz
 
 PATH="$HOME/.local/share/qbento-npm-test/bin:$PATH" qbento --version
 PATH="$HOME/.local/share/qbento-npm-test/bin:$PATH" qbento doctor
@@ -96,6 +113,12 @@ dependencies.
 
 ## Verified local installation
 
+The local `0.2.0` candidate has separate offline npm, isolated mise and actual
+installed-widget/camera/scroll checks in the
+[current receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md). The counts in the
+following paragraph are historical `0.1.x` results, not a relabeling of that
+candidate.
+
 Eleven focal launcher/staging/portable tests passed on Linux. The real npm smoke
 packed exactly 122 files, verified all 117 installed runtime payloads, relocated
 the npm prefix, and exercised
@@ -105,7 +128,8 @@ Source type checks, lint and targeted formatting passed. The tested npm launcher
 environment used Node 26.10.0 and npm 11.19.1; Node >=22 is the declared
 requirement, not a claim that every older Node version has been qualified.
 
-Reproduce the installed npm smoke with existing Node/npm, Deno and Quarto:
+Run the current candidate's installed smoke with Node 26.12.0/npm, Deno 2.9.8
+and Quarto 1.10.19:
 
 ```sh
 deno run --no-config --no-remote --no-npm --allow-read --allow-write \
@@ -114,13 +138,13 @@ deno run --no-config --no-remote --no-npm --allow-read --allow-write \
 
 The smoke creates and removes only its own temporary prefix, npm config and
 caches. The separate mise check runs its real npm backend against a minimal
-temporary IPv4 loopback registry serving the prepared tarball. It passed with
-mise 2026.10.11's default installer, `qbento --version`, `qbento doctor` and all
-117 installed payload hashes. It uses isolated mise config/data/cache/state
-directories and does not change the user's global setup or publish a package:
+temporary IPv4 loopback registry serving the prepared tarball. Historical
+qualification passed with mise 2026.10.11 and all 117 installed payload hashes;
+current 0.2.0 results are in its separate receipt. The helper uses isolated mise
+config/data/cache/state and changes no user global setup or registry package:
 
 ```sh
-python3 scripts/mise-npm-check.py /tmp/brianmsm-quarto-bento-0.1.1.tgz
+python3 scripts/mise-npm-check.py /tmp/brianmsm-quarto-bento-0.2.0.tgz
 ```
 
 That local registry fixture proves backend installation and execution, not
@@ -128,10 +152,14 @@ availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 
 ## npm and mise installation
 
-With the external requirements available, install the pinned registry version:
+After `0.2.0` registry availability is verified in
+[the publication receipt](evidence/NPM-0.2.0.md), use the pinned commands below
+with Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19. They are prospective
+installation instructions, not a publication-success claim; the registry
+remains at `0.1.1` until verification. Use the source or a local tarball meanwhile.
 
 ```sh
-npm install -g @brianmsm/quarto-bento@0.1.1
+npm install -g @brianmsm/quarto-bento@0.2.0
 qbento --version
 qbento doctor
 ```
@@ -140,15 +168,15 @@ If your npm prefix needs elevated permissions, choose a user-owned prefix:
 
 ```sh
 npm install -g --prefix "$HOME/.local" \
-  @brianmsm/quarto-bento@0.1.1
+  @brianmsm/quarto-bento@0.2.0
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Mise can install the npm package and manage its Node/Deno runtimes:
 
 ```sh
-mise use -g node@26.10.0 deno@2.9.6 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.1.1'
+mise use -g node@26.12.0 deno@2.9.8 \
+  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
 qbento doctor
 ```
 
@@ -164,6 +192,10 @@ Quarto and computation dependencies remain separate requirements. No package
 install hooks manage them. Check `qbento doctor` before rendering a document.
 
 ## Maintainer publication
+
+The owner authorized `0.2.0` publication on 2026-10-27. Prepare the clean
+archive, publish it and complete anonymous public verification in
+[the release receipt](evidence/NPM-0.2.0.md); do not update the global CLI.
 
 The source-root package remains private; publish only the reviewed staged
 archive. Authenticate with `npm login --auth-type=web`, verify `npm whoami`,

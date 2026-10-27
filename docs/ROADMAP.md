@@ -1,9 +1,13 @@
 # Implementation roadmap and validation gates
 
-**Status:** Linux-local implementation objective completed 2026-10-13;
-public source publication authorized. Runtime `2ee7974` passed 578 tests and
-4 steps without failure, plus a 117-file portable reconstruction smoke.
-The product horizon and public v1 boundary remain distinct from this closeout.
+**Status (2026-10-27):** owner-authorized `0.2.0` Linux npm release preparation.
+Current qualification passed 705 tests and four steps, zero failures, with one
+optional pinned-upstream-source math comparison ignored, plus 132-file portable
+and 137-file offline npm checks. Publication and public verification are tracked
+in [the release receipt](evidence/NPM-0.2.0.md); the registry remains `0.1.1`
+until verified. The original 2026-10-13 Linux closeout at runtime `2ee7974`
+passed 578 tests and four steps, plus a 117-file portable reconstruction smoke.
+Those results are historical, and the public v1 boundary remains distinct.
 See [PUBLICATION.md](PUBLICATION.md) for source-publication scope. The
 bounded Linux implementation now includes source-authored diagrams/timelines
 and explicit Studio card/KPI creation alongside the first bidirectional slice.
@@ -21,6 +25,25 @@ unfinished work. Build toward the [product target](PRODUCT_TARGET.md)
 in **vertical slices**. A small throwaway exporter
 is not the goal. The final public v1 release boundary must be frozen before
 shipping, not guessed by an agent.
+
+## Current source: composition and interactivity 0.2.0
+
+The OMP continuation integrates explicit teaching slots/variant styles, native
+code cards and measured result placement, complete scroll/PDF continuations,
+inline offline Plotly 2D/scatter3d and explicit visual camera saving. Changed
+data still comes from execution, native exceptions and pending edits survive,
+and bounded local widget imports do not execute their artifact scripts.
+The [integration receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md) records
+actual native input, source-only rebuilding, PDF extraction and local package
+checks separately from historical evidence.
+
+The owner authorized `0.2.0` publication on 2026-10-27. Prepare the clean
+publication archive, publish it and verify public registry integrity and isolated
+installation in [the release receipt](evidence/NPM-0.2.0.md). The integration
+receipt's dirty local review archive is historical prepublication qualification,
+not that clean artifact. No global CLI update or change to the user's
+presentation/plugin is requested. Linux remains the qualified platform, using
+Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19; v1 is not frozen.
 
 ## Original feasibility gates — bounded Linux proof integrated
 
@@ -127,7 +150,7 @@ Sequences are illustrative; features may move earlier to support validation with
 ## Completed local objective and public source publication
 
 The owner closed the Linux-local implementation objective on 2026-10-13 and
-now authorizes publication of the source repository as
+authorized publication of the source repository as
 [`brianmsm/quarto-bento`](https://github.com/brianmsm/quarto-bento). See
 [the publication scope](PUBLICATION.md) and
 [the latest security/dependency receipt](evidence/SECURITY-LINUX.md).
@@ -143,7 +166,7 @@ older suite/artifact counts describe those earlier revisions. The initial
 startup sequence—pin upstream, prove S0, then S1/S2/S4—is complete for the
 supported scope and must not be repeated as unimplemented work.
 
-## Compatible correction published and validated
+## Historical compatible correction published and validated
 
 The `0.1.1` implementation exposes selected source-sync batches and consistent
 read-only source binding, and clarifies the post-Apply approval lifecycle.
@@ -159,15 +182,16 @@ the earlier local tests.
 
 - Freeze an explicit feature/platform boundary before declaring a public v1.
   Public source publication is authorized; it does not make that decision.
-- The Linux-only npm CLI `@brianmsm/quarto-bento@0.1.1` is published. Anonymous
-  registry/npm/mise installation, exact archive integrity and the owner-requested
-  global mise update passed on 2026-10-17, including all 117 installed payload
-  hashes and real rendering. The initial `0.1.0` and earlier local/loopback
-  checks remain historical. See [NPM.md](NPM.md), the
-  [current correction receipt](evidence/SYNC-SELECTION-0.1.1.md) and the
-  [initial publication receipt](evidence/NPM-CLI.md). Continue provenance
-  follow-up and use a new package version for future changes; this development
-  release does not freeze v1.
+- Complete the owner-authorized `0.2.0` Linux npm publication from the reviewed
+  clean archive, then verify anonymous registry metadata, exact archive integrity
+  and isolated public installation/rendering. Record observed results in
+  [the release receipt](evidence/NPM-0.2.0.md); do not update the global CLI.
+  The registry remains `0.1.1` until verification. The historical `0.1.1`
+  publication/global update and all 117 installed runtime hashes are preserved
+  in [its receipt](evidence/SYNC-SELECTION-0.1.1.md); the initial `0.1.0`
+  receipt also remains unchanged. See [NPM.md](NPM.md). Publish source on `main`
+  only; no experimental branches or tags are implied. This development release
+  does not freeze v1.
 - Preserve the complete supplied project/third-party notices and exact
   production-archive supplement. The owner-selected MIT License uses Brian
   Norman Peña Calero as holder. Four historical full-license-source cases remain

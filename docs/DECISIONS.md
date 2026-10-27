@@ -1,6 +1,8 @@
 # Decision record — Architecture & Design v0.2
 
-**As of 2026-10-09.** This is the agreed **target behavior**, not a feature-completion report. `quarto-bento` and `qbento` are provisional names.
+**Original agreement: 2026-10-09; composition/interactivity amendment: 2026-10-27.**
+This records agreed target behavior, not a feature-completion report. Current
+implementation and exact evidence are in [the ledger](IMPLEMENTATION_STATUS.md).
 
 ## Accepted / settled decisions
 
@@ -21,7 +23,7 @@
 | Reusable designs (owner authorization, 2026-10-18) | Implement native styles/slide variants and content-free packages shared across independent presentations, plus a bounded local Reveal style adaptation workflow. Imports are pinned by value and explicitly reviewed; saved semantic/native state and QMD ownership remain unchanged. New-deck initialization replaces no existing state. No stable release, npm publication or global installation update is implied. |
 | Rendering | Bento HTML and PDF primary; Reveal.js optional secondary output, without design-parity promise. SVG preferred for static computed vector figures. |
 | Figures/tables | Native Bento charts/tables only when fidelity is adequate; complex visuals may use SVG/HTML projections. |
-| Widgets | Static compatible fallback for standalone Bento/PDF; supported widgets interactive in enhanced Presenter, isolated from pure-data BentoDoc; offline where dependencies can be bundled. |
+| Widgets | Static compatible fallback remains part of the native document/PDF. The bounded Plotly adapter now places offline interaction inline in that image's actual rectangle in Studio, standalone HTML and Presenter, isolated from pure-data BentoDoc. Supported scope is 2D scatter/bar and scatter3d points/lines, not arbitrary HTML or widgets. |
 | Reproducibility | Source + input data + visual state + **user-provided compatible runtime/packages** reconstruct the presentation. `renv`/`uv`/Docker are user-controlled optional recommendations, **not managed by qbento**. |
 | Distribution | Editable standalone `.bento.html` is an independent copy; importing/reconciling later is separate functionality. |
 | Project license (owner decision, 2026-10-13) | Quarto-Bento's own code and documentation use the MIT License, copyright (c) 2026 Brian Norman Peña Calero. The [root LICENSE](../LICENSE) records the terms. Bundled third-party components retain their own terms and attributions; this decision does not settle their review or the public release boundary. |
@@ -43,6 +45,17 @@
 - The earlier `.qbento/{deck.yml,theme.yml,sync.lock.json,slides/,layouts/,assets/,widgets/}` layout remains conceptual. The current implementation stores project identity in `.qbento/project.json` and checksummed design, baseline and pending state in `.qbento/state.json`. Preserve the Bento `docId` across regenerations and keep QMD-backed design sparse, keyed by stable IDs. Exact migrations and the broader storage schemas remain open.
 - Bounded local HTML capture is implemented as `qbento capture`: it accepts a copy with a valid receipt for the current project publication and stores captured changes before a subsequent render. This is distinct from arbitrary third-party HTML import; automatic reverse conversion of computed content to QMD is **not** assumed. See [CAPTURE.md](evidence/CAPTURE.md).
 - The installed `qbento-html` Quarto extension and separate `qbento` CLI are verified on Linux. Do **not** assume bare `format: bento` or `quarto bento` is registered. Any new extension syntax still needs validation against installed Quarto and the pinned Bento revision.
+- The 0.2.0 composition/interactivity integration uses explicit source-selected
+  [theme slots](features/THEME_SLOTS.md), bounded card defaults and variant role
+  styles, with native overrides retained. Literal
+  [execution layout and scroll options](EXECUTION_LAYOUT.md) preserve producer
+  identity and complete native data; static/PDF continuations preserve content.
+  Static R 2D SVG is a default, never an override of explicit device/format
+  settings. Local `widget-src` imports validate inert Plotly data and bind its
+  artifact hash; they do not execute imported scripts or assert an R execution.
+  Inline widgets run offline under CSP in `allow-scripts` sandboxes without
+  same-origin permission. This source contract is not a verification receipt
+  or authorization to publish/install 0.2.0.
 
 ## How the original September proposal fits
 
