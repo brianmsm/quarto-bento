@@ -5,19 +5,20 @@ The owner authorized a public GitHub repository on 2026-10-13:
 publication scope is the tracked development source, examples, tests, English
 documentation and existing pinned vendor assets with their notices and
 provenance. Local generated output, execution caches, private scan artifacts and
-worktrees are excluded. Only `main` is published; local experimental branches
+worktrees are excluded. Source is published on `main` with the annotated,
+unsigned `v0.2.0` tag targeting `5b17bf6`; local experimental branches
 are not part of the publication.
 
 ## Status and validated baseline
 
-**Status (2026-10-27):** the owner authorized `0.2.0` Linux npm publication.
+**Status (2026-10-27):** the owner-authorized `0.2.0` Linux npm release is published.
 Current source qualification passed 705 tests and four steps with zero failures,
 with one optional pinned-upstream-source math comparison ignored, plus a 132-file
 portable and 137-file offline npm archive with 132 runtime hashes. See the
 [prepublication qualification](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md).
-Its dirty local review archive remains historical; the clean publication
-artifact and public verification are tracked in
-[the release receipt](evidence/NPM-0.2.0.md).
+Its dirty local review archive remains historical, distinct from the clean
+published archive. Exact anonymous public archive integrity and npm/mise
+installation passed in [the release receipt](evidence/NPM-0.2.0.md).
 
 The original Linux implementation closeout at runtime `2ee7974` passed 578 tests
 and four steps with zero failures and a 117-file portable relocation/state-only
@@ -41,12 +42,22 @@ reproduce the complete native-browser acceptance suite.
 
 ## npm development CLI publication
 
-The `0.2.0` publication is owner-authorized as of 2026-10-27, but public
-availability and installation are not yet verified. The current registry
-version remains `0.1.1` until those checks complete. Publish the exact reviewed
-clean archive and record anonymous metadata, integrity and fresh-prefix
-installation checks in [the release receipt](evidence/NPM-0.2.0.md).
-No global CLI update is part of this release preparation.
+`@brianmsm/quarto-bento@0.2.0` is publicly available, with `latest` pointing
+to it. The exact clean archive was staged from
+`5b17bf6acda597c3403ee6abf6ba4d396eba7ad6` (`dirty: false`), with 137 files,
+132 runtime hashes and SHA256
+`39642c60c27c0765f6d1e625423a0853cd7bec5389c87ea1b91daf5677ba58ba`.
+Anonymous metadata, README/launcher, exact bytes and SHA1/SHA512/SHA256 checks
+passed, as did actual npm and mise version, doctor and rendering with unchanged
+QMD. The npm consumer also passed reviewed patch, selected sync and state-only
+rebuild checks, preserving geometry/docId and retiring pending work only after
+verified render. See [the release receipt](evidence/NPM-0.2.0.md).
+
+Separately, the owner personally ran the authorized global mise update selecting
+`0.2.0`, Node 26.12.0 and Deno 2.9.8. This also pins Node/Deno, with Node
+already installed. Subsequent selected-CLI version/doctor, all 137 archive
+files/132 runtime hashes and a real render with unchanged QMD passed. These
+owner-installation checks are separate from the anonymous public consumer proof.
 
 The historical correction release, `@brianmsm/quarto-bento@0.1.1`, was published
 on 2026-10-17 from the exact validated archive. Anonymous registry metadata,

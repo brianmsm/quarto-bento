@@ -1,11 +1,11 @@
 # Implementation roadmap and validation gates
 
-**Status (2026-10-27):** owner-authorized `0.2.0` Linux npm release preparation.
+**Status (2026-10-27):** owner-authorized `0.2.0` Linux npm release published.
 Current qualification passed 705 tests and four steps, zero failures, with one
 optional pinned-upstream-source math comparison ignored, plus 132-file portable
-and 137-file offline npm checks. Publication and public verification are tracked
-in [the release receipt](evidence/NPM-0.2.0.md); the registry remains `0.1.1`
-until verified. The original 2026-10-13 Linux closeout at runtime `2ee7974`
+and 137-file offline npm checks. Exact public archive integrity and actual
+anonymous npm/mise installation passed in [the release receipt](evidence/NPM-0.2.0.md);
+npm `latest` is `0.2.0`. The original 2026-10-13 Linux closeout at runtime `2ee7974`
 passed 578 tests and four steps, plus a 117-file portable reconstruction smoke.
 Those results are historical, and the public v1 boundary remains distinct.
 See [PUBLICATION.md](PUBLICATION.md) for source-publication scope. The
@@ -37,13 +37,16 @@ The [integration receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md) records
 actual native input, source-only rebuilding, PDF extraction and local package
 checks separately from historical evidence.
 
-The owner authorized `0.2.0` publication on 2026-10-27. Prepare the clean
-publication archive, publish it and verify public registry integrity and isolated
-installation in [the release receipt](evidence/NPM-0.2.0.md). The integration
-receipt's dirty local review archive is historical prepublication qualification,
-not that clean artifact. No global CLI update or change to the user's
-presentation/plugin is requested. Linux remains the qualified platform, using
-Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19; v1 is not frozen.
+The owner-authorized `0.2.0` publication and public verification are complete in
+[the release receipt](evidence/NPM-0.2.0.md). The clean archive comes from
+`5b17bf6`, published on GitHub `main` with annotated unsigned tag `v0.2.0`;
+no experimental branch was published. The integration receipt's dirty local
+review archive remains historical prepublication qualification, not that clean
+artifact. The owner separately executed a global mise update selecting `0.2.0`
+and pinning Node 26.12.0 and Deno 2.9.8; the installation report is distinct from
+public runtime checks. The user's presentation/plugin remain outside this change.
+Linux remains the qualified platform, using Node 26.12.0, Deno 2.9.8 and
+Quarto 1.10.19; v1 is not frozen.
 
 ## Original feasibility gates — bounded Linux proof integrated
 
@@ -51,8 +54,9 @@ The 2026-10-18 source addition implements reusable native presentation designs:
 checked package initialization/import/export, named role styles and slide
 variants, Studio samples and explicit local Reveal style adaptation. See
 [the feature contract](features/REUSABLE_DESIGNS.md) and
-[the integrated receipt](evidence/REUSABLE-DESIGNS.md). This addition is separate
-from the published npm 0.1.1 archive and does not freeze the v1 boundary.
+[the integrated receipt](evidence/REUSABLE-DESIGNS.md). This addition is absent
+from the historical npm `0.1.1` archive and included in `0.2.0`; it does not
+freeze the v1 boundary.
 
 The questions below defined the initial feasibility work. The integrated Linux
 implementation now demonstrates bounded S0–S4 workflows; those questions are
@@ -182,16 +186,6 @@ the earlier local tests.
 
 - Freeze an explicit feature/platform boundary before declaring a public v1.
   Public source publication is authorized; it does not make that decision.
-- Complete the owner-authorized `0.2.0` Linux npm publication from the reviewed
-  clean archive, then verify anonymous registry metadata, exact archive integrity
-  and isolated public installation/rendering. Record observed results in
-  [the release receipt](evidence/NPM-0.2.0.md); do not update the global CLI.
-  The registry remains `0.1.1` until verification. The historical `0.1.1`
-  publication/global update and all 117 installed runtime hashes are preserved
-  in [its receipt](evidence/SYNC-SELECTION-0.1.1.md); the initial `0.1.0`
-  receipt also remains unchanged. See [NPM.md](NPM.md). Publish source on `main`
-  only; no experimental branches or tags are implied. This development release
-  does not freeze v1.
 - Preserve the complete supplied project/third-party notices and exact
   production-archive supplement. The owner-selected MIT License uses Brian
   Norman Peña Calero as holder. Four historical full-license-source cases remain

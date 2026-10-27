@@ -2,12 +2,13 @@
 
 Quarto-Bento uses the scoped npm CLI package
 [@brianmsm/quarto-bento](https://www.npmjs.com/package/@brianmsm/quarto-bento).
-**Status (2026-10-27):** the owner authorized `0.2.0` publication. Clean archive
-preparation, publication and public verification are tracked in
-[the 0.2.0 receipt](evidence/NPM-0.2.0.md). The public registry remains at
-**`0.1.1`**, with `latest` pointing to it, until publication is verified.
-The package targets **Linux only**, not stable v1. This release preparation
-does not request or perform a global installation update.
+**Status (2026-10-27):** `@brianmsm/quarto-bento@0.2.0` is published, with
+`latest` pointing to it. Exact public archive integrity and anonymous npm/mise
+installation passed; see [the 0.2.0 receipt](evidence/NPM-0.2.0.md).
+The package targets **Linux only**, not stable v1. Separately, the owner ran the
+global mise command selecting `0.2.0`, Node 26.12.0 and Deno 2.9.8. Subsequent
+selected-CLI version/doctor, all 137 archive files/132 runtime hashes and a real
+render passed; see the [global verification](evidence/NPM-0.2.0.md#owner-performed-global-mise-update).
 
 The historical `0.1.1` publication and owner-requested global mise update passed
 on 2026-10-17, including anonymous registry integrity, installation, selected
@@ -17,7 +18,7 @@ is preserved separately in [its historical receipt](evidence/NPM-CLI.md).
 
 ## Development version policy
 
-The current release preparation is `0.2.0`, a separately reviewed Linux minor
+The current release is `0.2.0`, a separately reviewed Linux minor
 development release for larger workflow additions. The historical `0.1.1`
 compatible correction followed the `0.1.x` policy: patches may complete
 documented workflows without changing existing command spellings, saved-state
@@ -36,11 +37,13 @@ scroll/static continuations. Its
 705 tests and four steps, zero failures, with one optional upstream-source math
 comparison ignored, a 132-file portable distribution and a 137-file offline npm
 archive with 132 runtime hashes. That prepublication receipt's dirty local
-review archive remains historical; the clean publication artifact and public
-checks belong in [the publication receipt](evidence/NPM-0.2.0.md). Source
-metadata and local installation do not establish registry availability.
+review archive remains historical. The clean published artifact comes from
+source `5b17bf6acda597c3403ee6abf6ba4d396eba7ad6` (`dirty: false`); its
+137 files and 132 runtime hashes match anonymous public downloads. See
+[the publication receipt](evidence/NPM-0.2.0.md) for exact integrity,
+README/launcher checks and real public npm/mise version, doctor and rendering.
 
-The published `0.1.1` archive is the exact clean artifact prepared before
+The historical published `0.1.1` archive is the exact clean artifact prepared before
 publication; anonymous registry downloads match its SHA256, npm shasum and
 SHA512 integrity. The immutable `0.1.0` archive remains unchanged. Runtime,
 local-package and public-installation evidence are distinguished in
@@ -113,7 +116,7 @@ dependencies.
 
 ## Verified local installation
 
-The local `0.2.0` candidate has separate offline npm, isolated mise and actual
+The prepublication `0.2.0` candidate has separate offline npm, isolated mise and actual
 installed-widget/camera/scroll checks in the
 [current receipt](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md). The counts in the
 following paragraph are historical `0.1.x` results, not a relabeling of that
@@ -128,7 +131,7 @@ Source type checks, lint and targeted formatting passed. The tested npm launcher
 environment used Node 26.10.0 and npm 11.19.1; Node >=22 is the declared
 requirement, not a claim that every older Node version has been qualified.
 
-Run the current candidate's installed smoke with Node 26.12.0/npm, Deno 2.9.8
+Run the installed smoke with Node 26.12.0/npm, Deno 2.9.8
 and Quarto 1.10.19:
 
 ```sh
@@ -152,11 +155,9 @@ availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 
 ## npm and mise installation
 
-After `0.2.0` registry availability is verified in
-[the publication receipt](evidence/NPM-0.2.0.md), use the pinned commands below
-with Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19. They are prospective
-installation instructions, not a publication-success claim; the registry
-remains at `0.1.1` until verification. Use the source or a local tarball meanwhile.
+The public `0.2.0` package passed anonymous npm and mise installation checks in
+[the publication receipt](evidence/NPM-0.2.0.md). Use the pinned commands below
+with Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19.
 
 ```sh
 npm install -g @brianmsm/quarto-bento@0.2.0
@@ -193,9 +194,12 @@ install hooks manage them. Check `qbento doctor` before rendering a document.
 
 ## Maintainer publication
 
-The owner authorized `0.2.0` publication on 2026-10-27. Prepare the clean
-archive, publish it and complete anonymous public verification in
-[the release receipt](evidence/NPM-0.2.0.md); do not update the global CLI.
+The owner-authorized `0.2.0` publication and anonymous public verification are
+complete in [the release receipt](evidence/NPM-0.2.0.md). The owner separately
+executed the global mise command shown above: it installed Deno 2.9.8 and
+`0.2.0`, with Node 26.12.0 already installed. This also pins Node and Deno;
+it is not a claim that only the qbento setting changed. No additional global
+installation was performed by the assistant.
 
 The source-root package remains private; publish only the reviewed staged
 archive. Authenticate with `npm login --auth-type=web`, verify `npm whoami`,

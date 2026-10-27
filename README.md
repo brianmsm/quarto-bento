@@ -6,7 +6,7 @@ while retaining its visual design. Quarto-Bento provides a local Studio,
 explicit reviewed synchronization to QMD, and an offline standalone Bento HTML
 output.
 
-**Status (2026-10-27):** owner-authorized `0.2.0` Linux release preparation.
+**Status (2026-10-27):** `0.2.0` Linux development release published on npm.
 Current source qualification passed **705 tests and four steps, zero failures**,
 with one optional pinned-upstream-source math comparison ignored, plus the
 132-file portable and 137-file offline npm checks. See the
@@ -15,9 +15,9 @@ with one optional pinned-upstream-source math comparison ignored, plus the
 `2ee7974` and 117-file portable results remain historical in the
 [implementation ledger](docs/IMPLEMENTATION_STATUS.md).
 
-The public registry remains at `0.1.1` until `0.2.0` publication is verified.
-Its [correction receipt](docs/evidence/SYNC-SELECTION-0.1.1.md) records the
-historical publication and global update, not a `0.2.0` installation.
+The public package `@brianmsm/quarto-bento@0.2.0` is available with `latest`
+pointing to it. Anonymous npm and mise installation, exact archive integrity and
+real rendering passed; see the [publication receipt](docs/evidence/NPM-0.2.0.md).
 This is public development source, not stable v1; Windows and macOS
 qualification remain future work outside the completed Linux objective.
 
@@ -28,9 +28,7 @@ Deno and Quarto first; the qualified baseline is Node 26.12.0, Deno 2.9.8 and
 Quarto 1.10.19. The package includes application source/assets, but does not
 install these runtimes or your document's computation packages.
 
-The following pinned `0.2.0` registry commands are for use **after availability
-is verified** in the [publication receipt](docs/evidence/NPM-0.2.0.md); they do
-not assert that publication has completed. Use a source checkout meanwhile.
+Install the verified public `0.2.0` package with the pinned commands below.
 
 ```sh
 npm install -g @brianmsm/quarto-bento@0.2.0
@@ -128,13 +126,13 @@ copy before rendering again. See [capture](docs/evidence/CAPTURE.md) and
 
 ## Supported workflows
 
-### Reuse a presentation design (current development source)
+### Reuse a presentation design
 
 Define a course design once and reuse its native text/code/card styles, named
 slide templates and layouts in independent presentations. The current source
 adds reviewed package export/import in Studio and the `design` CLI family.
-These additions are included in the qualified `0.2.0` source, but **not in the
-historical npm 0.1.1 archive**; `0.2.0` registry verification is pending.
+These additions are included in the published `0.2.0` package; they are absent
+from the historical npm `0.1.1` archive.
 
 For a new QMD that already selects named styles or slide variants:
 
@@ -158,7 +156,7 @@ sessions. See the [course example](examples/reusable-designs/README.md),
 [Studio guide](docs/STUDIO_DESIGNS.md) and
 [Reveal adaptation](docs/DESIGN_ADAPTATION.md).
 
-### Compose code, results and interactive plots (development source)
+### Compose code, results and interactive plots
 
 Named [theme slots and variant role styles](docs/features/THEME_SLOTS.md) place
 teaching regions explicitly, without inferring roles from IDs. Use native
@@ -175,9 +173,10 @@ operation preserves an approved camera without editing QMD; ordinary
 exploration remains temporary. Local R-htmlwidget exports can supply bounded
 inert Plotly data, not arbitrary widget scripts or an invented execution
 receipt. See [the authoring bounds](docs/AUTHORING.md#interactive-plotly-and-local-widget-data).
-These source capabilities are not in the published npm `0.1.1` archive.
-Current source metadata is `0.2.0`; the registry/global baseline stays `0.1.1`.
-See [the source acceptance evidence](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md).
+These capabilities are included in the published npm `0.2.0` package, not the
+historical `0.1.1` archive. See [the source acceptance
+evidence](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md) and
+[public installation receipt](docs/evidence/NPM-0.2.0.md).
 
 ### Content and computation
 

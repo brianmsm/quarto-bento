@@ -48,14 +48,16 @@
 - Preserve native chart palette, font and geometry while recomputing data;
   chart values and executable source remain under computational authority.
 
-The owner authorized `0.2.0` publication on 2026-10-27; preparation and public
-verification are tracked in [the publication receipt](docs/evidence/NPM-0.2.0.md).
-The registry remains at `0.1.1` until publication is verified. The
-[Linux source and package qualification](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
-is prepublication evidence, including a historical dirty local review archive,
-not the future clean publication artifact. Extended design registries require
-the matching runtime; older runtimes refuse their extra fields. No global
-installed-runtime update, stable v1 or platform expansion is implied.
+The owner-authorized `0.2.0` publication completed on 2026-10-27, with npm
+`latest` pointing to it. Exact public archive integrity and anonymous npm/mise
+installation passed; see [the publication receipt](docs/evidence/NPM-0.2.0.md).
+The [Linux source and package qualification](docs/evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
+remains prepublication evidence, including its historical dirty local review
+archive, distinct from the clean published artifact at source `5b17bf6`.
+Extended design registries require the matching runtime; older runtimes refuse
+their extra fields. The owner separately ran the global mise update selecting
+`0.2.0` and pinning Node/Deno; selected-CLI version/doctor, complete file/hash
+comparison and real rendering passed. No stable v1 or platform expansion is implied.
 
 ## 0.1.1 — 2026-10-17
 

@@ -8,11 +8,14 @@ the original runs; those files are excluded from this repository. Committed
 screenshots and JSON snapshots are linked from their receipts where available.
 See [publication scope](../PUBLICATION.md) for the current baseline.
 
-## Current release preparation (2026-10-27)
+## Current published release (2026-10-27)
 
-- [npm 0.2.0 publication](NPM-0.2.0.md): owner-authorized clean archive
-  preparation, publication and public verification tracking. The registry
-  remains `0.1.1` until publication is verified; no global update is requested.
+- [npm 0.2.0 publication](NPM-0.2.0.md): clean archive from `5b17bf6`,
+  public npm `0.2.0`/`latest`, exact archive integrity and anonymous npm/mise
+  installation/render checks passed. Public GitHub `main` and annotated unsigned
+  `v0.2.0` tag are published; no experimental branch is published. The owner's
+  separately executed global mise update also pins Node/Deno; its selected-CLI
+  version/doctor, complete file/hash comparison and real render passed separately.
 
 - [Composition/interactivity 0.2.0](COMPOSITION-INTERACTIVITY-0.2.0.md): explicit
   theme slots, measured code/results, complete scroll/Presenter PDF, inline

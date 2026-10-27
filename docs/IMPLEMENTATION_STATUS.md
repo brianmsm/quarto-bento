@@ -1,9 +1,8 @@
 # Implementation ledger
 
-Updated 2026-10-27. The owner authorized `0.2.0` Linux npm publication;
-clean archive preparation and public verification are tracked in
-[the release receipt](evidence/NPM-0.2.0.md). Registry availability remains
-`0.1.1` until publication is verified. No global update is requested.
+Updated 2026-10-27. The owner-authorized `0.2.0` Linux npm release is published,
+with `latest` pointing to it. Exact public archive integrity and actual anonymous
+npm/mise installation passed in [the release receipt](evidence/NPM-0.2.0.md).
 
 The original Linux-local implementation and validation objective closed at
 runtime `2ee7974`, with source publication authorized on GitHub. That historical
@@ -18,10 +17,10 @@ completed objective, and hosted CI is deferred. The earlier
 [first-slice evidence](evidence/FIRST-SLICE.md) remains valid for its recorded
 revision and scope.
 
-## Composition and interactivity 0.2.0 release preparation
+## Published composition and interactivity 0.2.0
 
-Source/package/extension metadata is now `0.2.0`; the registry remains at
-`0.1.1` pending public verification. The OMP continuation integrates explicit
+Source/package/extension metadata and the public npm `latest` are `0.2.0`.
+The OMP continuation integrates explicit
 theme slots and variant role styles, native code cards, measured code/result
 columns and grids, producer result slides, complete scroll/static/PDF output,
 SVG defaults with explicit-device precedence, inline offline Plotly 2D/3D and
@@ -46,11 +45,14 @@ artifact, distinct from the clean publication archive tracked in the
 [release receipt](evidence/NPM-0.2.0.md). The current qualification uses
 Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19 on Linux.
 
-Publication is owner-authorized; completion is not inferred from source metadata
-or local checks. Source publication retains the `main`-only branch policy;
-experimental branches, a global update, an upstream fork or a new platform claim
-are outside this release. The user's presentation and separate plugin remain
-outside this change.
+Public verification is recorded separately from source metadata and local
+qualification. Public `main` and the annotated unsigned `v0.2.0` tag include
+clean published source `5b17bf6`; no experimental branch was published.
+The owner separately executed the authorized global mise update selecting
+`0.2.0`, Node 26.12.0 and Deno 2.9.8, with Node already installed. Subsequent
+selected-CLI version/doctor, all 137 archive files/132 runtime hashes and a real
+render with unchanged QMD passed. An upstream fork, new platform claim, the
+user's presentation and separate plugin remain outside this change.
 Saved-state, design-package and JSON API versions remain 1; new optional camera
 state and extended design definitions require the matching runtime.
 
@@ -65,7 +67,7 @@ fixture failures and one optional source comparison omitted. The corrected
 fixture files passed all eight tests; the omitted comparison passed separately.
 This provides combined passing coverage of 602 distinct cases, rather than a
 new single clean full-suite receipt.
-The public npm version remains `0.1.1` pending `0.2.0` verification; it was
+The historical `0.1.1` version was
 published on 2026-10-17 from the exact validated archive. Anonymous npm
 installation and selected sync passed;
 the owner-requested global mise update verified all 117 payload hashes, version,

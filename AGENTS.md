@@ -1,6 +1,6 @@
 # Agent / next-session handoff
 
-**Project status (2026-10-17): Linux implementation objective completed; public development source and npm CLI 0.1.1 published.** Read `docs/IMPLEMENTATION_STATUS.md` for current code and evidence. Target commands/APIs must not be assumed implemented merely because they appear in design documents; the supported Linux workflows are demonstrated, with bounded codecs and a longer-term product horizon. Public source availability is distinct from a stable v1 release.
+**Project status (2026-10-27): Linux implementation objective completed; public development source and npm CLI 0.2.0 published.** Read `docs/IMPLEMENTATION_STATUS.md` for current code and evidence. Target commands/APIs must not be assumed implemented merely because they appear in design documents; the supported Linux workflows are demonstrated, with bounded codecs and a longer-term product horizon. Public source availability is distinct from a stable v1 release.
 
 1. Read `README.md`, then **`docs/PRODUCT_TARGET.md`** for the finish line, `docs/DECISIONS.md` for agreements, and `docs/ROADMAP.md` for the next action. Consult `docs/WORKFLOWS.md`, `docs/SYNC.md`, `docs/AUTHORING.md`, and `docs/ARCHITECTURE.md` for the relevant implementation area.
 2. Preserve agreed behavior: QMD semantic authority, `.qbento/` visual authority, explicit safe round-trip, recoverable unsynced edits, no silent merge, computed results sourced from execution, fully offline ordinary workflow, Git-friendly rebuilds.
@@ -12,17 +12,28 @@
 8. Never rewrite source or discard unsynced edits on render without a checked, approved operation. Make source patches inspectable and recoverable.
 
 **Current handoff:** read `docs/PUBLICATION.md`, the implementation ledger and
-`docs/NPM.md` for the Linux npm CLI. The owner authorized the `0.1.1` npm
-publication and global mise update on 2026-10-17. Version
-`@brianmsm/quarto-bento@0.1.1` is publicly available, with `latest` pointing to
-it. Exact archive integrity, anonymous public npm/mise installation, selected-sync
-and render checks, and the verified owner-requested mise update are recorded in
-`docs/evidence/SYNC-SELECTION-0.1.1.md`. The initial `0.1.0` publication remains
-historical in `docs/evidence/NPM-CLI.md`; its archive is unchanged. The Node shim
-delegates to external Deno; package metadata must not trigger lifecycle hooks
-or environment installation. The compatible correction includes consistent
-source-binding reads, CLI/Studio selected sync and explicit post-sync pending
-guidance. JSON API and saved-state schema versions remain 1.
+`docs/NPM.md` for the Linux npm CLI. The owner-authorized
+`@brianmsm/quarto-bento@0.2.0` publication completed on 2026-10-27, with
+`latest` pointing to it. Exact clean archive integrity (137 files/132 runtime
+hashes), anonymous public npm/mise installation and real rendering passed in
+`docs/evidence/NPM-0.2.0.md`. Clean published source is
+`5b17bf6acda597c3403ee6abf6ba4d396eba7ad6` (`dirty: false`), published on
+GitHub `main` with annotated unsigned tag `v0.2.0`; no experimental branch
+was published. The earlier dirty review archive remains historical qualification.
+Current source acceptance passed 705 tests and four steps with zero failures
+and one optional pinned-upstream-source math comparison ignored.
+Separately, the owner personally executed the authorized global mise command
+selecting `0.2.0`, Node 26.12.0 and Deno 2.9.8, with Node already installed.
+Subsequent selected-CLI version/doctor, all 137 archive files/132 runtime hashes
+and a real render with unchanged QMD passed in the release receipt. No additional
+global installation was performed by the assistant. The historical `0.1.1`
+publication/global verification remains in `docs/evidence/SYNC-SELECTION-0.1.1.md`;
+initial `0.1.0` publication remains historical in `docs/evidence/NPM-CLI.md`,
+with its archive unchanged.
+The Node shim delegates to external Deno; package metadata must not trigger
+lifecycle hooks or environment installation. Consistent source-binding reads,
+CLI/Studio selected sync and explicit post-sync pending guidance remain
+supported. JSON API and saved-state schema versions remain 1.
 The earlier application baseline is recorded in
 `docs/evidence/SECURITY-LINUX.md`. Runtime `2ee7974` passed 578 tests and four
 steps with zero failures. Its 117-file clean portable and state-only smoke are

@@ -1,10 +1,11 @@
 # Portable development directory
 
 For the separately staged Linux npm CLI wrapper, npm/mise installation and local
-tarballs, see [NPM.md](NPM.md). **Status (2026-10-27):** the owner authorized
-`0.2.0` publication; the registry remains at `0.1.1` until publication is
-verified. Clean archive preparation and public checks are tracked in
-[the 0.2.0 receipt](evidence/NPM-0.2.0.md). No global update is requested.
+tarballs, see [NPM.md](NPM.md). **Status (2026-10-27):** `0.2.0` is published,
+with npm `latest` pointing to it. Exact public archive integrity and anonymous
+npm/mise installation passed in [the 0.2.0 receipt](evidence/NPM-0.2.0.md).
+The owner separately selected global `0.2.0` and pinned Node/Deno; selected-CLI
+version/doctor, complete file/hash comparison and real rendering also passed.
 
 The current [Linux qualification](evidence/COMPOSITION-INTERACTIVITY-0.2.0.md)
 records 705 tests and four steps, zero failures, with one optional upstream-source
