@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Limit the mise quickstart to the Quarto-Bento CLI; do not select Node/Deno
+  versions globally as part of its installation. Keep qualified runtime versions
+  as evidence, not configuration policy. The published 0.2.0 README remains its
+  immutable snapshot; the correction applies to current source documentation.
+
 ## 0.2.0 — 2026-10-27
 
 - Share content-free design packages across independently bound QMD projects.

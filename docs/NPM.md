@@ -156,8 +156,9 @@ availability on npmjs.org. See [the npm receipt](evidence/NPM-CLI.md).
 ## npm and mise installation
 
 The public `0.2.0` package passed anonymous npm and mise installation checks in
-[the publication receipt](evidence/NPM-0.2.0.md). Use the pinned commands below
-with Node 26.12.0, Deno 2.9.8 and Quarto 1.10.19.
+[the publication receipt](evidence/NPM-0.2.0.md). Use your existing Node, Deno and
+Quarto installations meeting the requirements above. Qualified versions record
+the test baseline; the install commands do not select runtime versions for you.
 
 ```sh
 npm install -g @brianmsm/quarto-bento@0.2.0
@@ -173,13 +174,15 @@ npm install -g --prefix "$HOME/.local" \
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Mise can install the npm package and manage its Node/Deno runtimes:
+With those runtimes available, mise can install and select only the npm CLI:
 
 ```sh
-mise use -g node@26.12.0 deno@2.9.8 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
+mise use -g 'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
 qbento doctor
 ```
+
+This changes only the global `qbento` selection, not Node or Deno. Install any
+missing runtimes separately, choosing their versions and scope for your projects.
 
 Recent mise versions require explicit approval for new or low-download packages.
 `allow_low_downloads=true` approves only this package after checking its name
@@ -195,11 +198,11 @@ install hooks manage them. Check `qbento doctor` before rendering a document.
 ## Maintainer publication
 
 The owner-authorized `0.2.0` publication and anonymous public verification are
-complete in [the release receipt](evidence/NPM-0.2.0.md). The owner separately
-executed the global mise command shown above: it installed Deno 2.9.8 and
-`0.2.0`, with Node 26.12.0 already installed. This also pins Node and Deno;
-it is not a claim that only the qbento setting changed. No additional global
-installation was performed by the assistant.
+complete in [the release receipt](evidence/NPM-0.2.0.md). Its
+[historical owner-performed command](evidence/NPM-0.2.0.md#owner-performed-global-mise-update)
+also selected Node and Deno globally. That record is not the scoped quickstart
+above, which intentionally selects only `qbento`. No further global configuration
+change is implied by this documentation correction.
 
 The source-root package remains private; publish only the reviewed staged
 archive. Authenticate with `npm login --auth-type=web`, verify `npm whoami`,
@@ -214,6 +217,15 @@ this interval, downloads can return 404. Wait for public metadata and tarball
 availability before recording install success; do not republish the same
 version. See the
 [npm publish-time scanning announcement](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/).
+
+## Documentation snapshot in version 0.2.0
+
+The immutable `0.2.0` archive's README includes a combined mise command selecting
+Node, Deno and `qbento` globally. The current instructions above and the source
+README now select only `qbento`, leaving runtime versions and scope to the user.
+This documentation correction does not change the published archive or the
+owner's existing mise configuration. A future package publication is required
+to include the corrected README in its tarball; `0.2.0` must not be republished.
 
 ## Documentation snapshot in version 0.1.0
 

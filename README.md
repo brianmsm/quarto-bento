@@ -41,13 +41,16 @@ For an npm prefix writable by your user, use
 `npm install -g --prefix "$HOME/.local" @brianmsm/quarto-bento@0.2.0` and ensure
 `$HOME/.local/bin` is on `PATH`.
 
-Alternatively, manage the CLI and its Node/Deno runtimes through mise:
+Alternatively, use mise to install and select only the CLI:
 
 ```sh
-mise use -g node@26.12.0 deno@2.9.8 \
-  'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
+mise use -g 'npm:@brianmsm/quarto-bento[allow_low_downloads=true]@0.2.0'
 qbento doctor
 ```
+
+This changes only the global `qbento` selection, not Node or Deno. Install any
+missing runtimes separately, choosing their versions and scope for your projects;
+the qualified versions above are a test baseline, not a global configuration policy.
 
 Recent mise versions require explicit approval for new or low-download packages.
 `allow_low_downloads=true` approves only this package after checking its name
